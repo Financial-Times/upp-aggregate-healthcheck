@@ -1,17 +1,21 @@
-FROM alpine:edge
+FROM alpine:3.5
 
 ADD . /upp-aggregate-healthcheck/
 
 RUN apk --update add go git musl-dev \
   && export GOPATH=/.gopath \
   && go version \
-  && go get github.com/Financial-Times/upp-aggregate-healthcheck \
+  && mkdir -p $GOPATH/src/github.com/Financial-Times/upp-aggregate-healthcheck \
   && cd $GOPATH/src/github.com/Financial-Times/upp-aggregate-healthcheck \
+  && git clone https://github.com/Financial-Times/upp-aggregate-healthcheck.git . \
   && git fetch \
   && git checkout kubernetes-version \
+  && go get github.com/jawher/mow.cli \ 
+  && go get github.com/gorilla/mux \
+  && go get github.com/Financial-Times/go-fthealth/v1a \
   && go build github.com/Financial-Times/upp-aggregate-healthcheck \
+  && mv html-templates /html-templates \
   && mv upp-aggregate-healthcheck /upp-aggregate-healthcheck-app \
-  && mv html-templates/services-healthcheck-template.html /html-templates/services-healthcheck-template.html \
   && apk del go git musl-dev \
   && rm -rf $GOPATH /var/cache/apk/*
 
