@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>CoCo Aggregate Healthcheck</title>
+  </head>
+  <body>
+    <h1>{{.PageTitle}}
+      (
+      {{if eq .GeneralStatus "healthy"}}
+        <span style='color: green;'>healthy</span>
+      {{else}}
+        {{if eq .GeneralStatus "unhealthy"}}
+          <span style='color: orange;'>unhealthy</span>
+        {{else}}
+          {{if eq .GeneralStatus "critical"}}
+            <span style='color: red;'>critical</span>
+          {{else}}
+             <span style='color: blue;'>acked</span>
+          {{end}}
+        {{end}}
+      {{end}}
+      )
+    </h1>
+    <table style='font-size: 10pt; font-family: MONOSPACE;'>
+      {{with .IndividualHealthChecks}}
+        {{range .}}
+          <tr>
+            <td><a href="{{.MoreInfoPath}}">{{.Name}}</a></td>
+            <td>&nbsp;
+              {{if eq .Status "ok"}}
+                <span style='color: green;'>ok</span>
+              {{else}}
+                {{if eq .Status "warning"}}
+                  <span style='color: orange;'>warning</span>
+                {{else}}
+                  {{if eq .Status "critical"}}
+                    <span style='color: red;'>critical</span>
+                  {{else}}
+                    <span style='color: blue;'>acked</span>
+                  {{end}}
+                {{end}}
+              {{end}}
+            </td>
+            <td>&nbsp;{{.AvailablePods}}</td>
+            <td>&nbsp;{{.LastUpdated}}</td>
+            <td>&nbsp;<span style='color: blue;'><em>{{.AckMessage}}</em></span></td>
+          </tr>
+        {{end}}
+      {{end}}
+    </table>
+    <p><a href="{{.RefreshFromCachePath}}">Refresh health from cache</a></p>
+    <p><a href="{{.RefreshWithoutCachePath}}">Refresh health without using the cache</a></p>
+  </body>
+</html>
