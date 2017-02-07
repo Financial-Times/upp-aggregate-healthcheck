@@ -140,8 +140,13 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 }
 
 func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, error) {
-	//todo: change this url.
-	req, err := http.NewRequest("GET", "https://prod-us-up.ft.com/health/document-store-api-2/__health", nil)
+
+	pod, err := c.healthCheckService.getPodByName(podName)
+	if err != nil {
+		return nil, errors.New("Error retrieving pod: " + err.Error())
+	}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__health", pod.ip), nil)
 	if err != nil {
 		return nil, errors.New("Error constructing healthcheck request: " + err.Error())
 	}

@@ -24,6 +24,7 @@ type healthcheckService interface {
 	getCategories() (map[string]category, error)
 	getServicesByNames([]string) []service
 	getPodsForService(string) []pod
+	getPodByName(string) (pod, error)
 	checkServiceHealth(string) error
 	checkPodHealth(pod) error
 	getHttpClient() *http.Client
@@ -38,6 +39,7 @@ type service struct {
 	name      string
 	severity  uint8
 	isEnabled bool
+	ack       string
 }
 
 type category struct {
@@ -52,6 +54,20 @@ const (
 	defaultServiceSeverity = 2
 )
 
+func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
+
+	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{FieldSelector: labels.SelectorFromSet(labels.Set{"name":podName})})
+	if err != nil {
+		return pod{}, errors.New(fmt.Sprintf("Failed to get the pod from k8s cluster, error was %v", err.Error()))
+	}
+
+	if len(k8sPods.Items) == 0 {
+		return pod{}, errors.New(fmt.Sprintf("Pod with name %s was not found in cluster, error was %v", podName, err.Error()))
+	}
+
+	pod := populatePod(k8sPods.Items[0])
+	return pod
+}
 func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
 	infoLogger.Printf("Checking service with name: %s", serviceName) //todo: delete this
 
@@ -73,11 +89,25 @@ func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
 	return nil
 }
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
-	return errors.New("Error reading healthcheck response: ")
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__gtg", pod.ip), nil)
+	if err != nil {
+		return "", errors.New("Error constructing GTG request: " + err.Error())
+	}
+
+	resp, err := hs.httpClient.Do(req)
+	if err != nil {
+		return "", errors.New("Error performing healthcheck: " + err.Error())
+	}
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("GTG endpoint returned non-200 status (%v)", resp.Status)
+	}
+
+	return nil
 }
 
 //todo: take only the services that have healthcheck
-
 func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []service {
 	//todo: list only services that have hasHealthCheck=true label.
 	//k8sServices, err := healthCheckService.k8sClient.Core().Services("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"hasHealthCheck":"true"})})
@@ -97,60 +127,19 @@ func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []ser
 	return getServicesWithNames(k8sServices.Items, serviceNames)
 }
 
-func getServicesWithNames(k8sServices []v1.Service, serviceNames []string) []service {
-	services := []service{}
-
-	for _, serviceName := range serviceNames {
-		k8sService, err := getServiceByName(k8sServices, serviceName)
-		if err != nil {
-			errorLogger.Printf("Service with name [%s] cannot be found in k8s services. Error was: %v", serviceName, err)
-		} else {
-			service := populateService(k8sService)
-			services = append(services, service)
-		}
-	}
-
-	return services
-}
-
-func getAllServices(k8sServices []v1.Service) []service {
-	infoLogger.Print("Using category default, retrieving all services.")
-	services := []service{}
-	for _, k8sService := range k8sServices {
-		service := populateService(k8sService)
-		services = append(services, service)
-	}
-
-	return services
-}
-
-func populateService(k8sService v1.Service) service {
-	severity, err := strconv.ParseUint(k8sService.GetLabels()["healthcheckSeverity"], 10, 8)
-	if err != nil {
-		warnLogger.Printf("Cannot parse severity level from k8s label for service with name [%s], using default severity level of 'warning', error was %v", k8sService.Name, err.Error())
-		severity = defaultServiceSeverity
-	}
-
-	service := service{
-		name: k8sService.Name,
-		isEnabled: true, //TODO: add is enabled  functionality (used for isSticky functionality)
-		severity: uint8(severity),
-	}
-
-	return service
-}
-
 func (hs *k8sHealthcheckService) getPodsForService(serviceName string) []pod {
-	//todo: take only the pods that belong to the service with name serviceName
-	pods := []pod{
-		{
-			name: "test-pod-name-8425234-9hdfg ",
-			ip: "10.2.51.2",
-		},
-		{
-			name: "test2-pod-name-8425234-9hdfg ",
-			ip: "10.2.51.3",
-		},
+
+	//todo: return _,err instead of empty services list in case of error.
+	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
+	if err != nil {
+		errorLogger.Printf("Failed to get the list of services from k8s cluster, error was %v", err.Error())
+		return []service{}
+	}
+
+	pods := []pod{}
+	for _, k8sPod := range k8sPods.Items {
+		pod := populatePod(k8sPod)
+		pods = append(pods, pod)
 	}
 
 	return pods
@@ -199,6 +188,13 @@ func populateCategory(k8sCatData map[string]string) category {
 		services:      strings.Split(k8sCatData["category.services"], ","), //todo: what if the array of strings will contain also white spaces near service names? remove the white spaces from the resulting array of strings.
 		refreshPeriod: refreshRatePeriod,
 		isSticky:      isSticky,
+	}
+}
+
+func populatePod(k8sPod v1.Pod) pod {
+	return pod{
+		name:k8sPod.Name,
+		ip:k8sPod.Status.PodIP,
 	}
 }
 
@@ -264,3 +260,45 @@ func NewServiceHealthCheck(service service, healthcheckService healthcheckServic
 	}
 }
 
+func getServicesWithNames(k8sServices []v1.Service, serviceNames []string) []service {
+	services := []service{}
+
+	for _, serviceName := range serviceNames {
+		k8sService, err := getServiceByName(k8sServices, serviceName)
+		if err != nil {
+			errorLogger.Printf("Service with name [%s] cannot be found in k8s services. Error was: %v", serviceName, err)
+		} else {
+			service := populateService(k8sService)
+			services = append(services, service)
+		}
+	}
+
+	return services
+}
+
+func getAllServices(k8sServices []v1.Service) []service {
+	infoLogger.Print("Using category default, retrieving all services.")
+	services := []service{}
+	for _, k8sService := range k8sServices {
+		service := populateService(k8sService)
+		services = append(services, service)
+	}
+
+	return services
+}
+
+func populateService(k8sService v1.Service) service {
+	severity, err := strconv.ParseUint(k8sService.GetLabels()["healthcheckSeverity"], 10, 8)
+	if err != nil {
+		warnLogger.Printf("Cannot parse severity level from k8s label for service with name [%s], using default severity level of 'warning', error was %v", k8sService.Name, err.Error())
+		severity = defaultServiceSeverity
+	}
+
+	service := service{
+		name: k8sService.Name,
+		isEnabled: true, //TODO: add is enabled  functionality (used for isSticky functionality)
+		severity: uint8(severity),
+	}
+
+	return service
+}
