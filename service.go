@@ -92,7 +92,7 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__gtg", pod.ip), nil)
 	if err != nil {
-		returnd errors.New("Error constructing GTG request: " + err.Error())
+		return errors.New("Error constructing GTG request: " + err.Error())
 	}
 
 	resp, err := hs.httpClient.Do(req)
