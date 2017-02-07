@@ -50,6 +50,7 @@ func listen(httpHandler *httpHandler) {
 	r.HandleFunc("/__health", httpHandler.handleServicesHealthCheck)
 	r.HandleFunc("/__pods-health", httpHandler.handlePodsHealthCheck)
 	r.HandleFunc("/__pod-individual-health", httpHandler.handleIndividualPodHealthCheck)
+	r.HandleFunc("/__gtg", httpHandler.handleGoodToGo)
 
 	err := http.ListenAndServe(":8080", r)
 	if err != nil {

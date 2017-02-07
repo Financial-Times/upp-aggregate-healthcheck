@@ -103,6 +103,27 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 	w.Write(podHealth)
 }
 
+func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
+	categories := parseCategories(r.URL)
+	//TODO: see if categories are enabled (sticky functionality)
+	healthResults, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache(r.URL))
+
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+
+	if len(validCategories) == 0 {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+
+	if !healthResults.Ok {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+}
+
 func parseCategories(theURL *url.URL) []string {
 	queriedCategories := theURL.Query().Get("categories")
 	if queriedCategories == "" {

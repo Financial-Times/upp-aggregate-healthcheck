@@ -13,6 +13,7 @@ import (
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/labels"
 	"strconv"
+	"k8s.io/client-go/1.5/pkg/fields"
 )
 
 type k8sHealthcheckService struct {
@@ -66,7 +67,7 @@ func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 	}
 
 	pod := populatePod(k8sPods.Items[0])
-	return pod,nil
+	return pod, nil
 }
 func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
 	infoLogger.Printf("Checking service with name: %s", serviceName) //todo: delete this
