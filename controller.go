@@ -23,7 +23,7 @@ type MeasuredService struct {
 }
 
 type controller interface {
-	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category,error)
+	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
 	buildPodsHealthResult(string, bool) (fthealth.HealthResult)
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	runPodChecksFor(string) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
@@ -43,7 +43,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	desc := "Health of the whole cluster of the moment served without cache."
 	availableCategories, err := c.healthCheckService.getCategories()
 	if err != nil {
-		return fthealth.HealthResult{},nil,nil,errors.New(fmt.Sprintf("Cannot build health check result for services. Error was: %v", err.Error()))
+		return fthealth.HealthResult{}, nil, nil, errors.New(fmt.Sprintf("Cannot build health check result for services. Error was: %v", err.Error()))
 	}
 
 	matchingCategories := getMatchingCategories(providedCategories, availableCategories)
