@@ -56,7 +56,7 @@ const (
 
 func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 
-	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{FieldSelector: labels.SelectorFromSet(labels.Set{"name":podName})})
+	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(labels.Set{"name":podName})})
 	if err != nil {
 		return pod{}, errors.New(fmt.Sprintf("Failed to get the pod from k8s cluster, error was %v", err.Error()))
 	}
@@ -66,7 +66,7 @@ func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 	}
 
 	pod := populatePod(k8sPods.Items[0])
-	return pod
+	return pod,nil
 }
 func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
 	infoLogger.Printf("Checking service with name: %s", serviceName) //todo: delete this
@@ -92,16 +92,16 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__gtg", pod.ip), nil)
 	if err != nil {
-		return "", errors.New("Error constructing GTG request: " + err.Error())
+		returnd errors.New("Error constructing GTG request: " + err.Error())
 	}
 
 	resp, err := hs.httpClient.Do(req)
 	if err != nil {
-		return "", errors.New("Error performing healthcheck: " + err.Error())
+		return errors.New("Error performing healthcheck: " + err.Error())
 	}
 
 	if resp.StatusCode != 200 {
-		return "", fmt.Errorf("GTG endpoint returned non-200 status (%v)", resp.Status)
+		return fmt.Errorf("GTG endpoint returned non-200 status (%v)", resp.Status)
 	}
 
 	return nil
@@ -133,7 +133,7 @@ func (hs *k8sHealthcheckService) getPodsForService(serviceName string) []pod {
 	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
 	if err != nil {
 		errorLogger.Printf("Failed to get the list of services from k8s cluster, error was %v", err.Error())
-		return []service{}
+		return []pod{}
 	}
 
 	pods := []pod{}
