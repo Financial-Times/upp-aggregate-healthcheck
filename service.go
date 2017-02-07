@@ -150,7 +150,7 @@ func populateCategory(k8sCatData map[string]string) category {
 		refreshRateSeconds = defaultRefreshRate
 	}
 
-	refreshRatePeriod := time.Duration(int64(refreshRateSeconds) * time.Second)
+	refreshRatePeriod := time.Duration(int64(refreshRateSeconds * time.Second))
 
 	return category{
 		name:categoryName,
