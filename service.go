@@ -71,7 +71,7 @@ func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []ser
 	k8sServices, err := hs.k8sClient.Core().Services("").List(v1.ListOptions{})
 	if err != nil {
 		errorLogger.Printf("Failed to get the list of services from k8s cluster, error was %v", err.Error())
-		return
+		return []service{}
 	}
 
 	for _, serviceName := range serviceNames {
@@ -88,7 +88,7 @@ func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []ser
 			service := service{
 				name: k8sService.Name,
 				isEnabled: true, //TODO: add is enabled  functionality (used for isSticky functionality)
-				severity:severity,
+				severity: uint8(severity),
 			}
 
 			services = append(services, service)
@@ -120,7 +120,7 @@ func (hs *k8sHealthcheckService) getCategories() (map[string]category, error) {
 	labelSelector := labels.SelectorFromSet(labels.Set{"healthcheck-categories-for":"aggregate-healthcheck"})
 	k8sCategories, err := hs.k8sClient.Core().ConfigMaps("default").List(api.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to get the categories from kubernetes. Error was: %v", err))
+		return nil,errors.New(fmt.Sprintf("Failed to get the categories from kubernetes. Error was: %v", err))
 	}
 
 	for _, k8sCategory := range k8sCategories.Items {
@@ -129,7 +129,7 @@ func (hs *k8sHealthcheckService) getCategories() (map[string]category, error) {
 		categories = append(categories, category)
 	}
 
-	return categories
+	return categories,nil
 }
 
 func (hs *k8sHealthcheckService) getHttpClient() *http.Client {
@@ -163,11 +163,11 @@ func populateCategory(k8sCatData map[string]string) category {
 func getServiceByName(k8sServices []v1.Service, serviceName string) (v1.Service, error) {
 	for _, k8sService := range k8sServices {
 		if k8sService.Name == serviceName {
-			return k8sService
+			return k8sService,nil
 		}
 	}
 
-	return errors.New(fmt.Sprintf("Cannot find k8sService with name %s", serviceName))
+	return nil,errors.New(fmt.Sprintf("Cannot find k8sService with name %s", serviceName))
 }
 
 func InitializeHealthCheckService() *k8sHealthcheckService {

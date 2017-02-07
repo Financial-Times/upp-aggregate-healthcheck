@@ -43,7 +43,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	desc := "Health of the whole cluster of the moment served without cache."
 	availableCategories, err := c.healthCheckService.getCategories()
 	if err != nil {
-		return errors.New(fmt.Sprintf("Cannot build health check result for services. Error was: %v", err.Error()))
+		return nil,nil,nil,errors.New(fmt.Sprintf("Cannot build health check result for services. Error was: %v", err.Error()))
 	}
 
 	matchingCategories := getMatchingCategories(providedCategories, availableCategories)
@@ -70,7 +70,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	sort.Sort(ByNameComparator(health.Checks))
 
 	//todo: add unhealthy categories here.
-	return health, matchingCategories, nil
+	return health, matchingCategories, nil, nil
 }
 
 func (c *healthCheckController)buildPodsHealthResult(serviceName string, useCache bool) (fthealth.HealthResult) {
