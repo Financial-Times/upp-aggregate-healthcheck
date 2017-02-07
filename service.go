@@ -57,7 +57,7 @@ const (
 
 func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 
-	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"name":podName})})
+	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"metadata.name":podName})})
 	if err != nil {
 		return pod{}, errors.New(fmt.Sprintf("Failed to get the pod from k8s cluster, error was %v", err.Error()))
 	}
