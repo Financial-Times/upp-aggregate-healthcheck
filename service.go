@@ -55,12 +55,16 @@ const (
 func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
 	infoLogger.Printf("Checking service with name: %s", serviceName) //todo: delete this
 
-	k8sServices, err := hs.k8sClient.Extensions().Deployments("").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"hasHealthCheck":"true"})})
+	k8sPods, err := hs.k8sClient.Extensions().Deployments("").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
 	if err != nil {
 		return errors.New(fmt.Sprintf("Cannot get deployment for service with name: [%s] ", serviceName))
 	}
 
-	noOfUnavailablePods := k8sServices.Items[0].Status.UnavailableReplicas
+	if len(k8sPods.Items) == 0 {
+		return errors.New(fmt.Sprintf("Cannot find deployment for service with name [%s]", serviceName))
+	}
+	
+	noOfUnavailablePods := k8sPods.Items[0].Status.UnavailableReplicas
 
 	if noOfUnavailablePods != 0 {
 		return errors.New(fmt.Sprintf("There are %v pods unavailable for service with name: [%s] ", noOfUnavailablePods, serviceName))
