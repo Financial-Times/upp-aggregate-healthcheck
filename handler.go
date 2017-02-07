@@ -169,7 +169,7 @@ func buildPodsCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth.Hea
 }
 
 func parseHtmlTemplate(w http.ResponseWriter) *template.Template {
-	htmlTemplate, err := template.ParseFiles("html-templates\\services-healthcheck-template.html")
+	htmlTemplate, err := template.ParseFiles("healthcheck-template.html")
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Couldn't open template file for html response"))
