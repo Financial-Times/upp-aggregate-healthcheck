@@ -37,7 +37,13 @@ const timeLayout = "15:04:05 MST"
 
 func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.Request) {
 	categories := parseCategories(r.URL)
-	healthResult, validCategories, _ := h.controller.buildServicesHealthResult(categories, useCache(r.URL))
+	healthResult, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache(r.URL))
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		errorLogger.Printf("Cannot build services health result, error was: %v", err.Error())
+		return
+	}
 
 	if len(validCategories) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
