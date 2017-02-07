@@ -43,7 +43,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	desc := "Health of the whole cluster of the moment served without cache."
 	availableCategories, err := c.healthCheckService.getCategories()
 	if err != nil {
-		return nil,nil,nil,errors.New(fmt.Sprintf("Cannot build health check result for services. Error was: %v", err.Error()))
+		return fthealth.HealthResult{},nil,nil,errors.New(fmt.Sprintf("Cannot build health check result for services. Error was: %v", err.Error()))
 	}
 
 	matchingCategories := getMatchingCategories(providedCategories, availableCategories)

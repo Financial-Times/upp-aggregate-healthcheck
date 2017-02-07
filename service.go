@@ -68,7 +68,7 @@ func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []ser
 	//k8sServices, err := healthCheckService.k8sClient.Core().Services("").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"hasHealthCheck":"true"})})
 
 	//todo: return _,err instead of empty services list in case of error.
-	k8sServices, err := hs.k8sClient.Core().Services("").List(v1.ListOptions{})
+	k8sServices, err := hs.k8sClient.Core().Services("").List(api.ListOptions{})
 	if err != nil {
 		errorLogger.Printf("Failed to get the list of services from k8s cluster, error was %v", err.Error())
 		return []service{}
@@ -126,7 +126,7 @@ func (hs *k8sHealthcheckService) getCategories() (map[string]category, error) {
 	for _, k8sCategory := range k8sCategories.Items {
 		category := populateCategory(k8sCategory.Data)
 		warnLogger.Printf("Found category: %v \n",category) //TODO: remove this.
-		categories = append(categories, category)
+		categories[category.name] = category
 	}
 
 	return categories,nil
@@ -150,7 +150,7 @@ func populateCategory(k8sCatData map[string]string) category {
 		refreshRateSeconds = defaultRefreshRate
 	}
 
-	refreshRatePeriod := time.Duration(refreshRateSeconds * time.Second)
+	refreshRatePeriod := time.Duration(int64(refreshRateSeconds) * time.Second)
 
 	return category{
 		name:categoryName,
@@ -167,7 +167,7 @@ func getServiceByName(k8sServices []v1.Service, serviceName string) (v1.Service,
 		}
 	}
 
-	return nil,errors.New(fmt.Sprintf("Cannot find k8sService with name %s", serviceName))
+	return v1.Service{},errors.New(fmt.Sprintf("Cannot find k8sService with name %s", serviceName))
 }
 
 func InitializeHealthCheckService() *k8sHealthcheckService {
