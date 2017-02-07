@@ -55,7 +55,7 @@ const (
 func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
 	infoLogger.Printf("Checking service with name: %s", serviceName) //todo: delete this
 
-	k8sPods, err := hs.k8sClient.Extensions().Deployments("").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
+	k8sPods, err := hs.k8sClient.Extensions().Deployments("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
 	if err != nil {
 		return errors.New(fmt.Sprintf("Cannot get deployment for service with name: [%s] ", serviceName))
 	}
@@ -63,7 +63,7 @@ func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
 	if len(k8sPods.Items) == 0 {
 		return errors.New(fmt.Sprintf("Cannot find deployment for service with name [%s]", serviceName))
 	}
-	
+
 	noOfUnavailablePods := k8sPods.Items[0].Status.UnavailableReplicas
 
 	if noOfUnavailablePods != 0 {
@@ -80,10 +80,10 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
 
 func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []service {
 	//todo: list only services that have hasHealthCheck=true label.
-	//k8sServices, err := healthCheckService.k8sClient.Core().Services("").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"hasHealthCheck":"true"})})
+	//k8sServices, err := healthCheckService.k8sClient.Core().Services("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"hasHealthCheck":"true"})})
 
 	//todo: return _,err instead of empty services list in case of error.
-	k8sServices, err := hs.k8sClient.Core().Services("").List(api.ListOptions{})
+	k8sServices, err := hs.k8sClient.Core().Services("default").List(api.ListOptions{})
 	if err != nil {
 		errorLogger.Printf("Failed to get the list of services from k8s cluster, error was %v", err.Error())
 		return []service{}
