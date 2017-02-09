@@ -69,7 +69,7 @@ func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) e
 	//todo: remove this error lor:
 	errorLogger.Printf("New ack added: %s", k8sAcksConfigMap.Data[serviceName])
 
-	_, err = hs.k8sClient.Core().ConfigMaps("default").Update(k8sAcksConfigMap)
+	_, err = hs.k8sClient.Core().ConfigMaps("default").Update(&k8sAcksConfigMap)
 
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to update the acks config map for service %s and ack message [%s]", serviceName, ackMessage))
@@ -347,12 +347,13 @@ func getAcksConfigMap(k8sClient *kubernetes.Clientset) (v1.ConfigMap, error) {
 	k8sAckConfigMaps, err := k8sClient.Core().ConfigMaps("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"metadata.name":ackMessagesConfigMapName})})
 
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Cannot get configMap with name: %s from k8s cluster. Error was: %s", ackMessagesConfigMapName, err.Error()))
+		return v1.ConfigMap{}, errors.New(fmt.Sprintf("Cannot get configMap with name: %s from k8s cluster. Error was: %s", ackMessagesConfigMapName, err.Error()))
 	}
 
 	if len(k8sAckConfigMaps.Items) == 0 {
-		return nil, errors.New(fmt.Sprintf("Cannot find configMap with name: %s", ackMessagesConfigMapName))
+		return v1.ConfigMap{}, errors.New(fmt.Sprintf("Cannot find configMap with name: %s", ackMessagesConfigMapName))
 	}
 
-	return k8sAckConfigMaps.Items[0],nil
+	return &k8sAckConfigMaps.Items[0],nil
 }
+
