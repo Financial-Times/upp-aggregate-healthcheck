@@ -39,8 +39,12 @@ func (c *healthCheckController) addAck(serviceName string, ackMessage string) er
 		return errors.New(fmt.Sprintf("Cannot find service with name %s", serviceName))
 	}
 
-	//TODO: add ack.
+	err := c.healthCheckService.addAck(serviceName, ackMessage)
 
+	if err != nil {
+		return errors.New(fmt.Sprintf("Failed to add ack message [%s] for service %s. Error was: %s", ackMessage, serviceName, err.Error()))
+	}
+	
 	return nil
 }
 
