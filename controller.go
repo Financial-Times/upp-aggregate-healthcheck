@@ -29,6 +29,19 @@ type controller interface {
 	runPodChecksFor(string) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	getIndividualPodHealth(string) ([]byte, error)
+	addAck(string, string) error
+}
+
+func (c *healthCheckController) addAck(serviceName string, ackMessage string) error {
+	services := c.healthCheckService.getServicesByNames([]string{serviceName})
+
+	if len(services) == 0 {
+		return errors.New(fmt.Sprintf("Cannot find service with name %s", serviceName))
+	}
+
+	//TODO: add ack.
+
+	return nil
 }
 
 func (c *healthCheckController)  collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
@@ -149,8 +162,6 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 
 	for _, service := range services {
 		if service.ack != "" {
-			//TODO: remove this error log.
-			errorLogger.Printf("Found ack message for service with name %s. Ack message is: %s",service.name,service.ack)
 			updateHealthCheckWithAckMsg(healthChecks, service.name, service.ack)
 		}
 	}
@@ -190,9 +201,10 @@ func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, 
 }
 
 func updateHealthCheckWithAckMsg(healthChecks []fthealth.CheckResult, name string, ackMsg string) {
-	for _, healthCheck := range healthChecks {
+	for i, healthCheck := range healthChecks {
 		if healthCheck.Name == name {
-			healthCheck.Ack = ackMsg
+			healthChecks[i].Ack = ackMsg
+			return
 		}
 	}
 }

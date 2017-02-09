@@ -28,6 +28,7 @@ type healthcheckService interface {
 	getPodByName(string) (pod, error)
 	checkServiceHealth(string) error
 	checkPodHealth(pod) error
+	addAck(string, string) error
 	getHttpClient() *http.Client
 }
 
@@ -55,6 +56,27 @@ const (
 	defaultServiceSeverity = uint8(2)
 	ackMessagesConfigMapName = "healthcheck.ack.messages"
 )
+
+func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) error {
+	k8sAcksConfigMap, err := getAcksConfigMap(hs.k8sClient)
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("Failed to retrieve the current list of acks. Error was: %s", err.Error()))
+	}
+
+	k8sAcksConfigMap.Data[serviceName] = ackMessage
+
+	//todo: remove this error lor:
+	errorLogger.Printf("New ack added: %s", k8sAcksConfigMap.Data[serviceName])
+
+	_, err = hs.k8sClient.Core().ConfigMaps("default").Update(k8sAcksConfigMap)
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("Failed to update the acks config map for service %s and ack message [%s]", serviceName, ackMessage))
+	}
+
+	return nil
+}
 
 func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 
@@ -312,6 +334,16 @@ func populateService(k8sService v1.Service, acks map[string]string) service {
 }
 
 func getAcks(k8sClient *kubernetes.Clientset) (map[string]string, error) {
+	k8sAckConfigMap, err := getAcksConfigMap(k8sClient)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return k8sAckConfigMap.Data, nil
+}
+
+func getAcksConfigMap(k8sClient *kubernetes.Clientset) (*v1.ConfigMap, error) {
 	k8sAckConfigMaps, err := k8sClient.Core().ConfigMaps("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"metadata.name":ackMessagesConfigMapName})})
 
 	if err != nil {
@@ -322,5 +354,5 @@ func getAcks(k8sClient *kubernetes.Clientset) (map[string]string, error) {
 		return nil, errors.New(fmt.Sprintf("Cannot find configMap with name: %s", ackMessagesConfigMapName))
 	}
 
-	return k8sAckConfigMaps.Items[0].Data, nil
+	return k8sAckConfigMaps.Items[0]
 }

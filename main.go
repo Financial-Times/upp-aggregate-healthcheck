@@ -45,7 +45,8 @@ func main() {
 
 func listen(httpHandler *httpHandler) {
 	r := mux.NewRouter()
-
+	r.HandleFunc("/add-ack", httpHandler.handleAddAck).Methods("POST")
+	r.HandleFunc("/add-ack-form", httpHandler.handleAddAckForm)
 	r.HandleFunc("/", httpHandler.handleServicesHealthCheck)
 	r.HandleFunc("/__health", httpHandler.handleServicesHealthCheck)
 	r.HandleFunc("/__pods-health", httpHandler.handlePodsHealthCheck)

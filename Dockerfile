@@ -15,6 +15,7 @@ RUN apk --update add go git musl-dev \
   && go get github.com/Financial-Times/go-fthealth/v1a \
   && go build github.com/Financial-Times/upp-aggregate-healthcheck \
   && mv healthcheck-template.html /healthcheck-template.html \
+  && mv add-ack-message-form-template.html /add-ack-message-form-template.html \
   && mv upp-aggregate-healthcheck /upp-aggregate-healthcheck-app \
   && apk del go git musl-dev \
   && rm -rf $GOPATH /var/cache/apk/*

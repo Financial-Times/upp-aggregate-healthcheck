@@ -31,9 +31,62 @@ type AggregateHealthcheckParams struct {
 	IndividualHealthChecks  []IndividualHealthcheckParams
 }
 
+type AddAckForm struct {
+	ServiceName string
+	AddAckPath  string
+}
+
 var defaultCategories = []string{"default"}
 
-const timeLayout = "15:04:05 MST"
+const (
+	timeLayout = "15:04:05 MST"
+	healthcheckTemplateName = "healthcheck-template.html"
+)
+
+func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
+	serviceName := getServiceNameFromUrl(r.URL)
+	ackMessage := r.PostFormValue("ack-msg")
+	if serviceName == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Provided service name is not valid."))
+		return
+	}
+
+	err := h.controller.addAck(serviceName, ackMessage)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		errorLogger.Printf("Cannot add acknowledge for service with name %s. Error was: %s", serviceName, err.Error())
+	}
+}
+
+func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
+	serviceName := getServiceNameFromUrl(r.URL)
+
+	if serviceName == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Provided service name is not valid."))
+		return
+	}
+
+	w.Header().Add("Content-Type", "text/html")
+	htmlTemplate := parseHtmlTemplate(w, "add-ack-message-form-template.html")
+	if htmlTemplate == nil {
+		return
+	}
+
+	addAckForm := AddAckForm{
+		ServiceName:serviceName,
+		AddAckPath:fmt.Sprintf("add-ack?service-name=%s", serviceName),
+	}
+
+	if err := htmlTemplate.Execute(w, addAckForm); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		errorLogger.Printf("Cannot apply params to html template, error was: %v", err.Error())
+		w.Write([]byte("Couldn't render template file for html response"))
+		return
+	}
+}
 
 func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.Request) {
 	categories := parseCategories(r.URL)
@@ -78,7 +131,7 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 	if r.Header.Get("Accept") == "application/json" {
 		buildHealthcheckJsonResponse(w, healthResult)
 	} else {
-		buildPodsCheckHtmlResponse(w, healthResult)
+		buildPodsCheckHtmlResponse(w, healthResult, serviceName)
 	}
 }
 
@@ -157,7 +210,7 @@ func buildHealthcheckJsonResponse(w http.ResponseWriter, healthResult fthealth.H
 
 func buildServicesCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth.HealthResult, environment string, categories string) {
 	w.Header().Add("Content-Type", "text/html")
-	htmlTemplate := parseHtmlTemplate(w)
+	htmlTemplate := parseHtmlTemplate(w, healthcheckTemplateName)
 	if htmlTemplate == nil {
 		return
 	}
@@ -172,14 +225,14 @@ func buildServicesCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth
 	}
 }
 
-func buildPodsCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth.HealthResult) {
+func buildPodsCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth.HealthResult, serviceName string) {
 	w.Header().Add("Content-Type", "text/html")
-	htmlTemplate := parseHtmlTemplate(w)
+	htmlTemplate := parseHtmlTemplate(w, healthcheckTemplateName)
 	if htmlTemplate == nil {
 		return
 	}
 
-	aggregateHealthcheckParams := populateAggregatePodChecks(healthResult)
+	aggregateHealthcheckParams := populateAggregatePodChecks(healthResult, serviceName)
 
 	if err := htmlTemplate.Execute(w, aggregateHealthcheckParams); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -189,12 +242,12 @@ func buildPodsCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth.Hea
 	}
 }
 
-func parseHtmlTemplate(w http.ResponseWriter) *template.Template {
-	htmlTemplate, err := template.ParseFiles("healthcheck-template.html")
+func parseHtmlTemplate(w http.ResponseWriter, templateName string) *template.Template {
+	htmlTemplate, err := template.ParseFiles(templateName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Couldn't open template file for html response"))
-		errorLogger.Printf("Could not parse html template, error was: %v", err.Error())
+		errorLogger.Printf("Could not parse html template with name %s, error was: %v", templateName, err.Error())
 
 		return nil
 	}
@@ -252,9 +305,9 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult) []IndividualHeal
 	return indiviualServiceChecks
 }
 
-func populateAggregatePodChecks(healthResult  fthealth.HealthResult) *AggregateHealthcheckParams {
+func populateAggregatePodChecks(healthResult  fthealth.HealthResult, serviceName string) *AggregateHealthcheckParams {
 	aggregateChecks := &AggregateHealthcheckParams{
-		PageTitle: "CoCo prod-uk service service-name-test pods",
+		PageTitle: fmt.Sprintf("CoCo prod-uk service pods of service %s", serviceName),
 		GeneralStatus: getGeneralStatus(healthResult),
 		RefreshFromCachePath: "#",
 		RefreshWithoutCachePath: "#",
