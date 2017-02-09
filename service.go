@@ -354,6 +354,6 @@ func getAcksConfigMap(k8sClient *kubernetes.Clientset) (v1.ConfigMap, error) {
 		return v1.ConfigMap{}, errors.New(fmt.Sprintf("Cannot find configMap with name: %s", ackMessagesConfigMapName))
 	}
 
-	return &k8sAckConfigMaps.Items[0],nil
+	return k8sAckConfigMaps.Items[0],nil
 }
 
