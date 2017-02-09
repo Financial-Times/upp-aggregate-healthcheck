@@ -24,7 +24,7 @@ type k8sHealthcheckService struct {
 type healthcheckService interface {
 	getCategories() (map[string]category, error)
 	getServicesByNames([]string) []service
-	getPodsForService(string) []pod
+	getPodsForService(string) ([]pod, error)
 	getPodByName(string) (pod, error)
 	checkServiceHealth(string) error
 	checkPodHealth(pod) error
@@ -52,7 +52,8 @@ type category struct {
 
 const (
 	defaultRefreshRate = 60
-	defaultServiceSeverity = 2
+	defaultServiceSeverity = uint8(2)
+	ackMessagesConfigMapName = "healthcheck.ack.messages"
 )
 
 func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
@@ -72,16 +73,16 @@ func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
 	infoLogger.Printf("Checking service with name: %s", serviceName) //todo: delete this
 
-	k8sPods, err := hs.k8sClient.Extensions().Deployments("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
+	k8sDeployments, err := hs.k8sClient.Extensions().Deployments("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
 	if err != nil {
 		return errors.New(fmt.Sprintf("Cannot get deployment for service with name: [%s] ", serviceName))
 	}
 
-	if len(k8sPods.Items) == 0 {
+	if len(k8sDeployments.Items) == 0 {
 		return errors.New(fmt.Sprintf("Cannot find deployment for service with name [%s]", serviceName))
 	}
 
-	noOfUnavailablePods := k8sPods.Items[0].Status.UnavailableReplicas
+	noOfUnavailablePods := k8sDeployments.Items[0].Status.UnavailableReplicas
 
 	if noOfUnavailablePods != 0 {
 		return errors.New(fmt.Sprintf("There are %v pods unavailable for service with name: [%s] ", noOfUnavailablePods, serviceName))
@@ -110,11 +111,16 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
 
 //todo: take only the services that have healthcheck
 func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []service {
-	//todo: list only services that have hasHealthCheck=true label.
-	//k8sServices, err := healthCheckService.k8sClient.Core().Services("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"hasHealthCheck":"true"})})
+	k8sServices, err := hs.k8sClient.Core().Services("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"hasHealthcheck":"true"})})
+
+	acks, err := getAcks(hs.k8sClient)
+
+	if err != nil {
+		warnLogger.Printf("Cannot get acks. There will be no acks at all. Error was: %s", err.Error())
+	}
 
 	//todo: return _,err instead of empty services list in case of error.
-	k8sServices, err := hs.k8sClient.Core().Services("default").List(api.ListOptions{})
+
 	if err != nil {
 		errorLogger.Printf("Failed to get the list of services from k8s cluster, error was %v", err.Error())
 		return []service{}
@@ -122,19 +128,18 @@ func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []ser
 
 	//if the list of service names is empty, it means that we are in the default category so we take all the services that have healthcheck
 	if len(serviceNames) == 0 {
-		return getAllServices(k8sServices.Items)
+		return getAllServices(k8sServices.Items, acks)
 	}
 
-	return getServicesWithNames(k8sServices.Items, serviceNames)
+	return getServicesWithNames(k8sServices.Items, serviceNames, acks)
 }
 
-func (hs *k8sHealthcheckService) getPodsForService(serviceName string) []pod {
+func (hs *k8sHealthcheckService) getPodsForService(serviceName string) ([]pod, error) {
 
 	//todo: return _,err instead of empty services list in case of error.
 	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
 	if err != nil {
-		errorLogger.Printf("Failed to get the list of services from k8s cluster, error was %v", err.Error())
-		return []pod{}
+		return []pod{}, errors.New(fmt.Sprintf("Failed to get the list of pods from k8s cluster, error was %v", err.Error()))
 	}
 
 	pods := []pod{}
@@ -143,7 +148,7 @@ func (hs *k8sHealthcheckService) getPodsForService(serviceName string) []pod {
 		pods = append(pods, pod)
 	}
 
-	return pods
+	return pods, nil
 }
 
 func (hs *k8sHealthcheckService) getCategories() (map[string]category, error) {
@@ -233,14 +238,14 @@ func InitializeHealthCheckService() *k8sHealthcheckService {
 	}
 }
 
-func NewPodHealthCheck(pod pod, healthcheckService healthcheckService) fthealth.Check {
+func NewPodHealthCheck(pod pod, service service, healthcheckService healthcheckService) fthealth.Check {
 	//severity := service.severity
 
 	return fthealth.Check{
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		Name:             pod.name,
 		PanicGuide:       "https://sites.google.com/a/ft.com/technology/systems/dynamic-semantic-publishing/coco/runbook",
-		Severity:         1, //todo:
+		Severity:         service.severity,
 		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
 			return "", healthcheckService.checkPodHealth(pod)
@@ -261,7 +266,7 @@ func NewServiceHealthCheck(service service, healthcheckService healthcheckServic
 	}
 }
 
-func getServicesWithNames(k8sServices []v1.Service, serviceNames []string) []service {
+func getServicesWithNames(k8sServices []v1.Service, serviceNames []string, acks map[string]string) []service {
 	services := []service{}
 
 	for _, serviceName := range serviceNames {
@@ -269,7 +274,7 @@ func getServicesWithNames(k8sServices []v1.Service, serviceNames []string) []ser
 		if err != nil {
 			errorLogger.Printf("Service with name [%s] cannot be found in k8s services. Error was: %v", serviceName, err)
 		} else {
-			service := populateService(k8sService)
+			service := populateService(k8sService, acks)
 			services = append(services, service)
 		}
 	}
@@ -277,29 +282,45 @@ func getServicesWithNames(k8sServices []v1.Service, serviceNames []string) []ser
 	return services
 }
 
-func getAllServices(k8sServices []v1.Service) []service {
+func getAllServices(k8sServices []v1.Service, acks map[string]string) []service {
 	infoLogger.Print("Using category default, retrieving all services.")
 	services := []service{}
 	for _, k8sService := range k8sServices {
-		service := populateService(k8sService)
+		service := populateService(k8sService, acks)
 		services = append(services, service)
 	}
 
 	return services
 }
 
-func populateService(k8sService v1.Service) service {
-	severity, err := strconv.ParseUint(k8sService.GetLabels()["healthcheckSeverity"], 10, 8)
-	if err != nil {
-		warnLogger.Printf("Cannot parse severity level from k8s label for service with name [%s], using default severity level of 'warning', error was %v", k8sService.Name, err.Error())
-		severity = defaultServiceSeverity
+func populateService(k8sService v1.Service, acks map[string]string) service {
+	//TODO: healthcheckSeverity will have either "critical" or "warning" values. Map these values to either 1 or 2.
+	severityLevel := k8sService.GetLabels()["healthcheckSeverity"]
+	severity := defaultServiceSeverity
+	if (severityLevel == "critical") {
+		severity = 1
 	}
 
 	service := service{
 		name: k8sService.Name,
 		isEnabled: true, //TODO: add is enabled  functionality (used for isSticky functionality)
-		severity: uint8(severity),
+		severity: severity,
+		ack: acks[k8sService.Name],
 	}
 
 	return service
+}
+
+func getAcks(k8sClient *kubernetes.Clientset) (map[string]string, error) {
+	k8sAckConfigMaps, err := k8sClient.Core().ConfigMaps("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"metadata.name":ackMessagesConfigMapName})})
+
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("Cannot get configMap with name: %s from k8s cluster. Error was: %s", ackMessagesConfigMapName, err.Error()))
+	}
+
+	if len(k8sAckConfigMaps.Items) == 0 {
+		return nil, errors.New(fmt.Sprintf("Cannot find configMap with name: %s", ackMessagesConfigMapName))
+	}
+
+	return k8sAckConfigMaps.Items[0].Data, nil
 }

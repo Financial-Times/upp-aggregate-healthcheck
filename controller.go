@@ -104,11 +104,23 @@ func (c *healthCheckController)buildPodsHealthResult(serviceName string, useCach
 func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
 	categorisedResults := make(map[string][]fthealth.CheckResult)
 
-	pods := c.healthCheckService.getPodsForService(serviceName)
+	pods, err := c.healthCheckService.getPodsForService(serviceName)
+
+	if err != nil {
+		//TODO: send the error further
+	}
+
+	services := c.healthCheckService.getServicesByNames([]string{serviceName})
+
+	if len(services) == 0 {
+		//todo: throw error
+	}
+
 	var checks []fthealth.Check
 
 	for _, pod := range pods {
-		check := NewPodHealthCheck(pod, c.healthCheckService)
+		//todo: add services[0] to this call to take severity+ack from it
+		check := NewPodHealthCheck(pod, services[0], c.healthCheckService)
 		checks = append(checks, check)
 	}
 
@@ -134,6 +146,14 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 	}
 
 	healthChecks := fthealth.RunCheck("Forced check run", "", true, checks...).Checks
+
+	for _, service := range services {
+		if service.ack != "" {
+			//TODO: remove this error log.
+			errorLogger.Printf("Found ack message for service with name %s. Ack message is: %s",service.name,service.ack)
+			updateHealthCheckWithAckMsg(healthChecks, service.name, service.ack)
+		}
+	}
 
 	//todo: populate categorisedResults if we will use graphite.
 	return healthChecks, categorisedResults
@@ -167,6 +187,14 @@ func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, 
 	}
 
 	return body, nil
+}
+
+func updateHealthCheckWithAckMsg(healthChecks []fthealth.CheckResult, name string, ackMsg string) {
+	for _, healthCheck := range healthChecks {
+		if healthCheck.Name == name {
+			healthCheck.Ack = ackMsg
+		}
+	}
 }
 
 func getFinalResult(checkResults []fthealth.CheckResult) (bool, uint8) {
