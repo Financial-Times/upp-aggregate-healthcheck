@@ -30,6 +30,23 @@ type controller interface {
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	getIndividualPodHealth(string) ([]byte, error)
 	addAck(string, string) error
+	removeAck(string) error
+}
+
+func (c *healthCheckController) removeAck(serviceName string) error {
+	services := c.healthCheckService.getServicesByNames([]string{serviceName})
+
+	if len(services) == 0 {
+		return errors.New(fmt.Sprintf("Cannot find service with name %s", serviceName))
+	}
+
+	err := c.healthCheckService.removeAck(serviceName)
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("Failed to remove ack for service %s. Error was: %s", serviceName, err.Error()))
+	}
+
+	return nil
 }
 
 func (c *healthCheckController) addAck(serviceName string, ackMessage string) error {

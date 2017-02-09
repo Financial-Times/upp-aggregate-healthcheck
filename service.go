@@ -29,6 +29,7 @@ type healthcheckService interface {
 	checkServiceHealth(string) error
 	checkPodHealth(pod) error
 	addAck(string, string) error
+	removeAck(string) error
 	getHttpClient() *http.Client
 }
 
@@ -56,6 +57,24 @@ const (
 	defaultServiceSeverity = uint8(2)
 	ackMessagesConfigMapName = "healthcheck.ack.messages"
 )
+
+func (hs *k8sHealthcheckService) removeAck(serviceName string) error {
+	k8sAcksConfigMap, err := getAcksConfigMap(hs.k8sClient)
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("Failed to retrieve the current list of acks. Error was: %s", err.Error()))
+	}
+
+	delete(k8sAcksConfigMap.Data, serviceName);
+
+	_, err = hs.k8sClient.Core().ConfigMaps("default").Update(&k8sAcksConfigMap)
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("Failed to remove the ack for service %s.", serviceName))
+	}
+
+	return nil
+}
 
 func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) error {
 	k8sAcksConfigMap, err := getAcksConfigMap(hs.k8sClient)

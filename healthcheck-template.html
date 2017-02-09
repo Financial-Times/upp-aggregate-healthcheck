@@ -44,6 +44,11 @@
             <td>&nbsp;{{.AvailablePods}}</td>
             <td>&nbsp;{{.LastUpdated}}</td>
             <td>&nbsp;<span style='color: blue;'><em>{{.AckMessage}}</em></span></td>
+            {{if eq .AckMessage ""}}
+              <td> <a href="add-ack-form?service-name={{.Name}}">Ack service</a></td>
+            {{else}}
+              <td> <a href="remove-ack?service-name={{.Name}}">Remove ack</a></td>
+            {{end}}
           </tr>
         {{end}}
       {{end}}

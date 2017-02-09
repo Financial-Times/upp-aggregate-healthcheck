@@ -43,6 +43,22 @@ const (
 	healthcheckTemplateName = "healthcheck-template.html"
 )
 
+func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
+	serviceName := getServiceNameFromUrl(r.URL)
+	if serviceName == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Provided service name is not valid."))
+		return
+	}
+
+	err := h.controller.removeAck(serviceName)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		errorLogger.Printf("Cannot remove acknowledge for service with name %s. Error was: %s", serviceName, err.Error())
+	}
+}
+
 func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
 	serviceName := getServiceNameFromUrl(r.URL)
 	ackMessage := r.PostFormValue("ack-msg")
