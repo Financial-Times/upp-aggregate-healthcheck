@@ -83,10 +83,11 @@ func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) e
 		return errors.New(fmt.Sprintf("Failed to retrieve the current list of acks. Error was: %s", err.Error()))
 	}
 
-	k8sAcksConfigMap.Data[serviceName] = ackMessage
+	if k8sAcksConfigMap.Data == nil {
+		k8sAcksConfigMap.Data = make(map[string]string)
+	}
 
-	//todo: remove this error lor:
-	errorLogger.Printf("New ack added: %s", k8sAcksConfigMap.Data[serviceName])
+	k8sAcksConfigMap.Data[serviceName] = ackMessage
 
 	_, err = hs.k8sClient.Core().ConfigMaps("default").Update(&k8sAcksConfigMap)
 
@@ -112,8 +113,6 @@ func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 	return pod, nil
 }
 func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
-	infoLogger.Printf("Checking service with name: %s", serviceName) //todo: delete this
-
 	k8sDeployments, err := hs.k8sClient.Extensions().Deployments("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
 	if err != nil {
 		return errors.New(fmt.Sprintf("Cannot get deployment for service with name: [%s] ", serviceName))
@@ -150,7 +149,6 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
 	return nil
 }
 
-//todo: take only the services that have healthcheck
 func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []service {
 	k8sServices, err := hs.k8sClient.Core().Services("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"hasHealthcheck":"true"})})
 
@@ -260,8 +258,6 @@ func InitializeHealthCheckService() *k8sHealthcheckService {
 		Timeout:   5 * time.Second,
 	}
 
-	//todo: use kubernetes client from branch release-1.5
-	//todo: uncomment this
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -373,6 +369,6 @@ func getAcksConfigMap(k8sClient *kubernetes.Clientset) (v1.ConfigMap, error) {
 		return v1.ConfigMap{}, errors.New(fmt.Sprintf("Cannot find configMap with name: %s", ackMessagesConfigMapName))
 	}
 
-	return k8sAckConfigMaps.Items[0],nil
+	return k8sAckConfigMaps.Items[0], nil
 }
 

@@ -57,6 +57,8 @@ func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot remove acknowledge for service with name %s. Error was: %s", serviceName, err.Error())
 	}
+
+	http.Redirect(w, r, "__health?cache=false", http.StatusMovedPermanently)
 }
 
 func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
@@ -74,6 +76,8 @@ func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot add acknowledge for service with name %s. Error was: %s", serviceName, err.Error())
 	}
+
+	http.Redirect(w, r, "__health?cache=false", http.StatusMovedPermanently)
 }
 
 func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
