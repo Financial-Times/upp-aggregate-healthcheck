@@ -44,7 +44,7 @@ func (c *healthCheckController) addAck(serviceName string, ackMessage string) er
 	if err != nil {
 		return errors.New(fmt.Sprintf("Failed to add ack message [%s] for service %s. Error was: %s", ackMessage, serviceName, err.Error()))
 	}
-	
+
 	return nil
 }
 
