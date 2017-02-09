@@ -343,7 +343,7 @@ func getAcks(k8sClient *kubernetes.Clientset) (map[string]string, error) {
 	return k8sAckConfigMap.Data, nil
 }
 
-func getAcksConfigMap(k8sClient *kubernetes.Clientset) (*v1.ConfigMap, error) {
+func getAcksConfigMap(k8sClient *kubernetes.Clientset) (v1.ConfigMap, error) {
 	k8sAckConfigMaps, err := k8sClient.Core().ConfigMaps("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"metadata.name":ackMessagesConfigMapName})})
 
 	if err != nil {
