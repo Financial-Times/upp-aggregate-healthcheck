@@ -124,7 +124,7 @@ func (c *healthCheckController)buildPodsHealthResult(serviceName string, useCach
 		checkResults, _ = c.runPodChecksFor(serviceName)
 	}
 
-	finalOk, finalSeverity := getFinalResult(checkResults)
+	finalOk, finalSeverity := getFinalResult(checkResults,nil)
 
 	health := fthealth.HealthResult{
 		Checks:        checkResults,
