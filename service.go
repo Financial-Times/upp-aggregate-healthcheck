@@ -90,10 +90,10 @@ func (hs *k8sHealthcheckService) removeAck(serviceName string) error {
 		return errors.New(fmt.Sprintf("The ack for service %s has not been removed from configmap.", serviceName))
 	}
 
-	k8sAcksConfigMap, err = hs.k8sClient.Core().ConfigMaps("default").Update(&k8sAcksConfigMap)
+	k8sAcksConfigMap2, err := hs.k8sClient.Core().ConfigMaps("default").Update(&k8sAcksConfigMap)
 	//todo: delete this log.
 	errorLogger.Printf("hereeee")
-	if k8sAcksConfigMap.Data[serviceName] != "" {
+	if k8sAcksConfigMap2.Data[serviceName] != "" {
 		//todo: delete this log:
 		errorLogger.Printf("The ack for service %s has not been removed from configmap. This check has been performed on the retrieved service.", serviceName)
 		//todo: remove this log.
