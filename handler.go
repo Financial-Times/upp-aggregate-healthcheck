@@ -43,6 +43,24 @@ const (
 	healthcheckTemplateName = "healthcheck-template.html"
 )
 
+func (h *httpHandler) handleEnableCategory(w http.ResponseWriter, r *http.Request) {
+	categoryName := r.URL.Query().Get("category-name")
+	if categoryName == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("Provided category name is not valid."))
+		return
+	}
+
+	err := h.controller.enableStickyCategory(categoryName)
+
+	if categoryName == "" {
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write([]byte("Failed to enable category."))
+		errorLogger.Printf("Failed to enable category with name %s. Error was: %s", categoryName, err.Error())
+		return
+	}
+}
+
 func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 	serviceName := getServiceNameFromUrl(r.URL)
 	if serviceName == "" {
@@ -56,6 +74,7 @@ func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot remove acknowledge for service with name %s. Error was: %s", serviceName, err.Error())
+		return
 	}
 
 	http.Redirect(w, r, "__health?cache=false", http.StatusMovedPermanently)

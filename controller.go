@@ -30,7 +30,12 @@ type controller interface {
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	getIndividualPodHealth(string) ([]byte, error)
 	addAck(string, string) error
+	enableStickyCategory(string) error
 	removeAck(string) error
+}
+
+func (c *healthCheckController) enableStickyCategory(serviceName string) error {
+	return c.healthCheckService.updateCategory(serviceName, true)
 }
 
 func (c *healthCheckController) removeAck(serviceName string) error {
@@ -90,7 +95,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 		checkResults, _ = c.runServiceChecksFor(matchingCategories)
 	}
 
-	finalOk, finalSeverity := getFinalResult(checkResults)
+	finalOk, finalSeverity := getFinalResult(checkResults, matchingCategories)
 
 	health := fthealth.HealthResult{
 		Checks:        checkResults,
@@ -187,6 +192,21 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 		}
 	}
 
+	for catIndex, category := range categories {
+		if category.isSticky && category.isEnabled {
+			for _, serviceName := range category.services {
+				for _, healthCheck := range healthChecks {
+					if healthCheck.Name == serviceName {
+						infoLogger.Printf("Sticky category [%s] is unhealthy, disabling it.", category.name)
+						category.isEnabled = false
+						categories[catIndex] = category //TODO: check if this works.
+						c.healthCheckService.updateCategory(category.name, false)
+					}
+				}
+			}
+		}
+	}
+
 	//todo: populate categorisedResults if we will use graphite.
 	return healthChecks, categorisedResults
 }
@@ -230,9 +250,15 @@ func updateHealthCheckWithAckMsg(healthChecks []fthealth.CheckResult, name strin
 	}
 }
 
-func getFinalResult(checkResults []fthealth.CheckResult) (bool, uint8) {
+func getFinalResult(checkResults []fthealth.CheckResult, categories map[string]category) (bool, uint8) {
 	finalOk := true
 	var finalSeverity uint8 = 2
+
+	for _, category := range categories {
+		if !category.isEnabled {
+			finalOk = false
+		}
+	}
 
 	for _, checkResult := range checkResults {
 		if !checkResult.Ok && checkResult.Ack == "" {

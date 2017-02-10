@@ -46,6 +46,7 @@ func main() {
 func listen(httpHandler *httpHandler) {
 	r := mux.NewRouter()
 	r.HandleFunc("/add-ack", httpHandler.handleAddAck).Methods("POST")
+	r.HandleFunc("/enable-category", httpHandler.handleEnableCategory).Methods("GET")
 	r.HandleFunc("/remove-ack", httpHandler.handleRemoveAck).Methods("GET") //todo: this should be DELETE
 	r.HandleFunc("/add-ack-form", httpHandler.handleAddAckForm)
 	r.HandleFunc("/", httpHandler.handleServicesHealthCheck)

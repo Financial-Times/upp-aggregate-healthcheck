@@ -23,6 +23,7 @@ type k8sHealthcheckService struct {
 
 type healthcheckService interface {
 	getCategories() (map[string]category, error)
+	updateCategory(string, bool) error
 	getServicesByNames([]string) []service
 	getPodsForService(string) ([]pod, error)
 	getPodByName(string) (pod, error)
@@ -39,10 +40,9 @@ type pod struct {
 }
 
 type service struct {
-	name      string
-	severity  uint8
-	isEnabled bool
-	ack       string
+	name     string
+	severity uint8
+	ack      string
 }
 
 type category struct {
@@ -50,6 +50,7 @@ type category struct {
 	services      []string
 	refreshPeriod time.Duration
 	isSticky      bool
+	isEnabled     bool
 }
 
 const (
@@ -57,6 +58,24 @@ const (
 	defaultServiceSeverity = uint8(2)
 	ackMessagesConfigMapName = "healthcheck.ack.messages"
 )
+
+func (hs *k8sHealthcheckService) updateCategory(categoryName string, isEnabled bool) error {
+	categoryConfigMapName := fmt.Sprintf("category.%s", categoryName)
+	k8sCategory, err := hs.k8sClient.Core().ConfigMaps("default").Get(categoryConfigMapName)
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("Cannot retrieve configMap for category with name %s. Error was: %s", categoryName, err.Error()))
+	}
+
+	k8sCategory.Data["category.enabled"] = strconv.FormatBool(isEnabled)
+	_, err = hs.k8sClient.Core().ConfigMaps("default").Update(k8sCategory)
+
+	if err != nil {
+		return errors.New(fmt.Sprintf("Cannot update configMap for category with name %s. Error was: %s", categoryName, err.Error()))
+	}
+
+	return nil
+}
 
 func (hs *k8sHealthcheckService) removeAck(serviceName string) error {
 	k8sAcksConfigMap, err := getAcksConfigMap(hs.k8sClient)
@@ -66,6 +85,10 @@ func (hs *k8sHealthcheckService) removeAck(serviceName string) error {
 	}
 
 	delete(k8sAcksConfigMap.Data, serviceName);
+
+	if k8sAcksConfigMap.Data[serviceName] != "" {
+		return errors.New(fmt.Sprintf("The ack for service %s has not been removed from configmap.", serviceName))
+	}
 
 	_, err = hs.k8sClient.Core().ConfigMaps("default").Update(&k8sAcksConfigMap)
 
@@ -220,6 +243,12 @@ func populateCategory(k8sCatData map[string]string) category {
 		isSticky = false
 	}
 
+	isEnabled, err := strconv.ParseBool(k8sCatData["category.enabled"])
+	if err != nil {
+		warnLogger.Printf("Failed to convert isEnabled flag from string to bool for category with name [%s]. Using default value of true. Error was: %v", categoryName, err)
+		isEnabled = true
+	}
+
 	refreshRateSeconds, err := strconv.ParseInt(k8sCatData["category.refreshrate"], 10, 64)
 	if err != nil {
 		warnLogger.Printf("Failed to convert refreshRate from string to int for category with name [%s]. Using default refresh rate. Error was: %v", categoryName, err)
@@ -233,6 +262,7 @@ func populateCategory(k8sCatData map[string]string) category {
 		services:      strings.Split(k8sCatData["category.services"], ","), //todo: what if the array of strings will contain also white spaces near service names? remove the white spaces from the resulting array of strings.
 		refreshPeriod: refreshRatePeriod,
 		isSticky:      isSticky,
+		isEnabled: isEnabled,
 	}
 }
 
@@ -340,7 +370,6 @@ func populateService(k8sService v1.Service, acks map[string]string) service {
 
 	service := service{
 		name: k8sService.Name,
-		isEnabled: true, //TODO: add is enabled  functionality (used for isSticky functionality)
 		severity: severity,
 		ack: acks[k8sService.Name],
 	}
