@@ -35,10 +35,12 @@ func (c *healthCheckController)  collectChecksFromCachesFor(categories map[strin
 		}
 	}
 
-	notCachedChecks := c.runServiceChecksByServiceNames(servicesThatAreNotInCache)
+	if len(servicesThatAreNotInCache) != 0 {
+		notCachedChecks := c.runServiceChecksByServiceNames(servicesThatAreNotInCache)
 
-	for _, check := range notCachedChecks {
-		checkResults = append(checkResults, check)
+		for _, check := range notCachedChecks {
+			checkResults = append(checkResults, check)
+		}
 	}
 
 	//todo: add sticky functionality here. see line with for catIndex, category := range categories {
