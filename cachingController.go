@@ -71,9 +71,9 @@ func (c *healthCheckController) scheduleCheck(mService *MeasuredService, timer *
 	healthResult := fthealth.RunCheck(mService.service.name,
 		fmt.Sprintf("Checks the health of %v", mService.service.name),
 		true,
-		NewServiceHealthCheck(*mService.service, c.healthCheckService))
+		NewServiceHealthCheck(*mService.service, c.healthCheckService)).Checks[0]
 
-	healthResult.Checks[0].Ack = mService.service.ack
+	healthResult.Ack = mService.service.ack
 
 	mService.cachedHealth.toWriteToCache <- healthResult
 

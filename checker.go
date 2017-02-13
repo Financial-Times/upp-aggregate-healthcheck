@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/labels"
-	"github.com/Financial-Times/go-fthealth"
+	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 )
 
 func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
