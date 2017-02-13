@@ -118,8 +118,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	return health, matchingCategories, nil, nil
 }
 
-func (c *healthCheckController) runServiceChecksByServiceNames(serviceNames []string) []fthealth.CheckResult {
-	services := c.healthCheckService.getServicesByNames(serviceNames)
+func (c *healthCheckController) runServiceChecksByServiceNames(services []service) []fthealth.CheckResult {
 	var checks []fthealth.Check
 
 	for _, service := range services {
@@ -148,7 +147,8 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 	//}
 
 	serviceNames := getServiceNamesFromCategories(categories)
-	healthChecks := c.runServiceChecksByServiceNames(serviceNames)
+	services := c.healthCheckService.getServicesByNames(serviceNames)
+	healthChecks := c.runServiceChecksByServiceNames(services)
 
 	for catIndex, category := range categories {
 		if category.isSticky && category.isEnabled {
