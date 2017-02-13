@@ -47,13 +47,14 @@ func listen(httpHandler *httpHandler) {
 	r := mux.NewRouter()
 	r.HandleFunc("/add-ack", httpHandler.handleAddAck).Methods("POST")
 	r.HandleFunc("/enable-category", httpHandler.handleEnableCategory).Methods("GET")
-	r.HandleFunc("/rm-ack", httpHandler.handleRemoveAck) //todo: this should be DELETE
+	r.HandleFunc("/rem-ack", httpHandler.handleRemoveAck) //todo: this should be DELETE
 	r.HandleFunc("/add-ack-form", httpHandler.handleAddAckForm)
 	r.HandleFunc("/", httpHandler.handleServicesHealthCheck)
 	r.HandleFunc("/__health", httpHandler.handleServicesHealthCheck)
 	r.HandleFunc("/__pods-health", httpHandler.handlePodsHealthCheck)
 	r.HandleFunc("/__pod-individual-health", httpHandler.handleIndividualPodHealthCheck)
 	r.HandleFunc("/__gtg", httpHandler.handleGoodToGo)
+	r.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("resources/"))))
 
 	err := http.ListenAndServe(":8080", r)
 	if err != nil {
