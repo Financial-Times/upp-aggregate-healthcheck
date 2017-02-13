@@ -4,9 +4,8 @@ import (
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"sort"
 	"fmt"
-	"net/http"
 	"errors"
-	"io/ioutil"
+	"time"
 )
 
 type healthCheckController struct {
@@ -24,11 +23,13 @@ type MeasuredService struct {
 
 type controller interface {
 	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
-	buildPodsHealthResult(string, bool) (fthealth.HealthResult)
 	runServiceChecksByServiceNames([]string) []fthealth.CheckResult
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
+	buildPodsHealthResult(string, bool) (fthealth.HealthResult)
 	runPodChecksFor(string) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
+	updateCachedHealth([]service)
+	scheduleCheck(*MeasuredService, *time.Timer)
 	getIndividualPodHealth(string) ([]byte, error)
 	addAck(string, string) error
 	enableStickyCategory(string) error
@@ -117,62 +118,6 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	return health, matchingCategories, nil, nil
 }
 
-func (c *healthCheckController)buildPodsHealthResult(serviceName string, useCache bool) (fthealth.HealthResult) {
-	var checkResults []fthealth.CheckResult
-	desc := fmt.Sprintf("Health of pods that are under service %s served without cache.", serviceName)
-
-	if useCache {
-		desc = fmt.Sprintf("Health of pods that are under service %s served from cache.", serviceName)
-		//todo: check if we will use cache also for pods.
-		checkResults, _ = c.runPodChecksFor(serviceName)
-	} else {
-		checkResults, _ = c.runPodChecksFor(serviceName)
-	}
-
-	finalOk, finalSeverity := getFinalResult(checkResults, nil)
-
-	health := fthealth.HealthResult{
-		Checks:        checkResults,
-		Description:   desc,
-		Name:          *c.environment + " cluster health",
-		SchemaVersion: 1,
-		Ok:            finalOk,
-		Severity:      finalSeverity,
-	}
-
-	sort.Sort(ByNameComparator(health.Checks))
-
-	return health
-}
-
-func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
-	categorisedResults := make(map[string][]fthealth.CheckResult)
-
-	pods, err := c.healthCheckService.getPodsForService(serviceName)
-
-	if err != nil {
-		//TODO: send the error further
-	}
-
-	services := c.healthCheckService.getServicesByNames([]string{serviceName})
-
-	if len(services) == 0 {
-		//todo: throw error
-	}
-
-	var checks []fthealth.Check
-
-	for _, pod := range pods {
-		//todo: add services[0] to this call to take severity+ack from it
-		check := NewPodHealthCheck(pod, services[0], c.healthCheckService)
-		checks = append(checks, check)
-	}
-
-	healthChecks := fthealth.RunCheck("Forced check run", "", true, checks...).Checks
-
-	return healthChecks, categorisedResults
-}
-
 func (c *healthCheckController) runServiceChecksByServiceNames(serviceNames []string) []fthealth.CheckResult {
 	services := c.healthCheckService.getServicesByNames(serviceNames)
 	var checks []fthealth.Check
@@ -222,36 +167,6 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 
 	//todo: populate categorisedResults if we will use graphite.
 	return healthChecks, categorisedResults
-}
-
-func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, error) {
-
-	pod, err := c.healthCheckService.getPodByName(podName)
-	if err != nil {
-		return nil, errors.New("Error retrieving pod: " + err.Error())
-	}
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__health", pod.ip), nil)
-	if err != nil {
-		return nil, errors.New("Error constructing healthcheck request: " + err.Error())
-	}
-
-	resp, err := c.healthCheckService.getHttpClient().Do(req)
-	if err != nil {
-		return nil, errors.New("Error performing healthcheck: " + err.Error())
-	}
-
-	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Healthcheck endpoint returned non-200 status (%v)", resp.Status)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		return nil, errors.New("Error reading healthcheck response: " + err.Error())
-	}
-
-	return body, nil
 }
 
 func updateHealthCheckWithAckMsg(healthChecks []fthealth.CheckResult, name string, ackMsg string) {

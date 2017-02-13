@@ -3,7 +3,6 @@ package main
 import (
 	"time"
 	"net/http"
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"errors"
 	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/rest"
@@ -34,30 +33,33 @@ type healthcheckService interface {
 	getHttpClient() *http.Client
 }
 
-type pod struct {
-	name string
-	ip   string
-}
-
-type service struct {
-	name     string
-	severity uint8
-	ack      string
-}
-
-type category struct {
-	name          string
-	services      []string
-	refreshPeriod time.Duration
-	isSticky      bool
-	isEnabled     bool
-}
-
 const (
 	defaultRefreshRate = 60
 	defaultServiceSeverity = uint8(2)
 	ackMessagesConfigMapName = "healthcheck.ack.messages"
 )
+
+func InitializeHealthCheckService() *k8sHealthcheckService {
+	httpClient := &http.Client{
+		Timeout:   5 * time.Second,
+	}
+
+	// creates the in-cluster config
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		panic(err.Error())
+	}
+	// creates the clientset
+	k8sClient, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		errorLogger.Printf("Failed to create k8s client, error was: %v", err.Error())
+	}
+
+	return &k8sHealthcheckService{
+		httpClient:httpClient,
+		k8sClient : k8sClient,
+	}
+}
 
 func (hs *k8sHealthcheckService) updateCategory(categoryName string, isEnabled bool) error {
 	categoryConfigMapName := fmt.Sprintf("category.%s", categoryName)
@@ -141,42 +143,6 @@ func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 
 	pod := populatePod(k8sPods.Items[0])
 	return pod, nil
-}
-func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
-	k8sDeployments, err := hs.k8sClient.Extensions().Deployments("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
-	if err != nil {
-		return errors.New(fmt.Sprintf("Cannot get deployment for service with name: [%s] ", serviceName))
-	}
-
-	if len(k8sDeployments.Items) == 0 {
-		return errors.New(fmt.Sprintf("Cannot find deployment for service with name [%s]", serviceName))
-	}
-
-	noOfUnavailablePods := k8sDeployments.Items[0].Status.UnavailableReplicas
-
-	if noOfUnavailablePods != 0 {
-		return errors.New(fmt.Sprintf("There are %v pods unavailable for service with name: [%s] ", noOfUnavailablePods, serviceName))
-	}
-
-	return nil
-}
-func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__gtg", pod.ip), nil)
-	if err != nil {
-		return errors.New("Error constructing GTG request: " + err.Error())
-	}
-
-	resp, err := hs.httpClient.Do(req)
-	if err != nil {
-		return errors.New("Error performing healthcheck: " + err.Error())
-	}
-
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("GTG endpoint returned non-200 status (%v)", resp.Status)
-	}
-
-	return nil
 }
 
 func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []service {
@@ -287,56 +253,6 @@ func getServiceByName(k8sServices []v1.Service, serviceName string) (v1.Service,
 	}
 
 	return v1.Service{}, errors.New(fmt.Sprintf("Cannot find k8sService with name %s", serviceName))
-}
-
-func InitializeHealthCheckService() *k8sHealthcheckService {
-	httpClient := &http.Client{
-		Timeout:   5 * time.Second,
-	}
-
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		panic(err.Error())
-	}
-	// creates the clientset
-	k8sClient, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		errorLogger.Printf("Failed to create k8s client, error was: %v", err.Error())
-	}
-
-	return &k8sHealthcheckService{
-		httpClient:httpClient,
-		k8sClient : k8sClient,
-	}
-}
-
-func NewPodHealthCheck(pod pod, service service, healthcheckService healthcheckService) fthealth.Check {
-	//severity := service.severity
-
-	return fthealth.Check{
-		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
-		Name:             pod.name,
-		PanicGuide:       "https://sites.google.com/a/ft.com/technology/systems/dynamic-semantic-publishing/coco/runbook",
-		Severity:         service.severity,
-		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
-		Checker: func() (string, error) {
-			return "", healthcheckService.checkPodHealth(pod)
-		},
-	}
-}
-
-func NewServiceHealthCheck(service service, healthcheckService healthcheckService) fthealth.Check {
-	return fthealth.Check{
-		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
-		Name:             service.name,
-		PanicGuide:       "https://sites.google.com/a/ft.com/technology/systems/dynamic-semantic-publishing/coco/runbook",
-		Severity:         service.severity,
-		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
-		Checker: func() (string, error) {
-			return "", healthcheckService.checkServiceHealth(service.name)
-		},
-	}
 }
 
 func getServicesWithNames(k8sServices []v1.Service, serviceNames []string, acks map[string]string) []service {
