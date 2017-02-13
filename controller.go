@@ -23,7 +23,7 @@ type MeasuredService struct {
 
 type controller interface {
 	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
-	runServiceChecksByServiceNames([]string) []fthealth.CheckResult
+	runServiceChecksByServiceNames([]service) []fthealth.CheckResult
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	buildPodsHealthResult(string, bool) (fthealth.HealthResult)
 	runPodChecksFor(string) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)

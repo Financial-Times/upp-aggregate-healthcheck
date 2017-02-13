@@ -53,7 +53,9 @@
         {{end}}
       {{end}}
     </table>
+    {{if ne .RefreshFromCachePath ""}}
     <p><a href="{{.RefreshFromCachePath}}">Refresh health from cache</a></p>
+    {{end}}
     <p><a href="{{.RefreshWithoutCachePath}}">Refresh health without using the cache</a></p>
   </body>
 </html>

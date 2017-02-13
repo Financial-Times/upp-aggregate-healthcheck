@@ -299,8 +299,8 @@ func populateAggregateServiceChecks(healthResult fthealth.HealthResult, environm
 	aggregateChecks := &AggregateHealthcheckParams{
 		PageTitle: buildPageTitle(environment, categories),
 		GeneralStatus: getGeneralStatus(healthResult),
-		RefreshFromCachePath: "#",
-		RefreshWithoutCachePath: "#",
+		RefreshFromCachePath: "/__health",
+		RefreshWithoutCachePath: "/__health?cache=false",
 		IndividualHealthChecks: indiviualServiceChecks,
 	}
 
@@ -348,8 +348,8 @@ func populateAggregatePodChecks(healthResult  fthealth.HealthResult, serviceName
 	aggregateChecks := &AggregateHealthcheckParams{
 		PageTitle: fmt.Sprintf("CoCo prod-uk service pods of service %s", serviceName),
 		GeneralStatus: getGeneralStatus(healthResult),
-		RefreshFromCachePath: "#",
-		RefreshWithoutCachePath: "#",
+		RefreshFromCachePath: fmt.Sprintf("/__pods-health?service-name=%s", serviceName),
+		RefreshWithoutCachePath:  fmt.Sprintf("/__pods-health?cache=false&service-name=%s", serviceName),
 		IndividualHealthChecks: populateIndividualPodChecks(healthResult.Checks),
 	}
 
