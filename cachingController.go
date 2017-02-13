@@ -11,7 +11,7 @@ const (
 	defaultRefreshPeriod = time.Duration(60 * time.Second)
 )
 
-func NewMeasuredService(service *service) MeasuredService {
+func NewMeasuredService(service service) MeasuredService {
 	cachedHealth := NewCachedHealth()
 	//bufferedHealths := NewBufferedHealths()
 	go cachedHealth.maintainLatest()
@@ -55,14 +55,14 @@ func (c *healthCheckController) updateCachedHealth(services []service) {
 			if ok {
 				mService.cachedHealth.terminate <- true
 			}
-			newMService := NewMeasuredService(&service)
+			newMService := NewMeasuredService(service)
 			c.measuredServices[service.name] = newMService
-			go c.scheduleCheck(&newMService, time.NewTimer(0))
+			go c.scheduleCheck(newMService, time.NewTimer(0))
 		}
 	}
 }
 
-func (c *healthCheckController) scheduleCheck(mService *MeasuredService, timer *time.Timer) {
+func (c *healthCheckController) scheduleCheck(mService MeasuredService, timer *time.Timer) {
 	// wait
 	select {
 	case <-mService.cachedHealth.terminate:
@@ -80,7 +80,7 @@ func (c *healthCheckController) scheduleCheck(mService *MeasuredService, timer *
 
 	mService.cachedHealth.toWriteToCache <- healthResult
 
-	waitDuration := findShortestPeriod(*mService.service)
+	waitDuration := findShortestPeriod(mService.service)
 	go c.scheduleCheck(mService, time.NewTimer(waitDuration))
 }
 

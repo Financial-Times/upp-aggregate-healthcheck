@@ -15,7 +15,7 @@ type healthCheckController struct {
 }
 
 type MeasuredService struct {
-	service      *service
+	service      service
 	cachedHealth *cachedHealth //latest healthiness measurement
 				   //todo: check if we will use graphite
 				   //bufferedHealths *BufferedHealths //up to 60 healthiness measurements to be buffered and sent at once graphite
