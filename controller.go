@@ -46,13 +46,6 @@ func InitializeController(environment *string) *healthCheckController {
 	}
 }
 
-func NewMeasuredService(service *service) MeasuredService {
-	cachedHealth := NewCachedHealth()
-	//bufferedHealths := NewBufferedHealths()
-	go cachedHealth.maintainLatest()
-	return MeasuredService{service, cachedHealth}
-}
-
 func (c *healthCheckController) enableStickyCategory(serviceName string) error {
 	return c.healthCheckService.updateCategory(serviceName, true)
 }
@@ -180,33 +173,6 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 	return healthChecks, categorisedResults
 }
 
-func (c *healthCheckController)  collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
-	var checkResults []fthealth.CheckResult
-	var servicesThatAreNotInCache []string
-	categorisedResults := make(map[string][]fthealth.CheckResult)
-	serviceNames := getServiceNamesFromCategories(categories)
-	for _, serviceName := range serviceNames {
-		if mService, ok := c.measuredServices[serviceName]; !ok {
-			infoLogger.Printf("Found service with name %s in cache", serviceName)
-			checkResult := <-mService.cachedHealth.toReadFromCache
-			checkResults = append(checkResults, checkResult)
-		} else {
-			infoLogger.Printf("Service with name %s was not found in cache", serviceName)
-			servicesThatAreNotInCache = append(servicesThatAreNotInCache, serviceName)
-		}
-	}
-
-	notCachedChecks := c.runServiceChecksByServiceNames(servicesThatAreNotInCache)
-
-	for _, check := range notCachedChecks {
-		checkResults = append(checkResults, check)
-	}
-
-	//todo: add sticky functionality here. see line with for catIndex, category := range categories {
-
-	return checkResults, categorisedResults
-}
-
 func (c *healthCheckController) runServiceChecksByServiceNames(serviceNames []string) []fthealth.CheckResult {
 	services := c.healthCheckService.getServicesByNames(serviceNames)
 	var checks []fthealth.Check
@@ -224,7 +190,7 @@ func (c *healthCheckController) runServiceChecksByServiceNames(serviceNames []st
 		}
 	}
 
-	//todo: updateCachedHealth (update existing measuredServices, add new ones, BUT DO NOT DELETE the ones that are no longer available.)
+	c.updateCachedHealth(services)
 
 	return healthChecks
 }
