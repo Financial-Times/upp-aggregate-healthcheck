@@ -91,8 +91,7 @@ func (hs *k8sHealthcheckService) removeAck(serviceName string) error {
 	}
 
 	k8sAcksConfigMap2, err := hs.k8sClient.Core().ConfigMaps("default").Update(&k8sAcksConfigMap)
-	//todo: delete this log.
-	errorLogger.Printf("hereeee")
+
 	if k8sAcksConfigMap2.Data[serviceName] != "" {
 		//todo: delete this log:
 		errorLogger.Printf("The ack for service %s has not been removed from configmap. This check has been performed on the retrieved service.", serviceName)
@@ -232,7 +231,6 @@ func (hs *k8sHealthcheckService) getCategories() (map[string]category, error) {
 
 	for _, k8sCategory := range k8sCategories.Items {
 		category := populateCategory(k8sCategory.Data)
-		warnLogger.Printf("Found category: %v \n", category) //TODO: remove this.
 		categories[category.name] = category
 	}
 

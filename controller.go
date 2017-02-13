@@ -25,6 +25,7 @@ type MeasuredService struct {
 type controller interface {
 	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
 	buildPodsHealthResult(string, bool) (fthealth.HealthResult)
+	runServiceChecksByServiceNames([]string) []fthealth.CheckResult
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	runPodChecksFor(string) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
@@ -32,6 +33,24 @@ type controller interface {
 	addAck(string, string) error
 	enableStickyCategory(string) error
 	removeAck(string) error
+}
+
+func InitializeController(environment *string) *healthCheckController {
+	service := InitializeHealthCheckService()
+	measuredServices := make(map[string]MeasuredService)
+
+	return &healthCheckController{
+		healthCheckService: service,
+		environment: environment,
+		measuredServices: measuredServices,
+	}
+}
+
+func NewMeasuredService(service *service) MeasuredService {
+	cachedHealth := NewCachedHealth()
+	//bufferedHealths := NewBufferedHealths()
+	go cachedHealth.maintainLatest()
+	return MeasuredService{service, cachedHealth}
 }
 
 func (c *healthCheckController) enableStickyCategory(serviceName string) error {
@@ -68,13 +87,6 @@ func (c *healthCheckController) addAck(serviceName string, ackMessage string) er
 	}
 
 	return nil
-}
-
-func (c *healthCheckController)  collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
-	var checkResults []fthealth.CheckResult
-	categorisedResults := make(map[string][]fthealth.CheckResult)
-
-	return checkResults, categorisedResults
 }
 
 func (c *healthCheckController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, map[string]category, error) {
@@ -124,7 +136,7 @@ func (c *healthCheckController)buildPodsHealthResult(serviceName string, useCach
 		checkResults, _ = c.runPodChecksFor(serviceName)
 	}
 
-	finalOk, finalSeverity := getFinalResult(checkResults,nil)
+	finalOk, finalSeverity := getFinalResult(checkResults, nil)
 
 	health := fthealth.HealthResult{
 		Checks:        checkResults,
@@ -168,14 +180,34 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 	return healthChecks, categorisedResults
 }
 
-func (c *healthCheckController) runServiceChecksFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
+func (c *healthCheckController)  collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
+	var checkResults []fthealth.CheckResult
+	var servicesThatAreNotInCache []string
 	categorisedResults := make(map[string][]fthealth.CheckResult)
-
-	//for category := range categories {
-	//	categorisedResults[category] = []fthealth.CheckResult{}
-	//}
-
 	serviceNames := getServiceNamesFromCategories(categories)
+	for _, serviceName := range serviceNames {
+		if mService, ok := c.measuredServices[serviceName]; !ok {
+			infoLogger.Printf("Found service with name %s in cache", serviceName)
+			checkResult := <-mService.cachedHealth.toReadFromCache
+			checkResults = append(checkResults, checkResult)
+		} else {
+			infoLogger.Printf("Service with name %s was not found in cache", serviceName)
+			servicesThatAreNotInCache = append(servicesThatAreNotInCache, serviceName)
+		}
+	}
+
+	notCachedChecks := c.runServiceChecksByServiceNames(servicesThatAreNotInCache)
+
+	for _, check := range notCachedChecks {
+		checkResults = append(checkResults, check)
+	}
+
+	//todo: add sticky functionality here. see line with for catIndex, category := range categories {
+
+	return checkResults, categorisedResults
+}
+
+func (c *healthCheckController) runServiceChecksByServiceNames(serviceNames []string) []fthealth.CheckResult {
 	services := c.healthCheckService.getServicesByNames(serviceNames)
 	var checks []fthealth.Check
 
@@ -191,6 +223,21 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 			updateHealthCheckWithAckMsg(healthChecks, service.name, service.ack)
 		}
 	}
+
+	//todo: updateCachedHealth (update existing measuredServices, add new ones, BUT DO NOT DELETE the ones that are no longer available.)
+
+	return healthChecks
+}
+
+func (c *healthCheckController) runServiceChecksFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
+	categorisedResults := make(map[string][]fthealth.CheckResult)
+
+	//for category := range categories {
+	//	categorisedResults[category] = []fthealth.CheckResult{}
+	//}
+
+	serviceNames := getServiceNamesFromCategories(categories)
+	healthChecks := c.runServiceChecksByServiceNames(serviceNames)
 
 	for catIndex, category := range categories {
 		if category.isSticky && category.isEnabled {
@@ -273,17 +320,6 @@ func getFinalResult(checkResults []fthealth.CheckResult, categories map[string]c
 	return finalOk, finalSeverity
 }
 
-func InitializeController(environment *string) *healthCheckController {
-	service := InitializeHealthCheckService()
-	measuredServices := make(map[string]MeasuredService)
-
-	return &healthCheckController{
-		healthCheckService: service,
-		environment: environment,
-		measuredServices: measuredServices,
-	}
-}
-
 func getMatchingCategories(providedCategories []string, availableCategories map[string]category) map[string]category {
 	result := make(map[string]category)
 	for _, providedCat := range providedCategories {
@@ -299,7 +335,6 @@ func getServiceNamesFromCategories(categories map[string]category) []string {
 	var services []string
 
 	if _, ok := categories["default"]; ok {
-		infoLogger.Print("Using default category")
 		return services
 	}
 
