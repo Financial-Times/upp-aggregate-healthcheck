@@ -29,7 +29,7 @@ type controller interface {
 	runPodChecksFor(string) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	updateCachedHealth([]service)
-	scheduleCheck(*MeasuredService, *time.Timer)
+	scheduleCheck(MeasuredService, *time.Timer)
 	getIndividualPodHealth(string) ([]byte, error)
 	addAck(string, string) error
 	enableStickyCategory(string) error
