@@ -149,7 +149,8 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 	if r.Header.Get("Accept") == "application/json" {
 		buildHealthcheckJsonResponse(w, healthResult)
 	} else {
-		buildServicesCheckHtmlResponse(w, healthResult, "ADD ENV HERE", getCategoriesString(validCategories))
+		env := h.controller.getEnvironment()
+		buildServicesCheckHtmlResponse(w, healthResult, env, getCategoriesString(validCategories))
 	}
 }
 

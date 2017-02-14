@@ -8,11 +8,9 @@ import (
 	"k8s.io/client-go/1.5/pkg/api/v1"
 	"fmt"
 	"strings"
-"os"
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/labels"
 	"strconv"
-"k8s.io/client-go/1.5/tools/clientcmd"
 	"k8s.io/client-go/1.5/pkg/fields"
 	"k8s.io/client-go/1.5/rest"
 )
@@ -30,6 +28,7 @@ type healthcheckService interface {
 	getPodByName(string) (pod, error)
 	checkServiceHealth(string) error
 	checkPodHealth(pod) error
+	getIndividualPodSeverity(pod) (uint8, error)
 	addAck(string, string) error
 	removeAck(string) error
 	getHttpClient() *http.Client
@@ -37,7 +36,7 @@ type healthcheckService interface {
 
 const (
 	defaultRefreshRate = 60
-	defaultServiceSeverity = uint8(2)
+	defaultSeverity = uint8(2)
 	ackMessagesConfigMapName = "healthcheck.ack.messages"
 )
 
@@ -82,7 +81,7 @@ func (hs *k8sHealthcheckService) updateCategory(categoryName string, isEnabled b
 }
 
 func (hs *k8sHealthcheckService) removeAck(serviceName string) error {
-	infoLogger.Printf("Removing ack for service with name %s ",serviceName)
+	infoLogger.Printf("Removing ack for service with name %s ", serviceName)
 	k8sAcksConfigMap, err := getAcksConfigMap(hs.k8sClient)
 
 	if err != nil {
@@ -286,16 +285,8 @@ func getAllServices(k8sServices []v1.Service, acks map[string]string) []service 
 }
 
 func populateService(k8sService v1.Service, acks map[string]string) service {
-	//TODO: healthcheckSeverity will have either "critical" or "warning" values. Map these values to either 1 or 2.
-	severityLevel := k8sService.GetLabels()["healthcheckSeverity"]
-	severity := defaultServiceSeverity
-	if (severityLevel == "critical") {
-		severity = 1
-	}
-
 	service := service{
 		name: k8sService.Name,
-		severity: severity,
 		ack: acks[k8sService.Name],
 	}
 

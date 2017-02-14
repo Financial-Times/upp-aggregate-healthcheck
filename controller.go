@@ -34,6 +34,14 @@ type controller interface {
 	addAck(string, string) error
 	enableStickyCategory(string) error
 	removeAck(string) error
+	getEnvironment() string
+	getSeverityForService(string) uint8
+	getSeverityForPod(string) uint8
+	computeSeverityByPods([]pod) uint8
+}
+
+func (c *healthCheckController) getEnvironment() string {
+	return c.environment
 }
 
 func InitializeController(environment *string) *healthCheckController {
@@ -133,6 +141,8 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services []servic
 			updateHealthCheckWithAckMsg(healthChecks, service.name, service.ack)
 		}
 	}
+
+	//todo: possibly we will need to add the check severity here too. (foreach healthCheck, if healthcheck.ok == false, then get severity for service.)
 
 	c.updateCachedHealth(services)
 

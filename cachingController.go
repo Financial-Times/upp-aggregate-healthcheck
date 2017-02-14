@@ -78,6 +78,13 @@ func (c *healthCheckController) scheduleCheck(mService MeasuredService, timer *t
 
 	healthResult.Ack = mService.service.ack
 
+	if healthResult.Ok != true {
+		severity := c.getSeverityForService(healthResult.Name)
+		//todo: remove this log
+		infoLogger.Printf("Severity for service with name [%s] is [%s]", healthResult.Name, severity)
+		healthResult.Severity = severity
+	}
+
 	mService.cachedHealth.toWriteToCache <- healthResult
 
 	waitDuration := findShortestPeriod(mService.service)

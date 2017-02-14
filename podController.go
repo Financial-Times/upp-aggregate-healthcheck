@@ -62,9 +62,16 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 
 	healthChecks := fthealth.RunCheck("Forced check run", "", true, checks...).Checks
 
+	for i, check := range healthChecks {
+		if check.Ok != true {
+			severity := c.getSeverityForPod(check.Name)
+			//todo: remove this log
+			infoLogger.Printf("Severity for pod with name [%s] is [%s]", check.Name, severity)
+			healthChecks[i].Severity = severity
+		}
+	}
 	return healthChecks, categorisedResults
 }
-
 
 func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, error) {
 
