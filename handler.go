@@ -28,6 +28,7 @@ type AggregateHealthcheckParams struct {
 	GeneralStatus           string
 	RefreshFromCachePath    string
 	RefreshWithoutCachePath string
+	AckCount                int
 	IndividualHealthChecks  []IndividualHealthcheckParams
 }
 
@@ -296,22 +297,27 @@ func parseHtmlTemplate(w http.ResponseWriter, templateName string) *template.Tem
 }
 
 func populateAggregateServiceChecks(healthResult fthealth.HealthResult, environment string, categories string) *AggregateHealthcheckParams {
-	indiviualServiceChecks := populateIndividualServiceChecks(healthResult.Checks)
+	indiviualServiceChecks, ackCount := populateIndividualServiceChecks(healthResult.Checks)
 	aggregateChecks := &AggregateHealthcheckParams{
 		PageTitle: buildPageTitle(environment, categories),
 		GeneralStatus: getGeneralStatus(healthResult),
 		RefreshFromCachePath: "/__health",
 		RefreshWithoutCachePath: "/__health?cache=false",
+		AckCount:ackCount,
 		IndividualHealthChecks: indiviualServiceChecks,
 	}
 
 	return aggregateChecks
 }
 
-func populateIndividualServiceChecks(checks []fthealth.CheckResult) []IndividualHealthcheckParams {
+func populateIndividualServiceChecks(checks []fthealth.CheckResult) ([]IndividualHealthcheckParams, int) {
 	var indiviualServiceChecks []IndividualHealthcheckParams
-
+	ackCount := 0
 	for _, individualCheck := range checks {
+		if individualCheck.Ack != "" {
+			ackCount++
+		}
+
 		hc := IndividualHealthcheckParams{
 			Name: individualCheck.Name,
 			Status: getServiceStatusFromCheck(individualCheck),
@@ -324,7 +330,7 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult) []Individual
 		indiviualServiceChecks = append(indiviualServiceChecks, hc)
 	}
 
-	return indiviualServiceChecks
+	return indiviualServiceChecks, ackCount
 }
 
 func populateIndividualPodChecks(checks []fthealth.CheckResult) []IndividualHealthcheckParams {

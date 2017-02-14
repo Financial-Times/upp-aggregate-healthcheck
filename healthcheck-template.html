@@ -29,6 +29,10 @@
           {{end}}
         {{end}}
       {{end}}
+      ,
+      {{if ne .AckCount 0}}
+        <span style='color: blue;'>{{.AckCount}} services acked</span>
+      {{}}
       )
     </h1>
     <table id='healthcheck' class='table table-striped table-bordered' cellspacing='0' width='100%'>
