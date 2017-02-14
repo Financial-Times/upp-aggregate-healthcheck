@@ -14,6 +14,7 @@ import (
 	"strconv"
 "k8s.io/client-go/1.5/tools/clientcmd"
 	"k8s.io/client-go/1.5/pkg/fields"
+	"k8s.io/client-go/1.5/rest"
 )
 
 type k8sHealthcheckService struct {
@@ -45,16 +46,15 @@ func InitializeHealthCheckService() *k8sHealthcheckService {
 		Timeout:   50 * time.Second,
 	}
 
-	kubeconfig := os.Getenv("KUBECONFIG")
-	// uses the current context in kubeconfig
-	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
+	// creates the in-cluster config
+	config, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err.Error())
 	}
 	// creates the clientset
 	k8sClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(err.Error())
+		errorLogger.Printf("Failed to create k8s client, error was: %v", err.Error())
 	}
 
 	return &k8sHealthcheckService{
