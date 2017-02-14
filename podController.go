@@ -26,7 +26,7 @@ func (c *healthCheckController)buildPodsHealthResult(serviceName string, useCach
 	health := fthealth.HealthResult{
 		Checks:        checkResults,
 		Description:   desc,
-		Name:          *c.environment + " cluster health",
+		Name:          c.environment + " cluster health",
 		SchemaVersion: 1,
 		Ok:            finalOk,
 		Severity:      finalSeverity,

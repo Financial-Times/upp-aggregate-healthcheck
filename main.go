@@ -29,7 +29,7 @@ func main() {
 	app.Action = func() {
 		initLogs(os.Stdout, os.Stdout, os.Stderr)
 
-		controller := InitializeController(environment)
+		controller := InitializeController(*environment)
 		handler := &httpHandler{
 			controller: controller,
 		}

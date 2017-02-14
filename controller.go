@@ -10,7 +10,7 @@ import (
 
 type healthCheckController struct {
 	healthCheckService healthcheckService
-	environment        *string
+	environment        string
 	measuredServices   map[string]MeasuredService
 }
 
@@ -44,7 +44,7 @@ func (c *healthCheckController) getEnvironment() string {
 	return c.environment
 }
 
-func InitializeController(environment *string) *healthCheckController {
+func InitializeController(environment string) *healthCheckController {
 	service := InitializeHealthCheckService()
 	measuredServices := make(map[string]MeasuredService)
 
@@ -114,7 +114,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	health := fthealth.HealthResult{
 		Checks:        checkResults,
 		Description:   desc,
-		Name:          *c.environment + " cluster health",
+		Name:          c.environment + " cluster health",
 		SchemaVersion: 1,
 		Ok:            finalOk,
 		Severity:      finalSeverity,

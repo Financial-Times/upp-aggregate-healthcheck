@@ -88,7 +88,7 @@ func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod) (uint8, error
 	for _, check := range health.Checks {
 		if check.OK != true {
 			if check.Severity < finalSeverity {
-				return check.Severity
+				return check.Severity, nil
 			}
 		}
 	}
