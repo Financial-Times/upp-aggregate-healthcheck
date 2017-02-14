@@ -1,25 +1,23 @@
-FROM alpine:3.5
+FROM golang:1.7-alpine3.5
 
-ADD . /upp-aggregate-healthcheck/
+RUN mkdir -p /upp-aggregate-healthcheck
 
-RUN apk --update add go git musl-dev \
-  && export GOPATH=/.gopath \
-  && go version \
-  && mkdir -p $GOPATH/src/github.com/Financial-Times/upp-aggregate-healthcheck \
-  && cd $GOPATH/src/github.com/Financial-Times/upp-aggregate-healthcheck \
-  && git clone https://github.com/Financial-Times/upp-aggregate-healthcheck.git . \
-  && git fetch \
-  && git checkout kubernetes-version \
-  && go get github.com/jawher/mow.cli \ 
-  && go get github.com/gorilla/mux \
-  && go get github.com/Financial-Times/go-fthealth/v1a \
-  && go build github.com/Financial-Times/upp-aggregate-healthcheck \
-  && mv healthcheck-template.html /healthcheck-template.html \
-  && mv add-ack-message-form-template.html /add-ack-message-form-template.html \
-  && mv upp-aggregate-healthcheck /upp-aggregate-healthcheck-app \
-  && apk del go git musl-dev \
-  && rm -rf $GOPATH /var/cache/apk/*
+ADD . "$GOPATH/src/upp-aggregate-healthcheck"
+
+RUN apk --no-cache --virtual .build-dependencies add git \
+  && cd $GOPATH/src/upp-aggregate-healthcheck \
+  && go-wrapper download \
+  && go-wrapper install \
+  && pwd \
+  && ls -la $GOPATH \
+  && cp healthcheck-template.html /upp-aggregate-healthcheck/ \
+  && cp add-ack-message-form-template.html /upp-aggregate-healthcheck/ \
+  && cp -R resources /upp-aggregate-healthcheck/ \
+  && apk del .build-dependencies \
+  && rm -rf $GOPATH/src $GOPATH/pkg
+
+WORKDIR /upp-aggregate-healthcheck
 
 EXPOSE 8080
 
-CMD [ "/upp-aggregate-healthcheck-app" ]
+CMD ["go-wrapper", "run"]

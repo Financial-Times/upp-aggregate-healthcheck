@@ -5,13 +5,14 @@ import (
 	"net/http"
 	"errors"
 	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/rest"
 	"k8s.io/client-go/1.5/pkg/api/v1"
 	"fmt"
 	"strings"
+"os"
 	"k8s.io/client-go/1.5/pkg/api"
 	"k8s.io/client-go/1.5/pkg/labels"
 	"strconv"
+"k8s.io/client-go/1.5/tools/clientcmd"
 	"k8s.io/client-go/1.5/pkg/fields"
 )
 
@@ -41,18 +42,19 @@ const (
 
 func InitializeHealthCheckService() *k8sHealthcheckService {
 	httpClient := &http.Client{
-		Timeout:   5 * time.Second,
+		Timeout:   50 * time.Second,
 	}
 
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
+	kubeconfig := os.Getenv("KUBECONFIG")
+	// uses the current context in kubeconfig
+	config, err := clientcmd.BuildConfigFromFlags("", kubeconfig)
 	if err != nil {
 		panic(err.Error())
 	}
 	// creates the clientset
 	k8sClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		errorLogger.Printf("Failed to create k8s client, error was: %v", err.Error())
+		panic(err.Error())
 	}
 
 	return &k8sHealthcheckService{
@@ -80,6 +82,7 @@ func (hs *k8sHealthcheckService) updateCategory(categoryName string, isEnabled b
 }
 
 func (hs *k8sHealthcheckService) removeAck(serviceName string) error {
+	infoLogger.Printf("Removing ack for service with name %s ",serviceName)
 	k8sAcksConfigMap, err := getAcksConfigMap(hs.k8sClient)
 
 	if err != nil {
