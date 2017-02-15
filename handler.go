@@ -435,7 +435,7 @@ func getCategoriesString(categories  map[string]category) string {
 	}
 
 	if len(formattedCategoryNames) > 0 {
-		formattedCategoryNames = formattedCategoryNames[:formattedCategoryNames - 1]
+		formattedCategoryNames = formattedCategoryNames[:len(formattedCategoryNames) - 1]
 	}
 
 	return formattedCategoryNames
