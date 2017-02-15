@@ -360,13 +360,17 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult) ([]Individua
 	return indiviualServiceChecks, ackCount
 }
 
-func populateIndividualPodChecks(checks []fthealth.CheckResult) []IndividualHealthcheckParams {
+func populateIndividualPodChecks(checks []fthealth.CheckResult) ([]IndividualHealthcheckParams, int) {
 	var indiviualServiceChecks []IndividualHealthcheckParams
-
+	ackCount := 0
 	for _, check := range checks {
+		if check.Ack != "" {
+			ackCount++
+		}
+
 		hc := IndividualHealthcheckParams{
 			Name: check.Name,
-			Status: getStatusFromCheck(check),
+			Status: getServiceStatusFromCheck(check),
 			LastUpdated: check.LastUpdated.Format(timeLayout),
 			MoreInfoPath: fmt.Sprintf("/__pod-individual-health?pod-name=%s", check.Name),
 			AckMessage: check.Ack,
@@ -376,16 +380,18 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult) []IndividualHeal
 		indiviualServiceChecks = append(indiviualServiceChecks, hc)
 	}
 
-	return indiviualServiceChecks
+	return indiviualServiceChecks, ackCount
 }
 
 func populateAggregatePodChecks(healthResult  fthealth.HealthResult, environment string, serviceName string) *AggregateHealthcheckParams {
+	individualChecks, ackCount := populateIndividualPodChecks(healthResult.Checks)
 	aggregateChecks := &AggregateHealthcheckParams{
 		PageTitle: fmt.Sprintf("CoCo %s pods of service %s", environment, serviceName),
 		GeneralStatus: getGeneralStatus(healthResult),
 		RefreshFromCachePath: fmt.Sprintf("/__pods-health?service-name=%s", serviceName),
 		RefreshWithoutCachePath:  fmt.Sprintf("/__pods-health?cache=false&service-name=%s", serviceName),
-		IndividualHealthChecks: populateIndividualPodChecks(healthResult.Checks),
+		IndividualHealthChecks: individualChecks,
+		AckCount:ackCount,
 	}
 
 	return aggregateChecks
