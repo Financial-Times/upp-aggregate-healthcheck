@@ -21,7 +21,7 @@ func main() {
 
 	environment := app.String(cli.StringOpt{
 		Name:   "environment",
-		Value:  "local",
+		Value:  "Kubernetes",
 		Desc:   "Environment tag (e.g. local, pre-prod, prod-uk)",
 		EnvVar: "ENVIRONMENT",
 	})

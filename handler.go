@@ -386,7 +386,7 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult) ([]IndividualHea
 func populateAggregatePodChecks(healthResult  fthealth.HealthResult, environment string, serviceName string) *AggregateHealthcheckParams {
 	individualChecks, ackCount := populateIndividualPodChecks(healthResult.Checks)
 	aggregateChecks := &AggregateHealthcheckParams{
-		PageTitle: fmt.Sprintf("CoCo %s pods of service %s", environment, serviceName),
+		PageTitle: fmt.Sprintf("CoCo %s cluster's pods of service %s", environment, serviceName),
 		GeneralStatus: getGeneralStatus(healthResult),
 		RefreshFromCachePath: fmt.Sprintf("/__pods-health?service-name=%s", serviceName),
 		RefreshWithoutCachePath:  fmt.Sprintf("/__pods-health?cache=false&service-name=%s", serviceName),
