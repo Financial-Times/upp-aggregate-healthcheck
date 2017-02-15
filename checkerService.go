@@ -38,50 +38,47 @@ func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
 
 	return nil
 }
+
+//todo: use this check (with gtgs) instead of __health
+//func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
+//
+//	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__gtg", pod.ip), nil)
+//	if err != nil {
+//		return errors.New("Error constructing GTG request: " + err.Error())
+//	}
+//
+//	resp, err := hs.httpClient.Do(req)
+//	if err != nil {
+//		return errors.New("Error performing healthcheck: " + err.Error())
+//	}
+//
+//	if resp.StatusCode != 200 {
+//		return fmt.Errorf("GTG endpoint returned non-200 status (%v)", resp.Status)
+//	}
+//
+//	return nil
+//}
+
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
-
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__gtg", pod.ip), nil)
+	health, err := hs.getHealthChecksForPod(pod)
 	if err != nil {
-		return errors.New("Error constructing GTG request: " + err.Error())
+		return errors.New(fmt.Sprintf("Cannot perform healthcheck for pod with name %s. Error was: %s", pod.name, err.Error()))
 	}
 
-	resp, err := hs.httpClient.Do(req)
-	if err != nil {
-		return errors.New("Error performing healthcheck: " + err.Error())
-	}
-
-	if resp.StatusCode != 200 {
-		return fmt.Errorf("GTG endpoint returned non-200 status (%v)", resp.Status)
+	for _, check := range health.Checks {
+		if check.OK != true {
+			return errors.New(fmt.Sprintf("Pod with name %s is unhealthy. Failing check is: %s", pod.name, check.Name))
+		}
 	}
 
 	return nil
 }
 
 func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod) (uint8, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__health", pod.ip), nil)
+	health, err := hs.getHealthChecksForPod(pod)
+
 	if err != nil {
-		return defaultSeverity, errors.New("Error constructing healthcheck request: " + err.Error())
-	}
-
-	resp, err := hs.httpClient.Do(req)
-	if err != nil {
-		return defaultSeverity, errors.New("Error performing healthcheck request: " + err.Error())
-	}
-
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 {
-		return defaultSeverity, fmt.Errorf("Healthcheck endpoint returned non-200 status (%v)", resp.Status)
-	}
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return defaultSeverity, errors.New("Error reading healthcheck response: " + err.Error())
-	}
-
-	health := &healthcheckResponse{}
-	if err := json.Unmarshal(body, &health); err != nil {
-		return defaultSeverity, errors.New("Error parsing healthcheck response: " + err.Error())
+		return defaultSeverity, errors.New(fmt.Sprintf("Cannot get severity for pod with name %s. Error was: %s", pod.name, err.Error()))
 	}
 
 	finalSeverity := uint8(2)
@@ -94,6 +91,36 @@ func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod) (uint8, error
 	}
 
 	return finalSeverity, nil
+}
+
+func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod) (healthcheckResponse, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__health", pod.ip), nil)
+	if err != nil {
+		return nil, errors.New("Error constructing healthcheck request: " + err.Error())
+	}
+
+	resp, err := hs.httpClient.Do(req)
+	if err != nil {
+		return nil, errors.New("Error performing healthcheck request: " + err.Error())
+	}
+
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("Healthcheck endpoint returned non-200 status (%v)", resp.StatusCode)
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, errors.New("Error reading healthcheck response: " + err.Error())
+	}
+
+	health := &healthcheckResponse{}
+	if err := json.Unmarshal(body, &health); err != nil {
+		return nil, errors.New("Error parsing healthcheck response: " + err.Error())
+	}
+
+	return *health, nil
 }
 
 func NewPodHealthCheck(pod pod, service service, healthcheckService healthcheckService) fthealth.Check {

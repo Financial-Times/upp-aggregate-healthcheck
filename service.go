@@ -29,6 +29,7 @@ type healthcheckService interface {
 	checkServiceHealth(string) error
 	checkPodHealth(pod) error
 	getIndividualPodSeverity(pod) (uint8, error)
+	getHealthChecksForPod(pod) (healthcheckResponse, error)
 	addAck(string, string) error
 	removeAck(string) error
 	getHttpClient() *http.Client
