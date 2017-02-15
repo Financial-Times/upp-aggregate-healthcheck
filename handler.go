@@ -21,6 +21,7 @@ type IndividualHealthcheckParams struct {
 	LastUpdated   string
 	MoreInfoPath  string
 	AckMessage    string
+	Output        string
 }
 
 type AggregateHealthcheckParams struct {
@@ -350,6 +351,7 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult) ([]Individua
 			LastUpdated: individualCheck.LastUpdated.Format(timeLayout),
 			MoreInfoPath: fmt.Sprintf("/__pods-health?service-name=%s", individualCheck.Name),
 			AckMessage: individualCheck.Ack,
+			Output: individualCheck.Output,
 		}
 
 		indiviualServiceChecks = append(indiviualServiceChecks, hc)
@@ -368,6 +370,7 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult) []IndividualHeal
 			LastUpdated: check.LastUpdated.Format(timeLayout),
 			MoreInfoPath: fmt.Sprintf("/__pod-individual-health?pod-name=%s", check.Name),
 			AckMessage: check.Ack,
+			Output: check.Output,
 		}
 
 		indiviualServiceChecks = append(indiviualServiceChecks, hc)

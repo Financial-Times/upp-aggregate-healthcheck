@@ -41,6 +41,7 @@
         <th>Name</th>
         <th>Is Healthy</th>
         <th>Last Updated</th>
+        <th>Output</th>
         <th>Ack msg</th>
         <th>Action</th>
       </tr>
@@ -67,6 +68,7 @@
             </td>
             <!--<td>&nbsp;{{.AvailablePods}}</td>-->
             <td>&nbsp;{{.LastUpdated}}</td>
+            <td>{{.Output}}</td>
             <td>&nbsp;<span style='color: blue;'><em>{{.AckMessage}}</em></span></td>
             {{if eq .AckMessage ""}}
               <td> <a href="add-ack-form?service-name={{.Name}}">Ack service</a></td>
