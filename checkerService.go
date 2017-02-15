@@ -96,28 +96,28 @@ func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod) (uint8, error
 func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod) (healthcheckResponse, error) {
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__health", pod.ip), nil)
 	if err != nil {
-		return nil, errors.New("Error constructing healthcheck request: " + err.Error())
+		return healthcheckResponse{}, errors.New("Error constructing healthcheck request: " + err.Error())
 	}
 
 	resp, err := hs.httpClient.Do(req)
 	if err != nil {
-		return nil, errors.New("Error performing healthcheck request: " + err.Error())
+		return healthcheckResponse{}, errors.New("Error performing healthcheck request: " + err.Error())
 	}
 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Healthcheck endpoint returned non-200 status (%v)", resp.StatusCode)
+		return healthcheckResponse{}, fmt.Errorf("Healthcheck endpoint returned non-200 status (%v)", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.New("Error reading healthcheck response: " + err.Error())
+		return healthcheckResponse{}, errors.New("Error reading healthcheck response: " + err.Error())
 	}
 
 	health := &healthcheckResponse{}
 	if err := json.Unmarshal(body, &health); err != nil {
-		return nil, errors.New("Error parsing healthcheck response: " + err.Error())
+		return healthcheckResponse{}, errors.New("Error parsing healthcheck response: " + err.Error())
 	}
 
 	return *health, nil
