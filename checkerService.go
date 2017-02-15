@@ -23,17 +23,17 @@ type healthcheckResponse struct {
 func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
 	k8sDeployments, err := hs.k8sClient.Extensions().Deployments("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
 	if err != nil {
-		return errors.New(fmt.Sprintf("Cannot get deployment for service with name: [%s] ", serviceName))
+		return errors.New(fmt.Sprintf("Error retrieving deployment with label app=%s", serviceName))
 	}
 
 	if len(k8sDeployments.Items) == 0 {
-		return errors.New(fmt.Sprintf("Cannot find deployment for service with name [%s]", serviceName))
+		return errors.New(fmt.Sprintf("Cannot find deployment with label app=%s", serviceName))
 	}
 
 	noOfUnavailablePods := k8sDeployments.Items[0].Status.UnavailableReplicas
 
 	if noOfUnavailablePods != 0 {
-		return errors.New(fmt.Sprintf("There are %v pods unavailable for service with name: [%s] ", noOfUnavailablePods, serviceName))
+		return errors.New(fmt.Sprintf("There are %v pods unavailable.", noOfUnavailablePods))
 	}
 
 	return nil
@@ -62,12 +62,13 @@ func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
 	health, err := hs.getHealthChecksForPod(pod)
 	if err != nil {
-		return errors.New(fmt.Sprintf("Cannot perform healthcheck for pod with name %s. Error was: %s", pod.name, err.Error()))
+		errorLogger.Printf("Cannot perform healthcheck for pod. Error was: %s", err.Error())
+		return errors.New("Cannot perform healthcheck for pod.")
 	}
 
 	for _, check := range health.Checks {
 		if check.OK != true {
-			return errors.New(fmt.Sprintf("Pod with name %s is unhealthy. Failing check is: %s", pod.name, check.Name))
+			return errors.New(fmt.Sprintf("Failing check is: %s", check.Name))
 		}
 	}
 

@@ -148,11 +148,6 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services []servic
 
 func (c *healthCheckController) runServiceChecksFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
 	categorisedResults := make(map[string][]fthealth.CheckResult)
-
-	//for category := range categories {
-	//	categorisedResults[category] = []fthealth.CheckResult{}
-	//}
-
 	serviceNames := getServiceNamesFromCategories(categories)
 	services := c.healthCheckService.getServicesByNames(serviceNames)
 	healthChecks := c.runServiceChecksByServiceNames(services)

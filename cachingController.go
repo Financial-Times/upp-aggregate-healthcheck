@@ -43,8 +43,6 @@ func (c *healthCheckController)  collectChecksFromCachesFor(categories map[strin
 		}
 	}
 
-	//todo: add sticky functionality here. see line with for catIndex, category := range categories {
-
 	return checkResults, categorisedResults
 }
 

@@ -154,8 +154,6 @@ func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []ser
 		warnLogger.Printf("Cannot get acks. There will be no acks at all. Error was: %s", err.Error())
 	}
 
-	//todo: return _,err instead of empty services list in case of error.
-
 	if err != nil {
 		errorLogger.Printf("Failed to get the list of services from k8s cluster, error was %v", err.Error())
 		return []service{}
@@ -170,8 +168,6 @@ func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []ser
 }
 
 func (hs *k8sHealthcheckService) getPodsForService(serviceName string) ([]pod, error) {
-
-	//todo: return _,err instead of empty services list in case of error.
 	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
 	if err != nil {
 		return []pod{}, errors.New(fmt.Sprintf("Failed to get the list of pods from k8s cluster, error was %v", err.Error()))
@@ -230,7 +226,7 @@ func populateCategory(k8sCatData map[string]string) category {
 	refreshRatePeriod := time.Duration(refreshRateSeconds * int64(time.Second))
 	return category{
 		name:categoryName,
-		services:      strings.Split(k8sCatData["category.services"], ","), //todo: what if the array of strings will contain also white spaces near service names? remove the white spaces from the resulting array of strings.
+		services:      strings.Split(k8sCatData["category.services"], ","),
 		refreshPeriod: refreshRatePeriod,
 		isSticky:      isSticky,
 		isEnabled: isEnabled,
