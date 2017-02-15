@@ -61,7 +61,7 @@
                   {{if eq .Status "critical"}}
                     <span style='color: red;'>critical</span>
                   {{else}}
-                    <span style='color: blue;'>acked</span>
+                    <span style='color: blue;'>{{.Status}}</span>
                   {{end}}
                 {{end}}
               {{end}}
