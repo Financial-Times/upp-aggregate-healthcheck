@@ -13,13 +13,7 @@ func (c *healthCheckController)buildPodsHealthResult(serviceName string, useCach
 	var checkResults []fthealth.CheckResult
 	desc := fmt.Sprintf("Health of pods that are under service %s served without cache.", serviceName)
 
-	if useCache {
-		desc = fmt.Sprintf("Health of pods that are under service %s served from cache.", serviceName)
-		//todo: check if we will use cache also for pods.
-		checkResults, _ = c.runPodChecksFor(serviceName)
-	} else {
-		checkResults, _ = c.runPodChecksFor(serviceName)
-	}
+	checkResults, _ = c.runPodChecksFor(serviceName)
 
 	finalOk, finalSeverity := getFinalResult(checkResults, nil)
 
@@ -53,10 +47,9 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 	}
 
 	var checks []fthealth.Check
-
+	service := services[0]
 	for _, pod := range pods {
-		//todo: add services[0] to this call to take severity+ack from it
-		check := NewPodHealthCheck(pod, services[0], c.healthCheckService)
+		check := NewPodHealthCheck(pod, service, c.healthCheckService)
 		checks = append(checks, check)
 	}
 
@@ -65,11 +58,14 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 	for i, check := range healthChecks {
 		if check.Ok != true {
 			severity := c.getSeverityForPod(check.Name)
-			//todo: remove this log
-			infoLogger.Printf("Severity for pod with name [%s] is [%s]", check.Name, severity)
 			healthChecks[i].Severity = severity
 		}
+
+		if service.ack != "" {
+			healthChecks[i].Ack = service.ack
+		}
 	}
+
 	return healthChecks, categorisedResults
 }
 

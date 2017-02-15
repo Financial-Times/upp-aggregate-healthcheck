@@ -42,6 +42,7 @@ var defaultCategories = []string{"default"}
 const (
 	timeLayout = "15:04:05 MST"
 	healthcheckTemplateName = "healthcheck-template.html"
+	healthcheckPath = "/__health"
 )
 
 func (h *httpHandler) handleEnableCategory(w http.ResponseWriter, r *http.Request) {
@@ -172,7 +173,8 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 	if r.Header.Get("Accept") == "application/json" {
 		buildHealthcheckJsonResponse(w, healthResult)
 	} else {
-		buildPodsCheckHtmlResponse(w, healthResult, serviceName)
+		env := h.controller.getEnvironment()
+		buildPodsCheckHtmlResponse(w, healthResult, env, serviceName)
 	}
 }
 
@@ -199,7 +201,6 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 
 func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
 	categories := parseCategories(r.URL)
-	//TODO: see if categories are enabled (sticky functionality)
 	healthResults, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache(r.URL))
 
 	if err != nil {
@@ -210,6 +211,13 @@ func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
 	if len(validCategories) == 0 {
 		w.WriteHeader(http.StatusBadRequest)
 		return
+	}
+
+	for _, validCategory := range validCategories {
+		if validCategory.isEnabled == false {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
+		}
 	}
 
 	if !healthResults.Ok {
@@ -266,14 +274,14 @@ func buildServicesCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth
 	}
 }
 
-func buildPodsCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth.HealthResult, serviceName string) {
+func buildPodsCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth.HealthResult, environment string, serviceName string) {
 	w.Header().Add("Content-Type", "text/html")
 	htmlTemplate := parseHtmlTemplate(w, healthcheckTemplateName)
 	if htmlTemplate == nil {
 		return
 	}
 
-	aggregateHealthcheckParams := populateAggregatePodChecks(healthResult, serviceName)
+	aggregateHealthcheckParams := populateAggregatePodChecks(healthResult, environment, serviceName)
 
 	if err := htmlTemplate.Execute(w, aggregateHealthcheckParams); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -301,13 +309,30 @@ func populateAggregateServiceChecks(healthResult fthealth.HealthResult, environm
 	aggregateChecks := &AggregateHealthcheckParams{
 		PageTitle: buildPageTitle(environment, categories),
 		GeneralStatus: getGeneralStatus(healthResult),
-		RefreshFromCachePath: "/__health",
-		RefreshWithoutCachePath: "/__health?cache=false",
+		RefreshFromCachePath: buildRefreshFromCachePath(categories),
+		RefreshWithoutCachePath: buildRefreshWithoutCachePath(categories),
 		AckCount:ackCount,
 		IndividualHealthChecks: indiviualServiceChecks,
 	}
 
 	return aggregateChecks
+}
+
+func buildRefreshFromCachePath(categories string) string {
+	if categories != "" {
+		return fmt.Sprintf("%s?categories=%s", healthcheckPath, categories)
+	}
+
+	return healthcheckPath
+}
+
+func buildRefreshWithoutCachePath(categories string) string {
+	refreshWithoutCachePath := fmt.Sprintf("%s?cache=false", healthcheckPath)
+	if categories != "" {
+		return fmt.Sprintf("%s&categories=%s", refreshWithoutCachePath, categories)
+	}
+
+	return refreshWithoutCachePath
 }
 
 func populateIndividualServiceChecks(checks []fthealth.CheckResult) ([]IndividualHealthcheckParams, int) {
@@ -351,9 +376,9 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult) []IndividualHeal
 	return indiviualServiceChecks
 }
 
-func populateAggregatePodChecks(healthResult  fthealth.HealthResult, serviceName string) *AggregateHealthcheckParams {
+func populateAggregatePodChecks(healthResult  fthealth.HealthResult, environment string, serviceName string) *AggregateHealthcheckParams {
 	aggregateChecks := &AggregateHealthcheckParams{
-		PageTitle: fmt.Sprintf("CoCo prod-uk service pods of service %s", serviceName),
+		PageTitle: fmt.Sprintf("CoCo %s pods of service %s", environment, serviceName),
 		GeneralStatus: getGeneralStatus(healthResult),
 		RefreshFromCachePath: fmt.Sprintf("/__pods-health?service-name=%s", serviceName),
 		RefreshWithoutCachePath:  fmt.Sprintf("/__pods-health?cache=false&service-name=%s", serviceName),
@@ -403,7 +428,11 @@ func getGeneralStatus(healthResult fthealth.HealthResult) string {
 func getCategoriesString(categories  map[string]category) string {
 	formattedCategoryNames := ""
 	for categoryName := range categories {
-		formattedCategoryNames += categoryName + " "
+		formattedCategoryNames += categoryName + ","
+	}
+
+	if len(formattedCategoryNames) > 0 {
+		formattedCategoryNames = formattedCategoryNames[:formattedCategoryNames - 1]
 	}
 
 	return formattedCategoryNames

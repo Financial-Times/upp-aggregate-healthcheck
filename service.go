@@ -98,9 +98,6 @@ func (hs *k8sHealthcheckService) removeAck(serviceName string) error {
 	k8sAcksConfigMap2, err := hs.k8sClient.Core().ConfigMaps("default").Update(&k8sAcksConfigMap)
 
 	if k8sAcksConfigMap2.Data[serviceName] != "" {
-		//todo: delete this log:
-		errorLogger.Printf("The ack for service %s has not been removed from configmap. This check has been performed on the retrieved service.", serviceName)
-		//todo: remove this log.
 		return errors.New(fmt.Sprintf("The ack for service %s has not been removed from configmap. This check has been performed on the retrieved service.", serviceName))
 	}
 
@@ -231,7 +228,6 @@ func populateCategory(k8sCatData map[string]string) category {
 	}
 
 	refreshRatePeriod := time.Duration(refreshRateSeconds * int64(time.Second))
-
 	return category{
 		name:categoryName,
 		services:      strings.Split(k8sCatData["category.services"], ","), //todo: what if the array of strings will contain also white spaces near service names? remove the white spaces from the resulting array of strings.

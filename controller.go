@@ -16,9 +16,7 @@ type healthCheckController struct {
 
 type MeasuredService struct {
 	service      service
-	cachedHealth *cachedHealth //latest healthiness measurement
-				   //todo: check if we will use graphite
-				   //bufferedHealths *BufferedHealths //up to 60 healthiness measurements to be buffered and sent at once graphite
+	cachedHealth *cachedHealth
 }
 
 type controller interface {
@@ -122,7 +120,6 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 
 	sort.Sort(ByNameComparator(health.Checks))
 
-	//todo: add unhealthy categories here.
 	return health, matchingCategories, nil, nil
 }
 
@@ -167,7 +164,7 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 					if healthCheck.Name == serviceName {
 						infoLogger.Printf("Sticky category [%s] is unhealthy, disabling it.", category.name)
 						category.isEnabled = false
-						categories[catIndex] = category //TODO: check if this works.
+						categories[catIndex] = category
 						c.healthCheckService.updateCategory(category.name, false)
 					}
 				}
@@ -175,7 +172,6 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 		}
 	}
 
-	//todo: populate categorisedResults if we will use graphite.
 	return healthChecks, categorisedResults
 }
 
