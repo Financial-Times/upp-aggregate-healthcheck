@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	"math"
 	"reflect"
 	"time"
 )
@@ -36,7 +37,7 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 	}
 
 	if len(servicesThatAreNotInCache) != 0 {
-		notCachedChecks := c.runServiceChecksByServiceNames(servicesThatAreNotInCache)
+		notCachedChecks := c.runServiceChecksByServiceNames(servicesThatAreNotInCache, categories)
 
 		for _, check := range notCachedChecks {
 			checkResults = append(checkResults, check)
@@ -46,7 +47,7 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 	return checkResults, categorisedResults
 }
 
-func (c *healthCheckController) updateCachedHealth(services []service) {
+func (c *healthCheckController) updateCachedHealth(services []service, categories map[string]category) {
 	// adding new services, not touching existing
 	for _, service := range services {
 		if mService, ok := c.measuredServices[service.name]; !ok || !reflect.DeepEqual(service, c.measuredServices[service.name].service) {
@@ -55,12 +56,13 @@ func (c *healthCheckController) updateCachedHealth(services []service) {
 			}
 			newMService := newMeasuredService(service)
 			c.measuredServices[service.name] = newMService
-			go c.scheduleCheck(newMService, time.NewTimer(0))
+			refreshPeriod := findShortestPeriod(categories)
+			go c.scheduleCheck(newMService, refreshPeriod, time.NewTimer(0))
 		}
 	}
 }
 
-func (c *healthCheckController) scheduleCheck(mService measuredService, timer *time.Timer) {
+func (c *healthCheckController) scheduleCheck(mService measuredService, refreshPeriod time.Duration, timer *time.Timer) {
 	// wait
 	select {
 	case <-mService.cachedHealth.terminate:
@@ -83,11 +85,21 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, timer *t
 
 	mService.cachedHealth.toWriteToCache <- healthResult
 
-	waitDuration := findShortestPeriod(mService.service)
-	go c.scheduleCheck(mService, time.NewTimer(waitDuration))
+	go c.scheduleCheck(mService, refreshPeriod, time.NewTimer(refreshPeriod))
 }
 
-func findShortestPeriod(service service) time.Duration {
-	return defaultRefreshPeriod
-	//TODO: implement this.
+func findShortestPeriod(categories map[string]category) time.Duration {
+	if len(categories) == 0 {
+		return defaultRefreshPeriod
+	}
+
+	minRefreshPeriod := time.Duration(math.MaxInt32 * time.Second)
+
+	for _, category := range categories {
+		if category.refreshPeriod.Seconds() < minRefreshPeriod.Seconds() {
+			minRefreshPeriod = category.refreshPeriod
+		}
+	}
+
+	return minRefreshPeriod
 }

@@ -44,9 +44,9 @@ type AddAckForm struct {
 var defaultCategories = []string{"default"}
 
 const (
-	timeLayout = "15:04:05 MST"
+	timeLayout              = "15:04:05 MST"
 	healthcheckTemplateName = "healthcheck-template.html"
-	healthcheckPath = "/__health"
+	healthcheckPath         = "/__health"
 )
 
 func (h *httpHandler) updateStickyCategory(w http.ResponseWriter, r *http.Request, isEnabled bool) {
@@ -459,7 +459,7 @@ func getCategoriesString(categories map[string]category) string {
 
 	len := len(formattedCategoryNames)
 	if len > 0 {
-		formattedCategoryNames = formattedCategoryNames[:len - 1]
+		formattedCategoryNames = formattedCategoryNames[:len-1]
 	}
 
 	return formattedCategoryNames

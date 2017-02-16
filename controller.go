@@ -22,7 +22,7 @@ type controller interface {
 	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
 	runServiceChecksByServiceNames([]service) []fthealth.CheckResult
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
-	buildPodsHealthResult(string, bool) (fthealth.HealthResult,error)
+	buildPodsHealthResult(string, bool) (fthealth.HealthResult, error)
 	runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	updateCachedHealth([]service)
@@ -122,7 +122,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	return health, matchingCategories, nil, nil
 }
 
-func (c *healthCheckController) runServiceChecksByServiceNames(services []service) []fthealth.CheckResult {
+func (c *healthCheckController) runServiceChecksByServiceNames(services []service, categories map[string]category) []fthealth.CheckResult {
 	var checks []fthealth.Check
 
 	for _, service := range services {
@@ -138,7 +138,7 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services []servic
 		}
 	}
 
-	c.updateCachedHealth(services)
+	c.updateCachedHealth(services, categories)
 
 	return healthChecks
 }

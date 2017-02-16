@@ -31,7 +31,7 @@ func (c *healthCheckController) buildPodsHealthResult(serviceName string, useCac
 
 	sort.Sort(byNameComparator(health.Checks))
 
-	return health,nil
+	return health, nil
 }
 
 func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.CheckResult, error) {

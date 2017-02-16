@@ -35,8 +35,8 @@ type healthcheckService interface {
 }
 
 const (
-	defaultRefreshRate = 60
-	defaultSeverity = uint8(2)
+	defaultRefreshRate       = 60
+	defaultSeverity          = uint8(2)
 	ackMessagesConfigMapName = "healthcheck.ack.messages"
 )
 
