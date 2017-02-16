@@ -1,18 +1,17 @@
 package main
 
 import (
-	"time"
-	"net/http"
-	"errors"
-	"k8s.io/client-go/1.5/kubernetes"
-	"k8s.io/client-go/1.5/pkg/api/v1"
 	"fmt"
-	"strings"
+	"k8s.io/client-go/1.5/kubernetes"
 	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/labels"
-	"strconv"
+	"k8s.io/client-go/1.5/pkg/api/v1"
 	"k8s.io/client-go/1.5/pkg/fields"
+	"k8s.io/client-go/1.5/pkg/labels"
 	"k8s.io/client-go/1.5/rest"
+	"net/http"
+	"strconv"
+	"strings"
+	"time"
 )
 
 type k8sHealthcheckService struct {
@@ -26,13 +25,13 @@ type healthcheckService interface {
 	getServicesByNames([]string) []service
 	getPodsForService(string) ([]pod, error)
 	getPodByName(string) (pod, error)
-	checkServiceHealth(string) (string,error)
+	checkServiceHealth(string) (string, error)
 	checkPodHealth(pod) error
 	getIndividualPodSeverity(pod) (uint8, error)
 	getHealthChecksForPod(pod) (healthcheckResponse, error)
 	addAck(string, string) error
 	removeAck(string) error
-	getHttpClient() *http.Client
+	getHTTPClient() *http.Client
 }
 
 const (
@@ -41,9 +40,9 @@ const (
 	ackMessagesConfigMapName = "healthcheck.ack.messages"
 )
 
-func InitializeHealthCheckService() *k8sHealthcheckService {
+func initializeHealthCheckService() *k8sHealthcheckService {
 	httpClient := &http.Client{
-		Timeout:   50 * time.Second,
+		Timeout: 50 * time.Second,
 	}
 
 	// creates the in-cluster config
@@ -58,8 +57,8 @@ func InitializeHealthCheckService() *k8sHealthcheckService {
 	}
 
 	return &k8sHealthcheckService{
-		httpClient:httpClient,
-		k8sClient : k8sClient,
+		httpClient: httpClient,
+		k8sClient:  k8sClient,
 	}
 }
 
@@ -68,14 +67,14 @@ func (hs *k8sHealthcheckService) updateCategory(categoryName string, isEnabled b
 	k8sCategory, err := hs.k8sClient.Core().ConfigMaps("default").Get(categoryConfigMapName)
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Cannot retrieve configMap for category with name %s. Error was: %s", categoryName, err.Error()))
+		return fmt.Errorf("Cannot retrieve configMap for category with name %s. Error was: %s", categoryName, err.Error())
 	}
 
 	k8sCategory.Data["category.enabled"] = strconv.FormatBool(isEnabled)
 	_, err = hs.k8sClient.Core().ConfigMaps("default").Update(k8sCategory)
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Cannot update configMap for category with name %s. Error was: %s", categoryName, err.Error()))
+		return fmt.Errorf("Cannot update configMap for category with name %s. Error was: %s", categoryName, err.Error())
 	}
 
 	return nil
@@ -86,23 +85,23 @@ func (hs *k8sHealthcheckService) removeAck(serviceName string) error {
 	k8sAcksConfigMap, err := getAcksConfigMap(hs.k8sClient)
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to retrieve the current list of acks. Error was: %s", err.Error()))
+		return fmt.Errorf("Failed to retrieve the current list of acks. Error was: %s", err.Error())
 	}
 
-	delete(k8sAcksConfigMap.Data, serviceName);
+	delete(k8sAcksConfigMap.Data, serviceName)
 
 	if k8sAcksConfigMap.Data[serviceName] != "" {
-		return errors.New(fmt.Sprintf("The ack for service %s has not been removed from configmap.", serviceName))
+		return fmt.Errorf("The ack for service %s has not been removed from configmap", serviceName)
 	}
 
 	k8sAcksConfigMap2, err := hs.k8sClient.Core().ConfigMaps("default").Update(&k8sAcksConfigMap)
 
 	if k8sAcksConfigMap2.Data[serviceName] != "" {
-		return errors.New(fmt.Sprintf("The ack for service %s has not been removed from configmap. This check has been performed on the retrieved service.", serviceName))
+		return fmt.Errorf("The ack for service %s has not been removed from configmap. This check has been performed on the retrieved service", serviceName)
 	}
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to remove the ack for service %s.", serviceName))
+		return fmt.Errorf("Failed to remove the ack for service %s", serviceName)
 	}
 
 	return nil
@@ -112,7 +111,7 @@ func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) e
 	k8sAcksConfigMap, err := getAcksConfigMap(hs.k8sClient)
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to retrieve the current list of acks. Error was: %s", err.Error()))
+		return fmt.Errorf("Failed to retrieve the current list of acks. Error was: %s", err.Error())
 	}
 
 	if k8sAcksConfigMap.Data == nil {
@@ -124,7 +123,7 @@ func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) e
 	_, err = hs.k8sClient.Core().ConfigMaps("default").Update(&k8sAcksConfigMap)
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to update the acks config map for service %s and ack message [%s]", serviceName, ackMessage))
+		return fmt.Errorf("Failed to update the acks config map for service %s and ack message [%s]", serviceName, ackMessage)
 	}
 
 	return nil
@@ -132,13 +131,13 @@ func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) e
 
 func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 
-	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"metadata.name":podName})})
+	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"metadata.name": podName})})
 	if err != nil {
-		return pod{}, errors.New(fmt.Sprintf("Failed to get the pod from k8s cluster, error was %v", err.Error()))
+		return pod{}, fmt.Errorf("Failed to get the pod from k8s cluster, error was %v", err.Error())
 	}
 
 	if len(k8sPods.Items) == 0 {
-		return pod{}, errors.New(fmt.Sprintf("Pod with name %s was not found in cluster, error was %v", podName, err.Error()))
+		return pod{}, fmt.Errorf("Pod with name %s was not found in cluster, error was %v", podName, err.Error())
 	}
 
 	pod := populatePod(k8sPods.Items[0])
@@ -146,7 +145,7 @@ func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 }
 
 func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []service {
-	k8sServices, err := hs.k8sClient.Core().Services("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"hasHealthcheck":"true"})})
+	k8sServices, err := hs.k8sClient.Core().Services("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"hasHealthcheck": "true"})})
 
 	acks, err := getAcks(hs.k8sClient)
 
@@ -168,9 +167,9 @@ func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []ser
 }
 
 func (hs *k8sHealthcheckService) getPodsForService(serviceName string) ([]pod, error) {
-	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
+	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app": serviceName})})
 	if err != nil {
-		return []pod{}, errors.New(fmt.Sprintf("Failed to get the list of pods from k8s cluster, error was %v", err.Error()))
+		return []pod{}, fmt.Errorf("Failed to get the list of pods from k8s cluster, error was %v", err.Error())
 	}
 
 	pods := []pod{}
@@ -185,10 +184,10 @@ func (hs *k8sHealthcheckService) getPodsForService(serviceName string) ([]pod, e
 func (hs *k8sHealthcheckService) getCategories() (map[string]category, error) {
 	categories := make(map[string]category)
 
-	labelSelector := labels.SelectorFromSet(labels.Set{"healthcheck-categories-for":"aggregate-healthcheck"})
+	labelSelector := labels.SelectorFromSet(labels.Set{"healthcheck-categories-for": "aggregate-healthcheck"})
 	k8sCategories, err := hs.k8sClient.Core().ConfigMaps("default").List(api.ListOptions{LabelSelector: labelSelector})
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("Failed to get the categories from kubernetes. Error was: %v", err))
+		return nil, fmt.Errorf("Failed to get the categories from kubernetes. Error was: %v", err)
 	}
 
 	for _, k8sCategory := range k8sCategories.Items {
@@ -199,7 +198,7 @@ func (hs *k8sHealthcheckService) getCategories() (map[string]category, error) {
 	return categories, nil
 }
 
-func (hs *k8sHealthcheckService) getHttpClient() *http.Client {
+func (hs *k8sHealthcheckService) getHTTPClient() *http.Client {
 	return hs.httpClient
 }
 
@@ -225,18 +224,18 @@ func populateCategory(k8sCatData map[string]string) category {
 
 	refreshRatePeriod := time.Duration(refreshRateSeconds * int64(time.Second))
 	return category{
-		name:categoryName,
+		name:          categoryName,
 		services:      strings.Split(k8sCatData["category.services"], ","),
 		refreshPeriod: refreshRatePeriod,
 		isSticky:      isSticky,
-		isEnabled: isEnabled,
+		isEnabled:     isEnabled,
 	}
 }
 
 func populatePod(k8sPod v1.Pod) pod {
 	return pod{
-		name:k8sPod.Name,
-		ip:k8sPod.Status.PodIP,
+		name: k8sPod.Name,
+		ip:   k8sPod.Status.PodIP,
 	}
 }
 
@@ -247,7 +246,7 @@ func getServiceByName(k8sServices []v1.Service, serviceName string) (v1.Service,
 		}
 	}
 
-	return v1.Service{}, errors.New(fmt.Sprintf("Cannot find k8sService with name %s", serviceName))
+	return v1.Service{}, fmt.Errorf("Cannot find k8sService with name %s", serviceName)
 }
 
 func getServicesWithNames(k8sServices []v1.Service, serviceNames []string, acks map[string]string) []service {
@@ -280,7 +279,7 @@ func getAllServices(k8sServices []v1.Service, acks map[string]string) []service 
 func populateService(k8sService v1.Service, acks map[string]string) service {
 	service := service{
 		name: k8sService.Name,
-		ack: acks[k8sService.Name],
+		ack:  acks[k8sService.Name],
 	}
 
 	return service
@@ -297,16 +296,15 @@ func getAcks(k8sClient *kubernetes.Clientset) (map[string]string, error) {
 }
 
 func getAcksConfigMap(k8sClient *kubernetes.Clientset) (v1.ConfigMap, error) {
-	k8sAckConfigMaps, err := k8sClient.Core().ConfigMaps("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"metadata.name":ackMessagesConfigMapName})})
+	k8sAckConfigMaps, err := k8sClient.Core().ConfigMaps("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"metadata.name": ackMessagesConfigMapName})})
 
 	if err != nil {
-		return v1.ConfigMap{}, errors.New(fmt.Sprintf("Cannot get configMap with name: %s from k8s cluster. Error was: %s", ackMessagesConfigMapName, err.Error()))
+		return v1.ConfigMap{}, fmt.Errorf("Cannot get configMap with name: %s from k8s cluster. Error was: %s", ackMessagesConfigMapName, err.Error())
 	}
 
 	if len(k8sAckConfigMaps.Items) == 0 {
-		return v1.ConfigMap{}, errors.New(fmt.Sprintf("Cannot find configMap with name: %s", ackMessagesConfigMapName))
+		return v1.ConfigMap{}, fmt.Errorf("Cannot find configMap with name: %s", ackMessagesConfigMapName)
 	}
 
 	return k8sAckConfigMaps.Items[0], nil
 }
-

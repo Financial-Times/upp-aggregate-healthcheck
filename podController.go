@@ -1,19 +1,22 @@
 package main
 
 import (
-	"sort"
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
-	"fmt"
 	"errors"
+	"fmt"
+	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"io/ioutil"
 	"net/http"
+	"sort"
 )
 
-func (c *healthCheckController)buildPodsHealthResult(serviceName string, useCache bool) (fthealth.HealthResult) {
-	var checkResults []fthealth.CheckResult
+func (c *healthCheckController) buildPodsHealthResult(serviceName string, useCache bool) (fthealth.HealthResult, error) {
 	desc := fmt.Sprintf("Health of pods that are under service %s served without cache.", serviceName)
 
-	checkResults, _ = c.runPodChecksFor(serviceName)
+	checkResults, err := c.runPodChecksFor(serviceName)
+
+	if err != nil {
+		return fthealth.HealthResult{}, fmt.Errorf("Cannot perform pod checks for service %s, error was: %s", serviceName, err.Error())
+	}
 
 	finalOk, finalSeverity := getFinalResult(checkResults, nil)
 
@@ -26,30 +29,28 @@ func (c *healthCheckController)buildPodsHealthResult(serviceName string, useCach
 		Severity:      finalSeverity,
 	}
 
-	sort.Sort(ByNameComparator(health.Checks))
+	sort.Sort(byNameComparator(health.Checks))
 
-	return health
+	return health,nil
 }
 
-func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
-	categorisedResults := make(map[string][]fthealth.CheckResult)
-
+func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.CheckResult, error) {
 	pods, err := c.healthCheckService.getPodsForService(serviceName)
 
 	if err != nil {
-		//TODO: send the error further
+		return []fthealth.CheckResult{}, fmt.Errorf("Cannot get pods for service %s, error was: %s", serviceName, err.Error())
 	}
 
 	services := c.healthCheckService.getServicesByNames([]string{serviceName})
 
 	if len(services) == 0 {
-		//todo: throw error
+		return []fthealth.CheckResult{}, fmt.Errorf("Cannot find service with name %s", serviceName)
 	}
 
 	var checks []fthealth.Check
 	service := services[0]
 	for _, pod := range pods {
-		check := NewPodHealthCheck(pod, service, c.healthCheckService)
+		check := newPodHealthCheck(pod, service, c.healthCheckService)
 		checks = append(checks, check)
 	}
 
@@ -66,7 +67,7 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 		}
 	}
 
-	return healthChecks, categorisedResults
+	return healthChecks, nil
 }
 
 func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, error) {
@@ -81,7 +82,7 @@ func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, 
 		return nil, errors.New("Error constructing healthcheck request: " + err.Error())
 	}
 
-	resp, err := c.healthCheckService.getHttpClient().Do(req)
+	resp, err := c.healthCheckService.getHTTPClient().Do(req)
 	if err != nil {
 		return nil, errors.New("Error performing healthcheck: " + err.Error())
 	}

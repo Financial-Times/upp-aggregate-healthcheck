@@ -1,19 +1,20 @@
 package main
 
 import (
-	"net/http"
 	"encoding/json"
-	"net/url"
-	"strings"
+	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"html/template"
-	"fmt"
+	"net/http"
+	"net/url"
+	"strings"
 )
 
 type httpHandler struct {
 	controller controller
 }
 
+//IndividualHealthcheckParams struct used to populate HTML template with individual checks
 type IndividualHealthcheckParams struct {
 	Name          string
 	Status        string
@@ -24,6 +25,7 @@ type IndividualHealthcheckParams struct {
 	Output        string
 }
 
+//AggregateHealthcheckParams struct used to populate HTML template with aggregate checks
 type AggregateHealthcheckParams struct {
 	PageTitle               string
 	GeneralStatus           string
@@ -33,6 +35,7 @@ type AggregateHealthcheckParams struct {
 	IndividualHealthChecks  []IndividualHealthcheckParams
 }
 
+//AddAckForm struct used to populate HTML template for add acknowledge form
 type AddAckForm struct {
 	ServiceName string
 	AddAckPath  string
@@ -73,7 +76,7 @@ func (h *httpHandler) handleEnableCategory(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
-	serviceName := getServiceNameFromUrl(r.URL)
+	serviceName := getServiceNameFromURL(r.URL)
 	if serviceName == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("Provided service name is not valid."))
@@ -92,7 +95,7 @@ func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
-	serviceName := getServiceNameFromUrl(r.URL)
+	serviceName := getServiceNameFromURL(r.URL)
 	ackMessage := r.PostFormValue("ack-msg")
 	if serviceName == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -111,7 +114,7 @@ func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
-	serviceName := getServiceNameFromUrl(r.URL)
+	serviceName := getServiceNameFromURL(r.URL)
 
 	if serviceName == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -120,14 +123,14 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Add("Content-Type", "text/html")
-	htmlTemplate := parseHtmlTemplate(w, "add-ack-message-form-template.html")
+	htmlTemplate := parseHTMLTemplate(w, "add-ack-message-form-template.html")
 	if htmlTemplate == nil {
 		return
 	}
 
 	addAckForm := AddAckForm{
-		ServiceName:serviceName,
-		AddAckPath:fmt.Sprintf("add-ack?service-name=%s", serviceName),
+		ServiceName: serviceName,
+		AddAckPath:  fmt.Sprintf("add-ack?service-name=%s", serviceName),
 	}
 
 	if err := htmlTemplate.Execute(w, addAckForm); err != nil {
@@ -158,17 +161,17 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 	}
 
 	if r.Header.Get("Accept") == "application/json" {
-		buildHealthcheckJsonResponse(w, healthResult)
+		buildHealthcheckJSONResponse(w, healthResult)
 	} else {
 		env := h.controller.getEnvironment()
-		buildServicesCheckHtmlResponse(w, healthResult, env, getCategoriesString(validCategories))
+		buildServicesCheckHTMLResponse(w, healthResult, env, getCategoriesString(validCategories))
 	}
 }
 
 func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Request) {
-	serviceName := getServiceNameFromUrl(r.URL)
+	serviceName := getServiceNameFromURL(r.URL)
 
-	if (serviceName == "") {
+	if serviceName == "" {
 		w.WriteHeader(http.StatusBadRequest)
 
 		if r.Header.Get("Accept") != "application/json" {
@@ -177,18 +180,24 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	healthResult := h.controller.buildPodsHealthResult(serviceName, useCache(r.URL))
+	healthResult, err := h.controller.buildPodsHealthResult(serviceName, useCache(r.URL))
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		errorLogger.Printf("Cannot perform checks for service with name %s, error was: %v", serviceName, err.Error())
+		w.Write([]byte(fmt.Sprintf("Cannot perform checks for service with name %s", serviceName)))
+		return
+	}
 
 	if r.Header.Get("Accept") == "application/json" {
-		buildHealthcheckJsonResponse(w, healthResult)
+		buildHealthcheckJSONResponse(w, healthResult)
 	} else {
 		env := h.controller.getEnvironment()
-		buildPodsCheckHtmlResponse(w, healthResult, env, serviceName)
+		buildPodsCheckHTMLResponse(w, healthResult, env, serviceName)
 	}
 }
 
 func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *http.Request) {
-	podName := getPodNameFromUrl(r.URL)
+	podName := getPodNameFromURL(r.URL)
 
 	if podName == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -244,11 +253,11 @@ func parseCategories(theURL *url.URL) []string {
 	return strings.Split(queriedCategories, ",")
 }
 
-func getServiceNameFromUrl(url *url.URL) string {
+func getServiceNameFromURL(url *url.URL) string {
 	return url.Query().Get("service-name")
 }
 
-func getPodNameFromUrl(url *url.URL) string {
+func getPodNameFromURL(url *url.URL) string {
 	return url.Query().Get("pod-name")
 }
 
@@ -257,7 +266,7 @@ func useCache(theURL *url.URL) bool {
 	return theURL.Query().Get("cache") != "false"
 }
 
-func buildHealthcheckJsonResponse(w http.ResponseWriter, healthResult fthealth.HealthResult) {
+func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult fthealth.HealthResult) {
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
 	err := enc.Encode(healthResult)
@@ -266,9 +275,9 @@ func buildHealthcheckJsonResponse(w http.ResponseWriter, healthResult fthealth.H
 	}
 }
 
-func buildServicesCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth.HealthResult, environment string, categories string) {
+func buildServicesCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth.HealthResult, environment string, categories string) {
 	w.Header().Add("Content-Type", "text/html")
-	htmlTemplate := parseHtmlTemplate(w, healthcheckTemplateName)
+	htmlTemplate := parseHTMLTemplate(w, healthcheckTemplateName)
 	if htmlTemplate == nil {
 		return
 	}
@@ -283,9 +292,9 @@ func buildServicesCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth
 	}
 }
 
-func buildPodsCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth.HealthResult, environment string, serviceName string) {
+func buildPodsCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth.HealthResult, environment string, serviceName string) {
 	w.Header().Add("Content-Type", "text/html")
-	htmlTemplate := parseHtmlTemplate(w, healthcheckTemplateName)
+	htmlTemplate := parseHTMLTemplate(w, healthcheckTemplateName)
 	if htmlTemplate == nil {
 		return
 	}
@@ -300,7 +309,7 @@ func buildPodsCheckHtmlResponse(w http.ResponseWriter, healthResult fthealth.Hea
 	}
 }
 
-func parseHtmlTemplate(w http.ResponseWriter, templateName string) *template.Template {
+func parseHTMLTemplate(w http.ResponseWriter, templateName string) *template.Template {
 	htmlTemplate, err := template.ParseFiles(templateName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -316,12 +325,12 @@ func parseHtmlTemplate(w http.ResponseWriter, templateName string) *template.Tem
 func populateAggregateServiceChecks(healthResult fthealth.HealthResult, environment string, categories string) *AggregateHealthcheckParams {
 	indiviualServiceChecks, ackCount := populateIndividualServiceChecks(healthResult.Checks)
 	aggregateChecks := &AggregateHealthcheckParams{
-		PageTitle: buildPageTitle(environment, categories),
-		GeneralStatus: getGeneralStatus(healthResult),
-		RefreshFromCachePath: buildRefreshFromCachePath(categories),
+		PageTitle:               buildPageTitle(environment, categories),
+		GeneralStatus:           getGeneralStatus(healthResult),
+		RefreshFromCachePath:    buildRefreshFromCachePath(categories),
 		RefreshWithoutCachePath: buildRefreshWithoutCachePath(categories),
-		AckCount:ackCount,
-		IndividualHealthChecks: indiviualServiceChecks,
+		AckCount:                ackCount,
+		IndividualHealthChecks:  indiviualServiceChecks,
 	}
 
 	return aggregateChecks
@@ -353,13 +362,13 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult) ([]Individua
 		}
 
 		hc := IndividualHealthcheckParams{
-			Name: individualCheck.Name,
-			Status: getServiceStatusFromCheck(individualCheck),
+			Name:          individualCheck.Name,
+			Status:        getServiceStatusFromCheck(individualCheck),
 			AvailablePods: "3/3",
-			LastUpdated: individualCheck.LastUpdated.Format(timeLayout),
-			MoreInfoPath: fmt.Sprintf("/__pods-health?service-name=%s", individualCheck.Name),
-			AckMessage: individualCheck.Ack,
-			Output: individualCheck.Output,
+			LastUpdated:   individualCheck.LastUpdated.Format(timeLayout),
+			MoreInfoPath:  fmt.Sprintf("/__pods-health?service-name=%s", individualCheck.Name),
+			AckMessage:    individualCheck.Ack,
+			Output:        individualCheck.Output,
 		}
 
 		indiviualServiceChecks = append(indiviualServiceChecks, hc)
@@ -377,12 +386,12 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult) ([]IndividualHea
 		}
 
 		hc := IndividualHealthcheckParams{
-			Name: check.Name,
-			Status: getServiceStatusFromCheck(check),
-			LastUpdated: check.LastUpdated.Format(timeLayout),
+			Name:         check.Name,
+			Status:       getServiceStatusFromCheck(check),
+			LastUpdated:  check.LastUpdated.Format(timeLayout),
 			MoreInfoPath: fmt.Sprintf("/__pod-individual-health?pod-name=%s", check.Name),
-			AckMessage: check.Ack,
-			Output: check.Output,
+			AckMessage:   check.Ack,
+			Output:       check.Output,
 		}
 
 		indiviualServiceChecks = append(indiviualServiceChecks, hc)
@@ -391,15 +400,15 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult) ([]IndividualHea
 	return indiviualServiceChecks, ackCount
 }
 
-func populateAggregatePodChecks(healthResult  fthealth.HealthResult, environment string, serviceName string) *AggregateHealthcheckParams {
+func populateAggregatePodChecks(healthResult fthealth.HealthResult, environment string, serviceName string) *AggregateHealthcheckParams {
 	individualChecks, ackCount := populateIndividualPodChecks(healthResult.Checks)
 	aggregateChecks := &AggregateHealthcheckParams{
-		PageTitle: fmt.Sprintf("CoCo %s cluster's pods of service %s", environment, serviceName),
-		GeneralStatus: getGeneralStatus(healthResult),
-		RefreshFromCachePath: fmt.Sprintf("/__pods-health?service-name=%s", serviceName),
-		RefreshWithoutCachePath:  fmt.Sprintf("/__pods-health?cache=false&service-name=%s", serviceName),
-		IndividualHealthChecks: individualChecks,
-		AckCount:ackCount,
+		PageTitle:               fmt.Sprintf("CoCo %s cluster's pods of service %s", environment, serviceName),
+		GeneralStatus:           getGeneralStatus(healthResult),
+		RefreshFromCachePath:    fmt.Sprintf("/__pods-health?service-name=%s", serviceName),
+		RefreshWithoutCachePath: fmt.Sprintf("/__pods-health?cache=false&service-name=%s", serviceName),
+		IndividualHealthChecks:  individualChecks,
+		AckCount:                ackCount,
 	}
 
 	return aggregateChecks
@@ -442,14 +451,15 @@ func getGeneralStatus(healthResult fthealth.HealthResult) string {
 	return "critical"
 }
 
-func getCategoriesString(categories  map[string]category) string {
+func getCategoriesString(categories map[string]category) string {
 	formattedCategoryNames := ""
 	for categoryName := range categories {
 		formattedCategoryNames += categoryName + ","
 	}
 
-	if len(formattedCategoryNames) > 0 {
-		formattedCategoryNames = formattedCategoryNames[:len(formattedCategoryNames) - 1]
+	len := len(formattedCategoryNames)
+	if len > 0 {
+		formattedCategoryNames = formattedCategoryNames[:len - 1]
 	}
 
 	return formattedCategoryNames

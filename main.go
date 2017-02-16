@@ -1,13 +1,13 @@
 package main
 
 import (
+	"fmt"
+	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
-	"os"
 	"io"
 	"log"
-	"github.com/gorilla/mux"
 	"net/http"
-	"fmt"
+	"os"
 )
 
 const logPattern = log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile | log.LUTC
@@ -29,7 +29,7 @@ func main() {
 	app.Action = func() {
 		initLogs(os.Stdout, os.Stdout, os.Stderr)
 
-		controller := InitializeController(*environment)
+		controller := initializeController(*environment)
 		handler := &httpHandler{
 			controller: controller,
 		}

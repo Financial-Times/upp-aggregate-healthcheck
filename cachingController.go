@@ -1,24 +1,24 @@
 package main
 
 import (
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
-	"time"
 	"fmt"
+	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"reflect"
+	"time"
 )
 
 const (
 	defaultRefreshPeriod = time.Duration(60 * time.Second)
 )
 
-func NewMeasuredService(service service) MeasuredService {
-	cachedHealth := NewCachedHealth()
+func newMeasuredService(service service) measuredService {
+	cachedHealth := newCachedHealth()
 	//bufferedHealths := NewBufferedHealths()
 	go cachedHealth.maintainLatest()
-	return MeasuredService{service, cachedHealth}
+	return measuredService{service, cachedHealth}
 }
 
-func (c *healthCheckController)  collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
+func (c *healthCheckController) collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
 	var checkResults []fthealth.CheckResult
 	categorisedResults := make(map[string][]fthealth.CheckResult)
 	serviceNames := getServiceNamesFromCategories(categories)
@@ -53,14 +53,14 @@ func (c *healthCheckController) updateCachedHealth(services []service) {
 			if ok {
 				mService.cachedHealth.terminate <- true
 			}
-			newMService := NewMeasuredService(service)
+			newMService := newMeasuredService(service)
 			c.measuredServices[service.name] = newMService
 			go c.scheduleCheck(newMService, time.NewTimer(0))
 		}
 	}
 }
 
-func (c *healthCheckController) scheduleCheck(mService MeasuredService, timer *time.Timer) {
+func (c *healthCheckController) scheduleCheck(mService measuredService, timer *time.Timer) {
 	// wait
 	select {
 	case <-mService.cachedHealth.terminate:
@@ -72,7 +72,7 @@ func (c *healthCheckController) scheduleCheck(mService MeasuredService, timer *t
 	healthResult := fthealth.RunCheck(mService.service.name,
 		fmt.Sprintf("Checks the health of %v", mService.service.name),
 		true,
-		NewServiceHealthCheck(mService.service, c.healthCheckService)).Checks[0]
+		newServiceHealthCheck(mService.service, c.healthCheckService)).Checks[0]
 
 	healthResult.Ack = mService.service.ack
 

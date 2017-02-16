@@ -1,20 +1,19 @@
 package main
 
 import (
+	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"sort"
-	"fmt"
-	"errors"
 	"time"
 )
 
 type healthCheckController struct {
 	healthCheckService healthcheckService
 	environment        string
-	measuredServices   map[string]MeasuredService
+	measuredServices   map[string]measuredService
 }
 
-type MeasuredService struct {
+type measuredService struct {
 	service      service
 	cachedHealth *cachedHealth
 }
@@ -23,14 +22,14 @@ type controller interface {
 	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
 	runServiceChecksByServiceNames([]service) []fthealth.CheckResult
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
-	buildPodsHealthResult(string, bool) (fthealth.HealthResult)
-	runPodChecksFor(string) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
+	buildPodsHealthResult(string, bool) (fthealth.HealthResult,error)
+	runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	updateCachedHealth([]service)
-	scheduleCheck(MeasuredService, *time.Timer)
+	scheduleCheck(measuredService, *time.Timer)
 	getIndividualPodHealth(string) ([]byte, error)
 	addAck(string, string) error
-	updateStickyCategory(string,bool) error
+	updateStickyCategory(string, bool) error
 	removeAck(string) error
 	getEnvironment() string
 	getSeverityForService(string) uint8
@@ -38,15 +37,14 @@ type controller interface {
 	computeSeverityByPods([]pod) uint8
 }
 
-
-func InitializeController(environment string) *healthCheckController {
-	service := InitializeHealthCheckService()
-	measuredServices := make(map[string]MeasuredService)
+func initializeController(environment string) *healthCheckController {
+	service := initializeHealthCheckService()
+	measuredServices := make(map[string]measuredService)
 
 	return &healthCheckController{
 		healthCheckService: service,
-		environment: environment,
-		measuredServices: measuredServices,
+		environment:        environment,
+		measuredServices:   measuredServices,
 	}
 }
 
@@ -62,13 +60,13 @@ func (c *healthCheckController) removeAck(serviceName string) error {
 	services := c.healthCheckService.getServicesByNames([]string{serviceName})
 
 	if len(services) == 0 {
-		return errors.New(fmt.Sprintf("Cannot find service with name %s", serviceName))
+		return fmt.Errorf("Cannot find service with name %s", serviceName)
 	}
 
 	err := c.healthCheckService.removeAck(serviceName)
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to remove ack for service %s. Error was: %s", serviceName, err.Error()))
+		return fmt.Errorf("Failed to remove ack for service %s. Error was: %s", serviceName, err.Error())
 	}
 
 	return nil
@@ -78,13 +76,13 @@ func (c *healthCheckController) addAck(serviceName string, ackMessage string) er
 	services := c.healthCheckService.getServicesByNames([]string{serviceName})
 
 	if len(services) == 0 {
-		return errors.New(fmt.Sprintf("Cannot find service with name %s", serviceName))
+		return fmt.Errorf("Cannot find service with name %s", serviceName)
 	}
 
 	err := c.healthCheckService.addAck(serviceName, ackMessage)
 
 	if err != nil {
-		return errors.New(fmt.Sprintf("Failed to add ack message [%s] for service %s. Error was: %s", ackMessage, serviceName, err.Error()))
+		return fmt.Errorf("Failed to add ack message [%s] for service %s. Error was: %s", ackMessage, serviceName, err.Error())
 	}
 
 	return nil
@@ -95,7 +93,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	desc := "Health of the whole cluster of the moment served without cache."
 	availableCategories, err := c.healthCheckService.getCategories()
 	if err != nil {
-		return fthealth.HealthResult{}, nil, nil, errors.New(fmt.Sprintf("Cannot build health check result for services. Error was: %v", err.Error()))
+		return fthealth.HealthResult{}, nil, nil, fmt.Errorf("Cannot build health check result for services. Error was: %v", err.Error())
 	}
 
 	matchingCategories := getMatchingCategories(providedCategories, availableCategories)
@@ -119,7 +117,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 		Severity:      finalSeverity,
 	}
 
-	sort.Sort(ByNameComparator(health.Checks))
+	sort.Sort(byNameComparator(health.Checks))
 
 	return health, matchingCategories, nil, nil
 }
@@ -128,7 +126,7 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services []servic
 	var checks []fthealth.Check
 
 	for _, service := range services {
-		check := NewServiceHealthCheck(service, c.healthCheckService)
+		check := newServiceHealthCheck(service, c.healthCheckService)
 		checks = append(checks, check)
 	}
 
@@ -139,8 +137,6 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services []servic
 			updateHealthCheckWithAckMsg(healthChecks, service.name, service.ack)
 		}
 	}
-
-	//todo: possibly we will need to add the check severity here too. (foreach healthCheck, if healthcheck.ok == false, then get severity for service.)
 
 	c.updateCachedHealth(services)
 
@@ -244,15 +240,15 @@ func isStringInSlice(a string, list []string) bool {
 }
 
 //used for sorting checks
-type ByNameComparator []fthealth.CheckResult
+type byNameComparator []fthealth.CheckResult
 
-func (s ByNameComparator) Less(i, j int) bool {
+func (s byNameComparator) Less(i, j int) bool {
 	return s[i].Name < s[j].Name
 }
 
-func (s ByNameComparator) Len() int {
+func (s byNameComparator) Len() int {
 	return len(s)
 }
-func (s ByNameComparator) Swap(i, j int) {
+func (s byNameComparator) Swap(i, j int) {
 	s[i], s[j] = s[j], s[i]
 }

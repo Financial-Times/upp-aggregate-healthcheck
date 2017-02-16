@@ -1,14 +1,14 @@
 package main
 
 import (
-	"net/http"
+	"encoding/json"
 	"errors"
 	"fmt"
-	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/labels"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"io/ioutil"
-	"encoding/json"
+	"k8s.io/client-go/1.5/pkg/api"
+	"k8s.io/client-go/1.5/pkg/labels"
+	"net/http"
 )
 
 type healthcheckResponse struct {
@@ -21,24 +21,24 @@ type healthcheckResponse struct {
 }
 
 func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) (string, error) {
-	k8sDeployments, err := hs.k8sClient.Extensions().Deployments("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
+	k8sDeployments, err := hs.k8sClient.Extensions().Deployments("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app": serviceName})})
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("Error retrieving deployment with label app=%s", serviceName))
+		return "", fmt.Errorf("Error retrieving deployment with label app=%s", serviceName)
 	}
 
 	if len(k8sDeployments.Items) == 0 {
-		return "", errors.New(fmt.Sprintf("Cannot find deployment with label app=%s", serviceName))
+		return "", fmt.Errorf("Cannot find deployment with label app=%s", serviceName)
 	}
 
 	noOfUnavailablePods := k8sDeployments.Items[0].Status.UnavailableReplicas
 	noOfAvailablePods := k8sDeployments.Items[0].Status.AvailableReplicas
 
 	if noOfAvailablePods == 0 {
-		return "", errors.New("All pods are unavailable.")
+		return "", errors.New("All pods are unavailable")
 	}
 
 	if noOfUnavailablePods != 0 {
-		return fmt.Sprintf("There are %v pods unavailable.", noOfUnavailablePods), nil
+		return fmt.Sprintf("There are %v pods unavailable", noOfUnavailablePods), nil
 	}
 
 	return "", nil
@@ -48,12 +48,12 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
 	health, err := hs.getHealthChecksForPod(pod)
 	if err != nil {
 		errorLogger.Printf("Cannot perform healthcheck for pod. Error was: %s", err.Error())
-		return errors.New("Cannot perform healthcheck for pod.")
+		return errors.New("Cannot perform healthcheck for pod")
 	}
 
 	for _, check := range health.Checks {
 		if check.OK != true {
-			return errors.New(fmt.Sprintf("Failing check is: %s", check.Name))
+			return fmt.Errorf("Failing check is: %s", check.Name)
 		}
 	}
 
@@ -64,7 +64,7 @@ func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod) (uint8, error
 	health, err := hs.getHealthChecksForPod(pod)
 
 	if err != nil {
-		return defaultSeverity, errors.New(fmt.Sprintf("Cannot get severity for pod with name %s. Error was: %s", pod.name, err.Error()))
+		return defaultSeverity, fmt.Errorf("Cannot get severity for pod with name %s. Error was: %s", pod.name, err.Error())
 	}
 
 	finalSeverity := uint8(2)
@@ -109,7 +109,7 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod) (healthcheckResp
 	return *health, nil
 }
 
-func NewPodHealthCheck(pod pod, service service, healthcheckService healthcheckService) fthealth.Check {
+func newPodHealthCheck(pod pod, service service, healthcheckService healthcheckService) fthealth.Check {
 	return fthealth.Check{
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		Name:             pod.name,
@@ -122,7 +122,7 @@ func NewPodHealthCheck(pod pod, service service, healthcheckService healthcheckS
 	}
 }
 
-func NewServiceHealthCheck(service service, healthcheckService healthcheckService) fthealth.Check {
+func newServiceHealthCheck(service service, healthcheckService healthcheckService) fthealth.Check {
 	return fthealth.Check{
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		Name:             service.name,
