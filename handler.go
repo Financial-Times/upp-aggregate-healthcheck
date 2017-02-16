@@ -46,7 +46,7 @@ const (
 	healthcheckPath = "/__health"
 )
 
-func (h *httpHandler) handleEnableCategory(w http.ResponseWriter, r *http.Request) {
+func (h *httpHandler) updateStickyCategory(w http.ResponseWriter, r *http.Request, isEnabled bool) {
 	categoryName := r.URL.Query().Get("category-name")
 	if categoryName == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -54,14 +54,22 @@ func (h *httpHandler) handleEnableCategory(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err := h.controller.enableStickyCategory(categoryName)
+	err := h.controller.updateStickyCategory(categoryName, isEnabled)
 
-	if categoryName == "" {
+	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to enable category."))
 		errorLogger.Printf("Failed to enable category with name %s. Error was: %s", categoryName, err.Error())
 		return
 	}
+}
+
+func (h *httpHandler) handleDisableCategory(w http.ResponseWriter, r *http.Request) {
+	h.updateStickyCategory(w, r, false)
+}
+
+func (h *httpHandler) handleEnableCategory(w http.ResponseWriter, r *http.Request) {
+	h.updateStickyCategory(w, r, true)
 }
 
 func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {

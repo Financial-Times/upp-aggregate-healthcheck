@@ -30,7 +30,7 @@ type controller interface {
 	scheduleCheck(MeasuredService, *time.Timer)
 	getIndividualPodHealth(string) ([]byte, error)
 	addAck(string, string) error
-	enableStickyCategory(string) error
+	updateStickyCategory(string,bool) error
 	removeAck(string) error
 	getEnvironment() string
 	getSeverityForService(string) uint8
@@ -54,8 +54,8 @@ func (c *healthCheckController) getEnvironment() string {
 	return c.environment
 }
 
-func (c *healthCheckController) enableStickyCategory(serviceName string) error {
-	return c.healthCheckService.updateCategory(serviceName, true)
+func (c *healthCheckController) updateStickyCategory(categoryName string, isEnabled bool) error {
+	return c.healthCheckService.updateCategory(categoryName, isEnabled)
 }
 
 func (c *healthCheckController) removeAck(serviceName string) error {

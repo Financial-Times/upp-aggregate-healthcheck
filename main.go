@@ -46,8 +46,8 @@ func main() {
 func listen(httpHandler *httpHandler) {
 	r := mux.NewRouter()
 	r.HandleFunc("/add-ack", httpHandler.handleAddAck).Methods("POST")
-	r.HandleFunc("/enable-category", httpHandler.handleEnableCategory).Methods("GET")
-	//todo: add endpoint for disable category
+	r.HandleFunc("/enable-category", httpHandler.handleEnableCategory)
+	r.HandleFunc("/disable-category", httpHandler.handleDisableCategory)
 	r.HandleFunc("/rem-ack", httpHandler.handleRemoveAck)
 	r.HandleFunc("/add-ack-form", httpHandler.handleAddAckForm)
 	r.HandleFunc("/", httpHandler.handleServicesHealthCheck)
