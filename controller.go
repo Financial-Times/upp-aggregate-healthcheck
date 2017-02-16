@@ -20,13 +20,13 @@ type measuredService struct {
 
 type controller interface {
 	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
-	runServiceChecksByServiceNames([]service) []fthealth.CheckResult
+	runServiceChecksByServiceNames([]service,map[string]category) []fthealth.CheckResult
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	buildPodsHealthResult(string, bool) (fthealth.HealthResult, error)
 	runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
-	updateCachedHealth([]service)
-	scheduleCheck(measuredService, *time.Timer)
+	updateCachedHealth([]service,map[string]category)
+	scheduleCheck(measuredService, time.Duration, *time.Timer)
 	getIndividualPodHealth(string) ([]byte, error)
 	addAck(string, string) error
 	updateStickyCategory(string, bool) error
@@ -147,7 +147,7 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 	categorisedResults := make(map[string][]fthealth.CheckResult)
 	serviceNames := getServiceNamesFromCategories(categories)
 	services := c.healthCheckService.getServicesByNames(serviceNames)
-	healthChecks := c.runServiceChecksByServiceNames(services)
+	healthChecks := c.runServiceChecksByServiceNames(services,categories)
 
 	for catIndex, category := range categories {
 		if category.isSticky && category.isEnabled {
