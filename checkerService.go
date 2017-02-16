@@ -20,44 +20,29 @@ type healthcheckResponse struct {
 	}
 }
 
-func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) error {
+func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) (string, error) {
 	k8sDeployments, err := hs.k8sClient.Extensions().Deployments("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app":serviceName})})
 	if err != nil {
-		return errors.New(fmt.Sprintf("Error retrieving deployment with label app=%s", serviceName))
+		return "", errors.New(fmt.Sprintf("Error retrieving deployment with label app=%s", serviceName))
 	}
 
 	if len(k8sDeployments.Items) == 0 {
-		return errors.New(fmt.Sprintf("Cannot find deployment with label app=%s", serviceName))
+		return "", errors.New(fmt.Sprintf("Cannot find deployment with label app=%s", serviceName))
 	}
 
 	noOfUnavailablePods := k8sDeployments.Items[0].Status.UnavailableReplicas
+	noOfAvailablePods := k8sDeployments.Items[0].Status.AvailableReplicas
 
-	if noOfUnavailablePods != 0 {
-		return errors.New(fmt.Sprintf("There are %v pods unavailable.", noOfUnavailablePods))
+	if noOfAvailablePods == 0 {
+		return "", errors.New("All pods are unavailable.")
 	}
 
-	return nil
-}
+	if noOfUnavailablePods != 0 {
+		return fmt.Sprintf("There are %v pods unavailable.", noOfUnavailablePods), nil
+	}
 
-//todo: use this check (with gtgs) instead of __health
-//func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
-//
-//	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__gtg", pod.ip), nil)
-//	if err != nil {
-//		return errors.New("Error constructing GTG request: " + err.Error())
-//	}
-//
-//	resp, err := hs.httpClient.Do(req)
-//	if err != nil {
-//		return errors.New("Error performing healthcheck: " + err.Error())
-//	}
-//
-//	if resp.StatusCode != 200 {
-//		return fmt.Errorf("GTG endpoint returned non-200 status (%v)", resp.Status)
-//	}
-//
-//	return nil
-//}
+	return "", nil
+}
 
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
 	health, err := hs.getHealthChecksForPod(pod)
@@ -125,8 +110,6 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod) (healthcheckResp
 }
 
 func NewPodHealthCheck(pod pod, service service, healthcheckService healthcheckService) fthealth.Check {
-	//severity := service.severity
-
 	return fthealth.Check{
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		Name:             pod.name,
@@ -147,7 +130,7 @@ func NewServiceHealthCheck(service service, healthcheckService healthcheckServic
 		Severity:         defaultSeverity,
 		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
-			return "", healthcheckService.checkServiceHealth(service.name)
+			return healthcheckService.checkServiceHealth(service.name)
 		},
 	}
 }

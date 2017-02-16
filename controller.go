@@ -38,9 +38,6 @@ type controller interface {
 	computeSeverityByPods([]pod) uint8
 }
 
-func (c *healthCheckController) getEnvironment() string {
-	return c.environment
-}
 
 func InitializeController(environment string) *healthCheckController {
 	service := InitializeHealthCheckService()
@@ -51,6 +48,10 @@ func InitializeController(environment string) *healthCheckController {
 		environment: environment,
 		measuredServices: measuredServices,
 	}
+}
+
+func (c *healthCheckController) getEnvironment() string {
+	return c.environment
 }
 
 func (c *healthCheckController) enableStickyCategory(serviceName string) error {
