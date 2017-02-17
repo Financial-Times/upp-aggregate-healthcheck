@@ -16,12 +16,12 @@ type httpHandler struct {
 
 //IndividualHealthcheckParams struct used to populate HTML template with individual checks
 type IndividualHealthcheckParams struct {
-	Name          string
-	Status        string
-	LastUpdated   string
-	MoreInfoPath  string
-	AckMessage    string
-	Output        string
+	Name         string
+	Status       string
+	LastUpdated  string
+	MoreInfoPath string
+	AckMessage   string
+	Output       string
 }
 
 //AggregateHealthcheckParams struct used to populate HTML template with aggregate checks
@@ -43,9 +43,10 @@ type AddAckForm struct {
 var defaultCategories = []string{"default"}
 
 const (
-	timeLayout              = "15:04:05 MST"
-	healthcheckTemplateName = "healthcheck-template.html"
-	healthcheckPath         = "/__health"
+	timeLayout = "15:04:05 MST"
+	healthcheckTemplateName = "html-templates/healthcheck-template.html"
+	addAckMsgTemplatePath = "html-templates/add-ack-message-form-template.html"
+	healthcheckPath = "/__health"
 )
 
 func (h *httpHandler) updateStickyCategory(w http.ResponseWriter, r *http.Request, isEnabled bool) {
@@ -122,7 +123,7 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Add("Content-Type", "text/html")
-	htmlTemplate := parseHTMLTemplate(w, "add-ack-message-form-template.html")
+	htmlTemplate := parseHTMLTemplate(w, addAckMsgTemplatePath)
 	if htmlTemplate == nil {
 		return
 	}
@@ -457,7 +458,7 @@ func getCategoriesString(categories map[string]category) string {
 
 	len := len(formattedCategoryNames)
 	if len > 0 {
-		formattedCategoryNames = formattedCategoryNames[:len-1]
+		formattedCategoryNames = formattedCategoryNames[:len - 1]
 	}
 
 	return formattedCategoryNames
