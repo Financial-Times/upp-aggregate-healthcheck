@@ -14,7 +14,6 @@ const (
 
 func newMeasuredService(service service) measuredService {
 	cachedHealth := newCachedHealth()
-	//bufferedHealths := NewBufferedHealths()
 	go cachedHealth.maintainLatest()
 	return measuredService{service, cachedHealth}
 }

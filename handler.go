@@ -18,7 +18,6 @@ type httpHandler struct {
 type IndividualHealthcheckParams struct {
 	Name          string
 	Status        string
-	AvailablePods string
 	LastUpdated   string
 	MoreInfoPath  string
 	AckMessage    string
@@ -364,7 +363,6 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult) ([]Individua
 		hc := IndividualHealthcheckParams{
 			Name:          individualCheck.Name,
 			Status:        getServiceStatusFromCheck(individualCheck),
-			AvailablePods: "3/3",
 			LastUpdated:   individualCheck.LastUpdated.Format(timeLayout),
 			MoreInfoPath:  fmt.Sprintf("/__pods-health?service-name=%s", individualCheck.Name),
 			AckMessage:    individualCheck.Ack,
@@ -403,7 +401,7 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult) ([]IndividualHea
 func populateAggregatePodChecks(healthResult fthealth.HealthResult, environment string, serviceName string) *AggregateHealthcheckParams {
 	individualChecks, ackCount := populateIndividualPodChecks(healthResult.Checks)
 	aggregateChecks := &AggregateHealthcheckParams{
-		PageTitle:               fmt.Sprintf("CoCo %s cluster's pods of service %s", environment, serviceName),
+		PageTitle:               fmt.Sprintf("UPP %s cluster's pods of service %s", environment, serviceName),
 		GeneralStatus:           getGeneralStatus(healthResult),
 		RefreshFromCachePath:    fmt.Sprintf("/__pods-health?service-name=%s", serviceName),
 		RefreshWithoutCachePath: fmt.Sprintf("/__pods-health?cache=false&service-name=%s", serviceName),
@@ -415,7 +413,7 @@ func populateAggregatePodChecks(healthResult fthealth.HealthResult, environment 
 }
 
 func buildPageTitle(environment string, categories string) string {
-	return fmt.Sprintf("CoCo %s cluster's services from categories %s", environment, categories)
+	return fmt.Sprintf("UPP %s cluster's services from categories %s", environment, categories)
 }
 
 func getServiceStatusFromCheck(check fthealth.CheckResult) string {

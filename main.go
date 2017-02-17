@@ -59,7 +59,7 @@ func listen(httpHandler *httpHandler) {
 
 	err := http.ListenAndServe(":8080", r)
 	if err != nil {
-		panic(fmt.Sprintf("Cannotset up HTTP listener. Error was: %v", err))
+		panic(fmt.Sprintf("Cannot set up HTTP listener. Error was: %v", err))
 	}
 }
 
