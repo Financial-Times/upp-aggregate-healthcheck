@@ -80,7 +80,7 @@ func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod, appPort int32
 }
 
 func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (healthcheckResponse, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%s/__health", pod.ip,appPort), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/__health", pod.ip,appPort), nil)
 	if err != nil {
 		return healthcheckResponse{}, errors.New("Error constructing healthcheck request: " + err.Error())
 	}
