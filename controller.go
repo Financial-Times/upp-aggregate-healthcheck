@@ -32,9 +32,9 @@ type controller interface {
 	updateStickyCategory(string, bool) error
 	removeAck(string) error
 	getEnvironment() string
-	getSeverityForService(string) uint8
-	getSeverityForPod(string) uint8
-	computeSeverityByPods([]pod) uint8
+	getSeverityForService(string,int32) uint8
+	getSeverityForPod(string,int32) uint8
+	computeSeverityByPods([]pod,int32) uint8
 }
 
 func initializeController(environment string) *healthCheckController {

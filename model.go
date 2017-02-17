@@ -11,6 +11,7 @@ type service struct {
 	name     string
 	severity uint8
 	ack      string
+	appPort  int32
 }
 
 type category struct {

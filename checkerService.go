@@ -44,8 +44,8 @@ func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) (string,
 	return "", nil
 }
 
-func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
-	health, err := hs.getHealthChecksForPod(pod)
+func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
+	health, err := hs.getHealthChecksForPod(pod,appPort)
 	if err != nil {
 		errorLogger.Printf("Cannot perform healthcheck for pod. Error was: %s", err.Error())
 		return errors.New("Cannot perform healthcheck for pod")
@@ -60,8 +60,8 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod) error {
 	return nil
 }
 
-func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod) (uint8, error) {
-	health, err := hs.getHealthChecksForPod(pod)
+func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod, appPort int32) (uint8, error) {
+	health, err := hs.getHealthChecksForPod(pod,appPort)
 
 	if err != nil {
 		return defaultSeverity, fmt.Errorf("Cannot get severity for pod with name %s. Error was: %s", pod.name, err.Error())
@@ -79,8 +79,8 @@ func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod) (uint8, error
 	return finalSeverity, nil
 }
 
-func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod) (healthcheckResponse, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__health", pod.ip), nil)
+func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (healthcheckResponse, error) {
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%s/__health", pod.ip,appPort), nil)
 	if err != nil {
 		return healthcheckResponse{}, errors.New("Error constructing healthcheck request: " + err.Error())
 	}
@@ -117,7 +117,7 @@ func newPodHealthCheck(pod pod, service service, healthcheckService healthcheckS
 		Severity:         defaultSeverity,
 		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
-			return "", healthcheckService.checkPodHealth(pod)
+			return "", healthcheckService.checkPodHealth(pod,service.appPort)
 		},
 	}
 }

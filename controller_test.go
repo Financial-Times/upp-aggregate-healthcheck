@@ -75,15 +75,15 @@ func (m *MockService) checkServiceHealth(string) (string, error) {
 	return "", errors.New("Error reading healthcheck response: ")
 }
 
-func (m *MockService) checkPodHealth(pod) error {
+func (m *MockService) checkPodHealth(pod,int32) error {
 	return errors.New("Error reading healthcheck response: ")
 }
 
-func (m *MockService) getIndividualPodSeverity(pod) (uint8, error) {
+func (m *MockService) getIndividualPodSeverity(pod,int32) (uint8, error) {
 	return 1, nil
 }
 
-func (m *MockService) getHealthChecksForPod(pod) (healthcheckResponse, error) {
+func (m *MockService) getHealthChecksForPod(pod,int32) (healthcheckResponse, error) {
 	return healthcheckResponse{}, nil
 }
 

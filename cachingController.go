@@ -78,7 +78,7 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 	healthResult.Ack = mService.service.ack
 
 	if healthResult.Ok != true {
-		severity := c.getSeverityForService(healthResult.Name)
+		severity := c.getSeverityForService(healthResult.Name, mService.service.appPort)
 		healthResult.Severity = severity
 	}
 

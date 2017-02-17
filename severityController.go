@@ -1,6 +1,6 @@
 package main
 
-func (c *healthCheckController) getSeverityForService(serviceName string) uint8 {
+func (c *healthCheckController) getSeverityForService(serviceName string, appPort int32) uint8 {
 	pods, err := c.healthCheckService.getPodsForService(serviceName)
 
 	if err != nil {
@@ -8,10 +8,10 @@ func (c *healthCheckController) getSeverityForService(serviceName string) uint8 
 		return defaultSeverity
 	}
 
-	return c.computeSeverityByPods(pods)
+	return c.computeSeverityByPods(pods, appPort)
 }
 
-func (c *healthCheckController) getSeverityForPod(podName string) uint8 {
+func (c *healthCheckController) getSeverityForPod(podName string, appPort int32) uint8 {
 	podToBeChecked, err := c.healthCheckService.getPodByName(podName)
 
 	if err != nil {
@@ -19,13 +19,13 @@ func (c *healthCheckController) getSeverityForPod(podName string) uint8 {
 		return defaultSeverity
 	}
 
-	return c.computeSeverityByPods([]pod{podToBeChecked})
+	return c.computeSeverityByPods([]pod{podToBeChecked}, appPort)
 }
 
-func (c *healthCheckController) computeSeverityByPods(pods []pod) uint8 {
+func (c *healthCheckController) computeSeverityByPods(pods []pod, appPort int32) uint8 {
 	finalSeverity := defaultSeverity
 	for _, pod := range pods {
-		individualPodSeverity, err := c.healthCheckService.getIndividualPodSeverity(pod)
+		individualPodSeverity, err := c.healthCheckService.getIndividualPodSeverity(pod, appPort)
 
 		if err != nil {
 			warnLogger.Printf("Cannot get individual pod severity, skipping pod. Error was: %s", err.Error())

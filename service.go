@@ -26,18 +26,19 @@ type healthcheckService interface {
 	getPodsForService(string) ([]pod, error)
 	getPodByName(string) (pod, error)
 	checkServiceHealth(string) (string, error)
-	checkPodHealth(pod) error
-	getIndividualPodSeverity(pod) (uint8, error)
-	getHealthChecksForPod(pod) (healthcheckResponse, error)
+	checkPodHealth(pod, int32) error
+	getIndividualPodSeverity(pod, int32) (uint8, error)
+	getHealthChecksForPod(pod, int32) (healthcheckResponse, error)
 	addAck(string, string) error
 	removeAck(string) error
 	getHTTPClient() *http.Client
 }
 
 const (
-	defaultRefreshRate       = 60
-	defaultSeverity          = uint8(2)
+	defaultRefreshRate = 60
+	defaultSeverity = uint8(2)
 	ackMessagesConfigMapName = "healthcheck.ack.messages"
+	defaultAppPort = 8080
 )
 
 func initializeHealthCheckService() *k8sHealthcheckService {
@@ -280,9 +281,20 @@ func populateService(k8sService v1.Service, acks map[string]string) service {
 	service := service{
 		name: k8sService.Name,
 		ack:  acks[k8sService.Name],
+		appPort: getAppPortForService(k8sService),
 	}
 
 	return service
+}
+func getAppPortForService(k8sService v1.Service) int32 {
+	servicePorts := k8sService.Spec.Ports
+	for _, port := range servicePorts {
+		if port.Name == "app" {
+			return port.TargetPort.IntVal
+		}
+	}
+
+	return defaultAppPort
 }
 
 func getAcks(k8sClient *kubernetes.Clientset) (map[string]string, error) {

@@ -58,7 +58,7 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 
 	for i, check := range healthChecks {
 		if check.Ok != true {
-			severity := c.getSeverityForPod(check.Name)
+			severity := c.getSeverityForPod(check.Name, service.appPort)
 			healthChecks[i].Severity = severity
 		}
 
