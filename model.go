@@ -3,8 +3,9 @@ package main
 import "time"
 
 type pod struct {
-	name string
-	ip   string
+	name        string
+	ip          string
+	serviceName string
 }
 
 type service struct {

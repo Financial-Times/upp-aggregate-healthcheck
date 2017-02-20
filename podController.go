@@ -77,7 +77,16 @@ func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, 
 		return nil, errors.New("Error retrieving pod: " + err.Error())
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:8080/__health", pod.ip), nil)
+	services := c.healthCheckService.getServicesByNames([]string{pod.serviceName})
+
+	appPort := defaultAppPort
+	if len(services) > 0 {
+		appPort = services[0].appPort
+	} else {
+		warnLogger.Printf("Cannot get service with name %s. Using default app port [%d]", pod.serviceName, defaultAppPort)
+	}
+
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/__health", pod.ip, appPort), nil)
 	if err != nil {
 		return nil, errors.New("Error constructing healthcheck request: " + err.Error())
 	}

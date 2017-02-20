@@ -38,7 +38,7 @@ const (
 	defaultRefreshRate = 60
 	defaultSeverity = uint8(2)
 	ackMessagesConfigMapName = "healthcheck.ack.messages"
-	defaultAppPort = 8080
+	defaultAppPort = int32(8080)
 )
 
 func initializeHealthCheckService() *k8sHealthcheckService {
@@ -237,6 +237,7 @@ func populatePod(k8sPod v1.Pod) pod {
 	return pod{
 		name: k8sPod.Name,
 		ip:   k8sPod.Status.PodIP,
+		serviceName:k8sPod.Labels["app"],
 	}
 }
 
