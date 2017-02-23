@@ -60,12 +60,13 @@ func (h *httpHandler) updateStickyCategory(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	infoLogger.Printf("Updating category [%s] with isEnabled flag value of [%t]", categoryName, isEnabled)
 	err := h.controller.updateStickyCategory(categoryName, isEnabled)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		w.Write([]byte("Failed to enable category."))
-		errorLogger.Printf("Failed to enable category with name %s. Error was: %s", categoryName, err.Error())
+		errorLogger.Printf("Failed to update category with name %s. Error was: %s", categoryName, err.Error())
 		return
 	}
 }
@@ -86,11 +87,12 @@ func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	infoLogger.Printf("Removing ack for service with name %s", serviceName)
 	err := h.controller.removeAck(serviceName)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot remove acknowledge for service with name %s. Error was: %s", serviceName, err.Error())
+		errorLogger.Printf("Cannot remove ack for service with name %s. Error was: %s", serviceName, err.Error())
 		return
 	}
 
@@ -106,6 +108,7 @@ func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	infoLogger.Printf("Acking service with name %s", serviceName)
 	err := h.controller.addAck(serviceName, ackMessage)
 
 	if err != nil {
@@ -146,20 +149,23 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 
 func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.Request) {
 	categories := parseCategories(r.URL)
-	healthResult, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache(r.URL))
+	useCache := useCache(r.URL)
+	healthResult, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache)
 
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot build services health result, error was: %v", err.Error())
-		return
-	}
-
-	if len(validCategories) == 0 {
+	if len(validCategories) == 0 && err == nil {
 		w.WriteHeader(http.StatusBadRequest)
 
 		if r.Header.Get("Accept") != "application/json" {
 			w.Write([]byte("Provided categories are not valid."))
 		}
+		return
+	}
+
+	infoLogger.Printf("Checking services health for categories [%s], useCache: %t", validCategories, useCache)
+
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		errorLogger.Printf("Cannot build services health result, error was: %v", err.Error())
 		return
 	}
 
@@ -183,7 +189,10 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	healthResult, err := h.controller.buildPodsHealthResult(serviceName, useCache(r.URL))
+	useCache := useCache(r.URL)
+	healthResult, err := h.controller.buildPodsHealthResult(serviceName, useCache)
+
+	infoLogger.Printf("Checking pods health for service [%s], useCache: %t", serviceName, useCache)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot perform checks for service with name %s, error was: %v", serviceName, err.Error())
@@ -208,6 +217,7 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 		return
 	}
 
+	infoLogger.Printf("Retrieving individual pod health check for pod with name %s", podName)
 	podHealth, err := h.controller.getIndividualPodHealth(podName)
 
 	if err != nil {
@@ -222,15 +232,17 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 
 func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
 	categories := parseCategories(r.URL)
-	healthResults, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache(r.URL))
+	useCache := useCache(r.URL)
+	healthResults, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache)
 
-	if err != nil {
-		w.WriteHeader(http.StatusServiceUnavailable)
+	if len(validCategories) == 0  && err == nil {
+		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	if len(validCategories) == 0 {
-		w.WriteHeader(http.StatusBadRequest)
+	infoLogger.Printf("Handling gtg for categories %s, useCache: %t", validCategories, useCache)
+	if err != nil {
+		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 

@@ -26,11 +26,9 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 	var servicesThatAreNotInCache []service
 	for _, service := range services {
 		if mService, ok := c.measuredServices[service.name]; ok {
-			infoLogger.Printf("Found service with name %s in cache", service.name)
 			checkResult := <-mService.cachedHealth.toReadFromCache
 			checkResults = append(checkResults, checkResult)
 		} else {
-			infoLogger.Printf("Service with name %s was not found in cache", service.name)
 			servicesThatAreNotInCache = append(servicesThatAreNotInCache, service)
 		}
 	}

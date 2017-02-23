@@ -207,19 +207,19 @@ func populateCategory(k8sCatData map[string]string) category {
 	categoryName := k8sCatData["category.name"]
 	isSticky, err := strconv.ParseBool(k8sCatData["category.issticky"])
 	if err != nil {
-		warnLogger.Printf("Failed to convert isSticky flag from string to bool for category with name [%s]. Using default value of false. Error was: %v", categoryName, err)
+		infoLogger.Printf("isSticky flag is not set for category with name [%s]. Using default value of false. Error was: %v", categoryName, err)
 		isSticky = false
 	}
 
 	isEnabled, err := strconv.ParseBool(k8sCatData["category.enabled"])
 	if err != nil {
-		warnLogger.Printf("Failed to convert isEnabled flag from string to bool for category with name [%s]. Using default value of true. Error was: %v", categoryName, err)
+		infoLogger.Printf("isEnabled flag is not set for category with name for category with name [%s]. Using default value of true. Error was: %v", categoryName, err)
 		isEnabled = true
 	}
 
 	refreshRateSeconds, err := strconv.ParseInt(k8sCatData["category.refreshrate"], 10, 64)
 	if err != nil {
-		warnLogger.Printf("Failed to convert refreshRate from string to int for category with name [%s]. Using default refresh rate. Error was: %v", categoryName, err)
+		infoLogger.Printf("refreshRate is not set for category with name [%s]. Using default refresh rate. Error was: %v", categoryName, err)
 		refreshRateSeconds = defaultRefreshRate
 	}
 
