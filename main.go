@@ -26,15 +26,23 @@ func main() {
 		EnvVar: "ENVIRONMENT",
 	})
 
+	pathPrefix := app.String(cli.StringOpt{
+		Name:   "pathPrefix",
+		Value:  "",
+		Desc:   "Path prefix for all endpoints",
+		EnvVar: "PATH_PREFIX",
+	})
+
 	app.Action = func() {
 		initLogs(os.Stdout, os.Stdout, os.Stderr)
 
 		controller := initializeController(*environment)
 		handler := &httpHandler{
 			controller: controller,
+			pathPrefix : *pathPrefix,
 		}
 
-		listen(handler)
+		listen(handler, *pathPrefix)
 	}
 
 	err := app.Run(os.Args)
@@ -43,19 +51,20 @@ func main() {
 	}
 }
 
-func listen(httpHandler *httpHandler) {
+func listen(httpHandler *httpHandler, pathPrefix string) {
 	r := mux.NewRouter()
-	r.HandleFunc("/add-ack", httpHandler.handleAddAck).Methods("POST")
-	r.HandleFunc("/enable-category", httpHandler.handleEnableCategory)
-	r.HandleFunc("/disable-category", httpHandler.handleDisableCategory)
-	r.HandleFunc("/rem-ack", httpHandler.handleRemoveAck)
-	r.HandleFunc("/add-ack-form", httpHandler.handleAddAckForm)
-	r.HandleFunc("/", httpHandler.handleServicesHealthCheck)
-	r.HandleFunc("/__health", httpHandler.handleServicesHealthCheck)
-	r.HandleFunc("/__pods-health", httpHandler.handlePodsHealthCheck)
-	r.HandleFunc("/__pod-individual-health", httpHandler.handleIndividualPodHealthCheck)
-	r.HandleFunc("/__gtg", httpHandler.handleGoodToGo)
-	r.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("resources/"))))
+	s := r.PathPrefix(pathPrefix).Subrouter()
+	s.HandleFunc("/add-ack", httpHandler.handleAddAck).Methods("POST")
+	s.HandleFunc("/enable-category", httpHandler.handleEnableCategory)
+	s.HandleFunc("/disable-category", httpHandler.handleDisableCategory)
+	s.HandleFunc("/rem-ack", httpHandler.handleRemoveAck)
+	s.HandleFunc("/add-ack-form", httpHandler.handleAddAckForm)
+	s.HandleFunc("/", httpHandler.handleServicesHealthCheck)
+	s.HandleFunc("/__health", httpHandler.handleServicesHealthCheck)
+	s.HandleFunc("/__pods-health", httpHandler.handlePodsHealthCheck)
+	s.HandleFunc("/__pod-individual-health", httpHandler.handleIndividualPodHealthCheck)
+	s.HandleFunc("/__gtg", httpHandler.handleGoodToGo)
+	s.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("resources/"))))
 
 	err := http.ListenAndServe(":8080", r)
 	if err != nil {
