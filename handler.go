@@ -96,7 +96,7 @@ func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "__health?cache=false", http.StatusMovedPermanently)
+	http.Redirect(w, r, fmt.Sprintf("%s?cache=false", h.pathPrefix), http.StatusMovedPermanently)
 }
 
 func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
@@ -116,7 +116,7 @@ func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
 		errorLogger.Printf("Cannot add acknowledge for service with name %s. Error was: %s", serviceName, err.Error())
 	}
 
-	http.Redirect(w, r, "__health?cache=false", http.StatusMovedPermanently)
+	http.Redirect(w, r, fmt.Sprintf("%s?cache=false", h.pathPrefix), http.StatusMovedPermanently)
 }
 
 func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
@@ -161,7 +161,7 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	infoLogger.Printf("Checking services health for categories [%s], useCache: %t", validCategories, useCache)
+	infoLogger.Printf("Checking services health, useCache: %t", useCache)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -395,7 +395,7 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix s
 }
 
 func buildAddOrRemoveAckPath(serviceName string, pathPrefix string, ackMessage string) (string, string) {
-	if ackMessage != "" {
+	if ackMessage == "" {
 		return fmt.Sprintf("%s/add-ack-form?service-name=%s", pathPrefix, serviceName), "Ack service"
 	}
 
