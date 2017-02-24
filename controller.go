@@ -20,21 +20,21 @@ type measuredService struct {
 
 type controller interface {
 	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
-	runServiceChecksByServiceNames([]service,map[string]category) []fthealth.CheckResult
+	runServiceChecksByServiceNames([]service, map[string]category) []fthealth.CheckResult
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	buildPodsHealthResult(string, bool) (fthealth.HealthResult, error)
 	runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
-	updateCachedHealth([]service,map[string]category)
+	updateCachedHealth([]service, map[string]category)
 	scheduleCheck(measuredService, time.Duration, *time.Timer)
-	getIndividualPodHealth(string) ([]byte, error)
+	getIndividualPodHealth(string) ([]byte, string, error)
 	addAck(string, string) error
 	updateStickyCategory(string, bool) error
 	removeAck(string) error
 	getEnvironment() string
-	getSeverityForService(string,int32) uint8
-	getSeverityForPod(string,int32) uint8
-	computeSeverityByPods([]pod,int32) uint8
+	getSeverityForService(string, int32) uint8
+	getSeverityForPod(string, int32) uint8
+	computeSeverityByPods([]pod, int32) uint8
 }
 
 func initializeController(environment string) *healthCheckController {
@@ -147,7 +147,7 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 	categorisedResults := make(map[string][]fthealth.CheckResult)
 	serviceNames := getServiceNamesFromCategories(categories)
 	services := c.healthCheckService.getServicesByNames(serviceNames)
-	healthChecks := c.runServiceChecksByServiceNames(services,categories)
+	healthChecks := c.runServiceChecksByServiceNames(services, categories)
 
 	for catIndex, category := range categories {
 		if category.isSticky && category.isEnabled {
@@ -157,7 +157,11 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 						infoLogger.Printf("Sticky category [%s] is unhealthy, disabling it.", category.name)
 						category.isEnabled = false
 						categories[catIndex] = category
-						c.healthCheckService.updateCategory(category.name, false)
+
+						err := c.healthCheckService.updateCategory(category.name, false)
+						if err != nil {
+							errorLogger.Printf("Cannot disable sticky category with name %s. Error was: %s", category.name, err.Error())
+						}
 					}
 				}
 			}

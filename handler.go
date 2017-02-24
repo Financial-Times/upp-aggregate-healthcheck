@@ -50,6 +50,7 @@ const (
 	healthcheckTemplateName = "html-templates/healthcheck-template.html"
 	addAckMsgTemplatePath = "html-templates/add-ack-message-form-template.html"
 	healthcheckPath = "/__health"
+	jsonContentType = "application/json"
 )
 
 func (h *httpHandler) updateStickyCategory(w http.ResponseWriter, r *http.Request, isEnabled bool) {
@@ -161,7 +162,7 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	infoLogger.Printf("Checking services health, useCache: %t", useCache)
+	infoLogger.Printf("Checking services health for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -169,7 +170,7 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	if r.Header.Get("Accept") == "application/json" {
+	if r.Header.Get("Accept") == jsonContentType {
 		buildHealthcheckJSONResponse(w, healthResult)
 	} else {
 		env := h.controller.getEnvironment()
@@ -183,7 +184,7 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 	if serviceName == "" {
 		w.WriteHeader(http.StatusBadRequest)
 
-		if r.Header.Get("Accept") != "application/json" {
+		if r.Header.Get("Accept") != jsonContentType {
 			w.Write([]byte("Couldn't get service name from url."))
 		}
 		return
@@ -200,7 +201,7 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	if r.Header.Get("Accept") == "application/json" {
+	if r.Header.Get("Accept") == jsonContentType {
 		buildHealthcheckJSONResponse(w, healthResult)
 	} else {
 		env := h.controller.getEnvironment()
@@ -218,7 +219,7 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 	}
 
 	infoLogger.Printf("Retrieving individual pod health check for pod with name %s", podName)
-	podHealth, err := h.controller.getIndividualPodHealth(podName)
+	podHealth, contentTypeHeader, err := h.controller.getIndividualPodHealth(podName)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -227,6 +228,7 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 		return
 	}
 
+	w.Header().Add("Content-Type", contentTypeHeader)
 	w.Write(podHealth)
 }
 
@@ -240,14 +242,14 @@ func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	infoLogger.Printf("Handling gtg for categories %s, useCache: %t", validCategories, useCache)
+	infoLogger.Printf("Handling gtg for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
 
 	for _, validCategory := range validCategories {
-		if validCategory.isEnabled == false {
+		if !validCategory.isEnabled {
 			w.WriteHeader(http.StatusServiceUnavailable)
 			return
 		}

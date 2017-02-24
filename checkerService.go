@@ -45,14 +45,14 @@ func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) (string,
 }
 
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
-	health, err := hs.getHealthChecksForPod(pod,appPort)
+	health, err := hs.getHealthChecksForPod(pod, appPort)
 	if err != nil {
 		errorLogger.Printf("Cannot perform healthcheck for pod. Error was: %s", err.Error())
 		return errors.New("Cannot perform healthcheck for pod")
 	}
 
 	for _, check := range health.Checks {
-		if check.OK != true {
+		if !check.OK {
 			return fmt.Errorf("Failing check is: %s", check.Name)
 		}
 	}
@@ -61,7 +61,7 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
 }
 
 func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod, appPort int32) (uint8, error) {
-	health, err := hs.getHealthChecksForPod(pod,appPort)
+	health, err := hs.getHealthChecksForPod(pod, appPort)
 
 	if err != nil {
 		return defaultSeverity, fmt.Errorf("Cannot get severity for pod with name %s. Error was: %s", pod.name, err.Error())
@@ -69,7 +69,7 @@ func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod, appPort int32
 
 	finalSeverity := uint8(2)
 	for _, check := range health.Checks {
-		if check.OK != true {
+		if !check.OK {
 			if check.Severity < finalSeverity {
 				return check.Severity, nil
 			}
@@ -80,7 +80,7 @@ func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod, appPort int32
 }
 
 func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (healthcheckResponse, error) {
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/__health", pod.ip,appPort), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/__health", pod.ip, appPort), nil)
 	if err != nil {
 		return healthcheckResponse{}, errors.New("Error constructing healthcheck request: " + err.Error())
 	}
@@ -117,7 +117,7 @@ func newPodHealthCheck(pod pod, service service, healthcheckService healthcheckS
 		Severity:         defaultSeverity,
 		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
-			return "", healthcheckService.checkPodHealth(pod,service.appPort)
+			return "", healthcheckService.checkPodHealth(pod, service.appPort)
 		},
 	}
 }

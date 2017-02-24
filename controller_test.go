@@ -39,12 +39,10 @@ func (m *MockService) getServicesByNames(serviceNames []string) []service {
 	services := []service{
 		{
 			name:     "test-service-name",
-			severity: 1,
 			ack:      "test ack",
 		},
 		{
 			name:     "test-service-name-2",
-			severity: 2,
 		},
 	}
 

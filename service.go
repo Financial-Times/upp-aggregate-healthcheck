@@ -141,8 +141,8 @@ func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 		return pod{}, fmt.Errorf("Pod with name %s was not found in cluster, error was %v", podName, err.Error())
 	}
 
-	pod := populatePod(k8sPods.Items[0])
-	return pod, nil
+	p := populatePod(k8sPods.Items[0])
+	return p, nil
 }
 
 func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []service {
@@ -175,8 +175,8 @@ func (hs *k8sHealthcheckService) getPodsForService(serviceName string) ([]pod, e
 
 	pods := []pod{}
 	for _, k8sPod := range k8sPods.Items {
-		pod := populatePod(k8sPod)
-		pods = append(pods, pod)
+		p := populatePod(k8sPod)
+		pods = append(pods, p)
 	}
 
 	return pods, nil
@@ -192,8 +192,8 @@ func (hs *k8sHealthcheckService) getCategories() (map[string]category, error) {
 	}
 
 	for _, k8sCategory := range k8sCategories.Items {
-		category := populateCategory(k8sCategory.Data)
-		categories[category.name] = category
+		c := populateCategory(k8sCategory.Data)
+		categories[c.name] = c
 	}
 
 	return categories, nil
@@ -259,8 +259,8 @@ func getServicesWithNames(k8sServices []v1.Service, serviceNames []string, acks 
 		if err != nil {
 			errorLogger.Printf("Service with name [%s] cannot be found in k8s services. Error was: %v", serviceName, err)
 		} else {
-			service := populateService(k8sService, acks)
-			services = append(services, service)
+			s := populateService(k8sService, acks)
+			services = append(services, s)
 		}
 	}
 
@@ -271,21 +271,19 @@ func getAllServices(k8sServices []v1.Service, acks map[string]string) []service 
 	infoLogger.Print("Using category default, retrieving all services.")
 	services := []service{}
 	for _, k8sService := range k8sServices {
-		service := populateService(k8sService, acks)
-		services = append(services, service)
+		s := populateService(k8sService, acks)
+		services = append(services, s)
 	}
 
 	return services
 }
 
 func populateService(k8sService v1.Service, acks map[string]string) service {
-	service := service{
+	return service{
 		name: k8sService.Name,
 		ack:  acks[k8sService.Name],
 		appPort: getAppPortForService(k8sService),
 	}
-
-	return service
 }
 func getAppPortForService(k8sService v1.Service) int32 {
 	servicePorts := k8sService.Spec.Ports

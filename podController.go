@@ -48,63 +48,65 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 	}
 
 	var checks []fthealth.Check
-	service := services[0]
+	serviceToBeChecked := services[0]
 	for _, pod := range pods {
-		check := newPodHealthCheck(pod, service, c.healthCheckService)
+		check := newPodHealthCheck(pod, serviceToBeChecked, c.healthCheckService)
 		checks = append(checks, check)
 	}
 
 	healthChecks := fthealth.RunCheck("Forced check run", "", true, checks...).Checks
 
 	for i, check := range healthChecks {
-		if check.Ok != true {
-			severity := c.getSeverityForPod(check.Name, service.appPort)
+		if !check.Ok {
+			severity := c.getSeverityForPod(check.Name, serviceToBeChecked.appPort)
 			healthChecks[i].Severity = severity
 		}
 
-		if service.ack != "" {
-			healthChecks[i].Ack = service.ack
+		if serviceToBeChecked.ack != "" {
+			healthChecks[i].Ack = serviceToBeChecked.ack
 		}
 	}
 
 	return healthChecks, nil
 }
 
-func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, error) {
+func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, string, error) {
 
-	pod, err := c.healthCheckService.getPodByName(podName)
+	podToBeChecked, err := c.healthCheckService.getPodByName(podName)
 	if err != nil {
-		return nil, errors.New("Error retrieving pod: " + err.Error())
+		return nil, "", errors.New("Error retrieving pod: " + err.Error())
 	}
 
-	services := c.healthCheckService.getServicesByNames([]string{pod.serviceName})
+	services := c.healthCheckService.getServicesByNames([]string{podToBeChecked.serviceName})
 
 	appPort := defaultAppPort
 	if len(services) > 0 {
 		appPort = services[0].appPort
 	} else {
-		warnLogger.Printf("Cannot get service with name %s. Using default app port [%d]", pod.serviceName, defaultAppPort)
+		warnLogger.Printf("Cannot get service with name %s. Using default app port [%d]", podToBeChecked.serviceName, defaultAppPort)
 	}
 
-	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/__health", pod.ip, appPort), nil)
+	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/__health", podToBeChecked.ip, appPort), nil)
 	if err != nil {
-		return nil, errors.New("Error constructing healthcheck request: " + err.Error())
+		return nil, "", errors.New("Error constructing healthcheck request: " + err.Error())
 	}
 
 	resp, err := c.healthCheckService.getHTTPClient().Do(req)
 	if err != nil {
-		return nil, errors.New("Error performing healthcheck: " + err.Error())
+		return nil, "", errors.New("Error performing healthcheck: " + err.Error())
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("Healthcheck endpoint returned non-200 status (%v)", resp.Status)
+		return nil, "", fmt.Errorf("Healthcheck endpoint returned non-200 status (%v)", resp.Status)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
 	defer resp.Body.Close()
 	if err != nil {
-		return nil, errors.New("Error reading healthcheck response: " + err.Error())
+		return nil, "", errors.New("Error reading healthcheck response: " + err.Error())
 	}
 
-	return body, nil
+	contentTypeResponseHeader := resp.Header.Get("Content-Type")
+
+	return body, contentTypeResponseHeader, nil
 }

@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	defaultRefreshPeriod = time.Duration(60 * time.Second)
+	defaultRefreshPeriod = 60 * time.Second
 )
 
 func newMeasuredService(service service) measuredService {
@@ -35,10 +35,7 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 
 	if len(servicesThatAreNotInCache) != 0 {
 		notCachedChecks := c.runServiceChecksByServiceNames(servicesThatAreNotInCache, categories)
-
-		for _, check := range notCachedChecks {
-			checkResults = append(checkResults, check)
-		}
+		checkResults = append(checkResults, notCachedChecks...)
 	}
 
 	return checkResults, categorisedResults
@@ -75,7 +72,7 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 
 	healthResult.Ack = mService.service.ack
 
-	if healthResult.Ok != true {
+	if !healthResult.Ok {
 		severity := c.getSeverityForService(healthResult.Name, mService.service.appPort)
 		healthResult.Severity = severity
 	}
@@ -86,6 +83,7 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 }
 
 func findShortestPeriod(categories map[string]category) time.Duration {
+
 	if len(categories) == 0 {
 		return defaultRefreshPeriod
 	}

@@ -9,10 +9,9 @@ type pod struct {
 }
 
 type service struct {
-	name     string
-	severity uint8
-	ack      string
-	appPort  int32
+	name    string
+	ack     string
+	appPort int32
 }
 
 type category struct {
