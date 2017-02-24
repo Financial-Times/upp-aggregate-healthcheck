@@ -90,7 +90,12 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 		return healthcheckResponse{}, errors.New("Error performing healthcheck request: " + err.Error())
 	}
 
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			errorLogger.Printf("Cannot close response body reader. Error was: %v", err.Error())
+		}
+	}()
 
 	if resp.StatusCode != 200 {
 		return healthcheckResponse{}, fmt.Errorf("Healthcheck endpoint returned non-200 status (%v)", resp.StatusCode)

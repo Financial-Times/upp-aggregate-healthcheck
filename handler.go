@@ -53,11 +53,18 @@ const (
 	jsonContentType = "application/json"
 )
 
+func handleResponseWriterErr(err error) {
+	if err != nil {
+		errorLogger.Printf("Cannot write the http response body. Error was: %s", err.Error())
+	}
+}
+
 func (h *httpHandler) updateStickyCategory(w http.ResponseWriter, r *http.Request, isEnabled bool) {
 	categoryName := r.URL.Query().Get("category-name")
 	if categoryName == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Provided category name is not valid."))
+		_, err := w.Write([]byte("Provided category name is not valid."))
+		handleResponseWriterErr(err)
 		return
 	}
 
@@ -65,9 +72,10 @@ func (h *httpHandler) updateStickyCategory(w http.ResponseWriter, r *http.Reques
 	err := h.controller.updateStickyCategory(categoryName, isEnabled)
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Failed to enable category."))
 		errorLogger.Printf("Failed to update category with name %s. Error was: %s", categoryName, err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte("Failed to enable category."))
+		handleResponseWriterErr(err)
 		return
 	}
 }
@@ -84,7 +92,8 @@ func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 	serviceName := getServiceNameFromURL(r.URL)
 	if serviceName == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Provided service name is not valid."))
+		_, err := w.Write([]byte("Provided service name is not valid."))
+		handleResponseWriterErr(err)
 		return
 	}
 
@@ -105,7 +114,8 @@ func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
 	ackMessage := r.PostFormValue("ack-msg")
 	if serviceName == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Provided service name is not valid."))
+		_, err := w.Write([]byte("Provided service name is not valid."))
+		handleResponseWriterErr(err)
 		return
 	}
 
@@ -125,7 +135,8 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 
 	if serviceName == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Provided service name is not valid."))
+		_, err := w.Write([]byte("Provided service name is not valid."))
+		handleResponseWriterErr(err)
 		return
 	}
 
@@ -143,7 +154,8 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 	if err := htmlTemplate.Execute(w, addAckForm); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot apply params to html template, error was: %v", err.Error())
-		w.Write([]byte("Couldn't render template file for html response"))
+		_, err := w.Write([]byte("Couldn't render template file for html response"))
+		handleResponseWriterErr(err)
 		return
 	}
 }
@@ -157,7 +169,8 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusBadRequest)
 
 		if r.Header.Get("Accept") != "application/json" {
-			w.Write([]byte("Provided categories are not valid."))
+			_, error := w.Write([]byte("Provided categories are not valid."))
+			handleResponseWriterErr(error)
 		}
 		return
 	}
@@ -185,7 +198,8 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusBadRequest)
 
 		if r.Header.Get("Accept") != jsonContentType {
-			w.Write([]byte("Couldn't get service name from url."))
+			_, err := w.Write([]byte("Couldn't get service name from url."))
+			handleResponseWriterErr(err)
 		}
 		return
 	}
@@ -197,7 +211,8 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot perform checks for service with name %s, error was: %v", serviceName, err.Error())
-		w.Write([]byte(fmt.Sprintf("Cannot perform checks for service with name %s", serviceName)))
+		_, err := w.Write([]byte(fmt.Sprintf("Cannot perform checks for service with name %s", serviceName)))
+		handleResponseWriterErr(err)
 		return
 	}
 
@@ -214,7 +229,8 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 
 	if podName == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("Cannot parse pod name from url."))
+		_, err := w.Write([]byte("Cannot parse pod name from url."))
+		handleResponseWriterErr(err)
 		return
 	}
 
@@ -224,12 +240,14 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot get individual healthcheck for pod %s, error was: %v", podName, err.Error())
-		w.Write([]byte(fmt.Sprintf("Cannot get individual healthcheck for pod %s", podName)))
+		_, err := w.Write([]byte(fmt.Sprintf("Cannot get individual healthcheck for pod %s", podName)))
+		handleResponseWriterErr(err)
 		return
 	}
 
 	w.Header().Add("Content-Type", contentTypeHeader)
-	w.Write(podHealth)
+	_, error := w.Write(podHealth)
+	handleResponseWriterErr(error)
 }
 
 func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
@@ -304,7 +322,8 @@ func buildServicesCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth
 	if err := htmlTemplate.Execute(w, aggregateHealthcheckParams); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot apply params to html template, error was: %v", err.Error())
-		w.Write([]byte("Couldn't render template file for html response"))
+		_, err := w.Write([]byte("Couldn't render template file for html response"))
+		handleResponseWriterErr(err)
 		return
 	}
 }
@@ -321,7 +340,8 @@ func buildPodsCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth.Hea
 	if err := htmlTemplate.Execute(w, aggregateHealthcheckParams); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot apply params to html template, error was: %v", err.Error())
-		w.Write([]byte("Couldn't render template file for html response"))
+		_, err := w.Write([]byte("Couldn't render template file for html response"))
+		handleResponseWriterErr(err)
 		return
 	}
 }
@@ -329,10 +349,10 @@ func buildPodsCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth.Hea
 func parseHTMLTemplate(w http.ResponseWriter, templateName string) *template.Template {
 	htmlTemplate, err := template.ParseFiles(templateName)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("Couldn't open template file for html response"))
 		errorLogger.Printf("Could not parse html template with name %s, error was: %v", templateName, err.Error())
-
+		w.WriteHeader(http.StatusInternalServerError)
+		_, err := w.Write([]byte("Couldn't open template file for html response"))
+		handleResponseWriterErr(err)
 		return nil
 	}
 

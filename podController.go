@@ -101,7 +101,13 @@ func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, 
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			errorLogger.Printf("Cannot close response body reader. Error was: %v", err.Error())
+		}
+	}()
+
 	if err != nil {
 		return nil, "", errors.New("Error reading healthcheck response: " + err.Error())
 	}
