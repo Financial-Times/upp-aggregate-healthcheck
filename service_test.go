@@ -16,7 +16,7 @@ type mockTransport struct {
 }
 
 const (
-	validIp = "1.0.0.0"
+	validIP = "1.0.0.0"
 	validSeverity = uint8(1)
 	validFailingHealthCheckResponseBody = `{
   "schemaVersion": 1,
@@ -73,7 +73,7 @@ func initializeMockService(httpClient *http.Client) *k8sHealthcheckService {
 	}
 }
 
-func initializeMockHttpClient(responseStatusCode int, responseBody string) *http.Client {
+func initializeMockHTTPClient(responseStatusCode int, responseBody string) *http.Client {
 	client := http.DefaultClient
 	client.Transport = &mockTransport{
 		responseStatusCode:responseStatusCode,
@@ -97,41 +97,41 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 }
 
 func TestGetHealthChecksForPodInternalServerErr(t *testing.T) {
-	service := initializeMockService(initializeMockHttpClient(http.StatusInternalServerError, ""))
-	_, err := service.getHealthChecksForPod(pod{name:"test", ip:validIp, }, 8080)
+	service := initializeMockService(initializeMockHTTPClient(http.StatusInternalServerError, ""))
+	_, err := service.getHealthChecksForPod(pod{name:"test", ip:validIP, }, 8080)
 	assert.NotNil(t, err)
 }
 
 func TestGetHealthChecksForPodHealthAvailable(t *testing.T) {
-	service := initializeMockService(initializeMockHttpClient(http.StatusOK, validFailingHealthCheckResponseBody))
-	healthCheckResponse, err := service.getHealthChecksForPod(pod{name:"test", ip:validIp, }, 8080)
+	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validFailingHealthCheckResponseBody))
+	healthCheckResponse, err := service.getHealthChecksForPod(pod{name:"test", ip:validIP, }, 8080)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(healthCheckResponse.Checks))
 }
 
 func TestGetIndividualPodSeverityErrorWhilePodHealthCheck(t *testing.T) {
-	service := initializeMockService(initializeMockHttpClient(http.StatusInternalServerError, ""))
-	severity, err := service.getIndividualPodSeverity(pod{name:"test", ip:validIp, }, 8080)
+	service := initializeMockService(initializeMockHTTPClient(http.StatusInternalServerError, ""))
+	severity, err := service.getIndividualPodSeverity(pod{name:"test", ip:validIP, }, 8080)
 	assert.NotNil(t, err)
 	assert.Equal(t, defaultSeverity, severity)
 }
 
 func TestGetIndividualPodSeverityValidPodHealth(t *testing.T) {
-	service := initializeMockService(initializeMockHttpClient(http.StatusOK, validFailingHealthCheckResponseBody))
-	severity, err := service.getIndividualPodSeverity(pod{name:"test", ip:validIp, }, 8080)
+	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validFailingHealthCheckResponseBody))
+	severity, err := service.getIndividualPodSeverity(pod{name:"test", ip:validIP, }, 8080)
 	assert.Nil(t, err)
 	assert.Equal(t, validSeverity, severity)
 }
 
 func TestCheckPodHealthFailingChecks(t *testing.T) {
-	service := initializeMockService(initializeMockHttpClient(http.StatusOK, validFailingHealthCheckResponseBody))
-	err := service.checkPodHealth(pod{name:"test", ip:validIp, }, 8080)
+	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validFailingHealthCheckResponseBody))
+	err := service.checkPodHealth(pod{name:"test", ip:validIP, }, 8080)
 	assert.NotNil(t, err)
 }
 
 func TestCheckPodHealthPassingChecks(t *testing.T) {
-	service := initializeMockService(initializeMockHttpClient(http.StatusOK, validPassingHealthCheckResponseBody))
-	err := service.checkPodHealth(pod{name:"test", ip:validIp, }, 8080)
+	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validPassingHealthCheckResponseBody))
+	err := service.checkPodHealth(pod{name:"test", ip:validIP, }, 8080)
 	assert.Nil(t, err)
 }
 
