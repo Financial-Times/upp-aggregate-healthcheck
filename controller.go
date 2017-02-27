@@ -34,7 +34,6 @@ type controller interface {
 	getEnvironment() string
 	getSeverityForService(string, int32) uint8
 	getSeverityForPod(string, int32) uint8
-	computeSeverityByPods([]pod, int32) uint8
 }
 
 func initializeController(environment string) *healthCheckController {

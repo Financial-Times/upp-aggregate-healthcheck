@@ -91,9 +91,9 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 	}
 
 	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
-			errorLogger.Printf("Cannot close response body reader. Error was: %v", err.Error())
+		error := resp.Body.Close()
+		if error != nil {
+			errorLogger.Printf("Cannot close response body reader. Error was: %v", error.Error())
 		}
 	}()
 

@@ -178,8 +178,8 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 	infoLogger.Printf("Checking services health for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
 
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot build services health result, error was: %v", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
 

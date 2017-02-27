@@ -12,10 +12,11 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"net"
 )
 
 type k8sHealthcheckService struct {
-	k8sClient  *kubernetes.Clientset
+	k8sClient  kubernetes.Interface
 	httpClient *http.Client
 }
 
@@ -43,7 +44,13 @@ const (
 
 func initializeHealthCheckService() *k8sHealthcheckService {
 	httpClient := &http.Client{
-		Timeout: 50 * time.Second,
+		Timeout: 60 * time.Second,
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: 100,
+			Dial: (&net.Dialer{
+				KeepAlive: 30 * time.Second,
+			}).Dial,
+		},
 	}
 
 	// creates the in-cluster config
@@ -131,10 +138,9 @@ func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) e
 }
 
 func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
-
 	k8sPods, err := hs.k8sClient.Core().Pods("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"metadata.name": podName})})
 	if err != nil {
-		return pod{}, fmt.Errorf("Failed to get the pod from k8s cluster, error was %v", err.Error())
+		return pod{}, fmt.Errorf("Failed to get the pod with name %s from k8s cluster, error was %v", podName, err.Error())
 	}
 
 	if len(k8sPods.Items) == 0 {
@@ -148,15 +154,15 @@ func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []service {
 	k8sServices, err := hs.k8sClient.Core().Services("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"hasHealthcheck": "true"})})
 
+	if err != nil {
+		errorLogger.Printf("Failed to get the list of services from k8s cluster, error was %v", err.Error())
+		return []service{}
+	}
+
 	acks, err := getAcks(hs.k8sClient)
 
 	if err != nil {
 		warnLogger.Printf("Cannot get acks. There will be no acks at all. Error was: %s", err.Error())
-	}
-
-	if err != nil {
-		errorLogger.Printf("Failed to get the list of services from k8s cluster, error was %v", err.Error())
-		return []service{}
 	}
 
 	//if the list of service names is empty, it means that we are in the default category so we take all the services that have healthcheck
@@ -296,7 +302,7 @@ func getAppPortForService(k8sService v1.Service) int32 {
 	return defaultAppPort
 }
 
-func getAcks(k8sClient *kubernetes.Clientset) (map[string]string, error) {
+func getAcks(k8sClient kubernetes.Interface) (map[string]string, error) {
 	k8sAckConfigMap, err := getAcksConfigMap(k8sClient)
 
 	if err != nil {
@@ -306,7 +312,7 @@ func getAcks(k8sClient *kubernetes.Clientset) (map[string]string, error) {
 	return k8sAckConfigMap.Data, nil
 }
 
-func getAcksConfigMap(k8sClient *kubernetes.Clientset) (v1.ConfigMap, error) {
+func getAcksConfigMap(k8sClient kubernetes.Interface) (v1.ConfigMap, error) {
 	k8sAckConfigMaps, err := k8sClient.Core().ConfigMaps("default").List(api.ListOptions{FieldSelector: fields.SelectorFromSet(fields.Set{"metadata.name": ackMessagesConfigMapName})})
 
 	if err != nil {

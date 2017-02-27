@@ -109,7 +109,7 @@ func initializeMockController(env string, service healthcheckService) *healthChe
 	}
 }
 
-func TestAddAckNilErr(t *testing.T) {
+func TestAddAckNilError(t *testing.T) {
 	service := new(MockService)
 	controller := initializeMockController("test", service)
 	err := controller.addAck("abc", "abc")
