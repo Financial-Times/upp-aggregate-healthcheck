@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
-	"k8s.io/kubernetes/staging/src/k8s.io/client-go/_vendor/github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/assert"
 	"os"
 	"fmt"
 )
