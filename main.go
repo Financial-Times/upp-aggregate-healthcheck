@@ -60,6 +60,7 @@ func listen(httpHandler *httpHandler, pathPrefix string) {
 	s.HandleFunc("/rem-ack", httpHandler.handleRemoveAck)
 	s.HandleFunc("/add-ack-form", httpHandler.handleAddAckForm)
 	s.HandleFunc("", httpHandler.handleServicesHealthCheck)
+	s.HandleFunc("/", httpHandler.handleServicesHealthCheck)
 	s.HandleFunc("/__pods-health", httpHandler.handlePodsHealthCheck)
 	s.HandleFunc("/__pod-individual-health", httpHandler.handleIndividualPodHealthCheck)
 	s.HandleFunc("/__gtg", httpHandler.handleGoodToGo)

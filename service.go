@@ -162,7 +162,7 @@ func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []ser
 	acks, err := getAcks(hs.k8sClient)
 
 	if err != nil {
-		warnLogger.Printf("Cannot get acks. There will be no acks at all. Error was: %s", err.Error())
+		warnLogger.Printf("Cannot get acks. There will be no acks at all. Problem was: %s", err.Error())
 	}
 
 	//if the list of service names is empty, it means that we are in the default category so we take all the services that have healthcheck

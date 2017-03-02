@@ -4,7 +4,7 @@ func (c *healthCheckController) getSeverityForService(serviceName string, appPor
 	pods, err := c.healthCheckService.getPodsForService(serviceName)
 
 	if err != nil {
-		warnLogger.Printf("Cannot get pods for service with name %s in order to get severity level, using default severity: %d. Error was: %s", serviceName, defaultSeverity, err.Error())
+		warnLogger.Printf("Cannot get pods for service with name %s in order to get severity level, using default severity: %d. Problem was: %s", serviceName, defaultSeverity, err.Error())
 		return defaultSeverity
 	}
 
@@ -15,7 +15,7 @@ func (c *healthCheckController) getSeverityForPod(podName string, appPort int32)
 	podToBeChecked, err := c.healthCheckService.getPodByName(podName)
 
 	if err != nil {
-		warnLogger.Printf("Cannot get pod by name: %s in order to get severity level, using default severity: %d. Error was: %s", podName, defaultSeverity, err.Error())
+		warnLogger.Printf("Cannot get pod by name: %s in order to get severity level, using default severity: %d. Problem was: %s", podName, defaultSeverity, err.Error())
 		return defaultSeverity
 	}
 
@@ -28,7 +28,7 @@ func (c *healthCheckController) computeSeverityByPods(pods []pod, appPort int32)
 		individualPodSeverity, err := c.healthCheckService.getIndividualPodSeverity(pod, appPort)
 
 		if err != nil {
-			warnLogger.Printf("Cannot get individual pod severity, skipping pod. Error was: %s", err.Error())
+			warnLogger.Printf("Cannot get individual pod severity, skipping pod. Problem was: %s", err.Error())
 			continue
 		}
 
