@@ -1,3 +1,4 @@
+[![Circle CI](https://circleci.com/gh/Financial-Times/upp-aggregate-healthcheck.svg?style=shield)](https://circleci.com/gh/Financial-Times/upp-aggregate-healthcheck)
 # upp-aggregate-healthcheck
 The purpose of this service is to serve the functionality of aggregating healthchecks from services and pods in the Kubernetes cluster.
 
