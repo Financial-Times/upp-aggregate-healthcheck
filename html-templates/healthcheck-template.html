@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>UPP Aggregate Healthcheck</title>
+  <!-- Latest compiled and minified CSS -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css"
+        integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+  <!-- Optional theme -->
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap-theme.min.css"
+        integrity="sha384-rHyoN1iRsVXV4nD0JutlnGaslCJuC7uwjduW9SVrLvRYooPp2bWYgmgJQIXwl/Sp" crossorigin="anonymous">
+
+  <link href="https://cdn.datatables.net/1.10.13/css/jquery.dataTables.min.css" rel="stylesheet"
+        crossorigin="anonymous">
+</head>
+<body>
+<div class="container-fluid">
+  <h1>{{.PageTitle}}
+    (
+    {{if eq .GeneralStatus "healthy"}}
+    <span class='text-success'>healthy</span>
+    {{else}}
+    {{if eq .GeneralStatus "unhealthy"}}
+    <span class='text-warning'>unhealthy</span>
+    {{else}}
+    {{if eq .GeneralStatus "critical"}}
+    <span class='text-danger'>critical</span>
+    {{else}}
+    <span style='color: blue;'>acked</span>
+    {{end}}
+    {{end}}
+    {{end}}
+
+    {{if ne .AckCount 0}}
+    ,<span style='color: blue;'> {{.AckCount}} acked</span>
+    {{end}}
+    )
+  </h1>
+  <table id='healthcheck' class='table table-striped table-bordered' cellspacing='0' width='100%'>
+    <thead>
+    <tr>
+      <th>Name</th>
+      <th>Health status</th>
+      <th>Last Updated</th>
+      <th>Output</th>
+      <th>Ack msg</th>
+      <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+    {{with .IndividualHealthChecks}}
+    {{range .}}
+    <tr>
+      <td><a href="{{.MoreInfoPath}}">{{.Name}}</a></td>
+      <td>&nbsp;
+        {{if eq .Status "ok"}}
+        <span style='color: green;'>ok</span>
+        {{else}}
+        {{if eq .Status "warning"}}
+        <span style='color: orange;'>warning</span>
+        {{else}}
+        {{if eq .Status "critical"}}
+        <span style='color: red;'>critical</span>
+        {{else}}
+        <span style='color: blue;'>{{.Status}}</span>
+        {{end}}
+        {{end}}
+        {{end}}
+      </td>
+      <td>&nbsp;{{.LastUpdated}}</td>
+      <td>{{.Output}}</td>
+      <td>&nbsp;<span style='color: blue;'><em>{{.AckMessage}}</em></span></td>
+      {{if ne .AddOrRemoveAckPath ""}}
+      <td><a href="{{.AddOrRemoveAckPath}}">{{.AddOrRemoveAckPathName}}</a></td>
+      {{end}}
+    </tr>
+    {{end}}
+    {{end}}
+    </tbody>
+  </table>
+  <div class='center-block'>
+    {{if ne .RefreshFromCachePath ""}}
+    <p><a href="{{.RefreshFromCachePath}}">Refresh health from cache</a></p>
+    {{end}}
+    <p><a href="{{.RefreshWithoutCachePath}}">Refresh health without using the cache</a></p>
+  </div>
+</div>
+<!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+<script src="https://code.jquery.com/jquery-1.12.4.min.js"
+        integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ="
+        crossorigin="anonymous"></script>
+<!-- Latest compiled and minified JavaScript -->
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"
+        integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa"
+        crossorigin="anonymous"></script>
+<!-- DataTables' JavaScript -->
+<script src="https://cdn.datatables.net/1.10.13/js/jquery.dataTables.min.js"
+        crossorigin="anonymous"></script>
+<script>
+  $(document).ready(function () {
+    $('#healthcheck').DataTable({
+                                  paging: false
+                                });
+    $('div.dataTables_filter input').focus()
+  });
+</script>
+</body>
+</html>

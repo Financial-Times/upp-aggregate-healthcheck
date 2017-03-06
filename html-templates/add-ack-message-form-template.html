@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>UPP Aggregate Healthcheck</title>
+</head>
+<body>
+<p>Acknowledge service {{.ServiceName}}</p>
+<form action="{{.AddAckPath}}" method="POST">
+  <input type="text" name="ack-msg" value="">
+  <input type="submit" value="Submit">
+</form>
+</body>
+</html>
