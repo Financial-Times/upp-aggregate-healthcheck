@@ -6,6 +6,8 @@ ADD . "$GOPATH/src/upp-aggregate-healthcheck"
 
 RUN apk --no-cache --virtual .build-dependencies add git \
   && cd $GOPATH/src/upp-aggregate-healthcheck \
+  && go get -u github.com/kardianos/govendor \
+  && $GOPATH/bin/govendor sync \
   && go-wrapper download \
   && go-wrapper install \
   && ls -la $GOPATH \
