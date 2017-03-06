@@ -13,8 +13,6 @@ dependencies:
     - go get -u github.com/kardianos/govendor
   override:
     - cd ${GO_PROJECT_PATH} && govendor sync
-    # get all the other dependencies that are not vendored
-    - cd ${GO_PROJECT_PATH} && go get
 
 test:
   override:
