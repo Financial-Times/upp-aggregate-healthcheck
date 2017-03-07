@@ -1,7 +1,7 @@
 package main
 
 import (
-	"k8s.io/client-go/1.5/kubernetes/fake"
+	"k8s.io/client-go/kubernetes/fake"
 	"testing"
 	"github.com/stretchr/testify/assert"
 	"net/http"

@@ -6,8 +6,7 @@ import (
 	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"io/ioutil"
-	"k8s.io/client-go/1.5/pkg/api"
-	"k8s.io/client-go/1.5/pkg/labels"
+	"k8s.io/client-go/pkg/api/v1"
 	"net/http"
 )
 
@@ -20,24 +19,64 @@ type healthcheckResponse struct {
 	}
 }
 
-func (hs *k8sHealthcheckService) checkServiceHealth(serviceName string) (string, error) {
-	k8sDeployments, err := hs.k8sClient.Extensions().Deployments("default").List(api.ListOptions{LabelSelector: labels.SelectorFromSet(labels.Set{"app": serviceName})})
+func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, error) {
+	var noOfAvailablePods, noOfUnavailablePods int32
+	var err error
+	if service.isDaemon == true {
+		noOfAvailablePods, noOfUnavailablePods, err = hs.checkServiceHealthForDaemonset(service)
+	} else {
+		noOfAvailablePods, noOfUnavailablePods, err = hs.checkServiceHealthForDeployment(service)
+	}
+
 	if err != nil {
-		return "", fmt.Errorf("Error retrieving deployment with label app=%s", serviceName)
+		return "", err
+	}
+
+	return checkServiceHealthByResiliency(service, noOfAvailablePods, noOfUnavailablePods)
+}
+
+func (hs *k8sHealthcheckService) checkServiceHealthForDeployment(service service) (int32, int32, error) {
+	k8sDeployments, err := hs.k8sClient.ExtensionsV1beta1().Deployments("default").List(v1.ListOptions{LabelSelector:fmt.Sprintf("app=%s", service.name)})
+	if err != nil {
+		return 0, 0, fmt.Errorf("Error retrieving deployment with label app=%s", service.name)
 	}
 
 	if len(k8sDeployments.Items) == 0 {
-		return "", fmt.Errorf("Cannot find deployment with label app=%s", serviceName)
+		return 0, 0, fmt.Errorf("Cannot find deployment with label app=%s", service.name)
 	}
 
 	noOfUnavailablePods := k8sDeployments.Items[0].Status.UnavailableReplicas
 	noOfAvailablePods := k8sDeployments.Items[0].Status.AvailableReplicas
 
+	return noOfAvailablePods, noOfUnavailablePods, nil
+}
+
+func (hs *k8sHealthcheckService) checkServiceHealthForDaemonset(service service) (int32, int32, error) {
+	daemonSets, err := hs.k8sClient.ExtensionsV1beta1().DaemonSets("default").List(v1.ListOptions{LabelSelector:fmt.Sprintf("app=%s", service.name)})
+	if err != nil {
+		return 0, 0, fmt.Errorf("Error retrieving deployment with label app=%s", service.name)
+	}
+
+	if len(daemonSets.Items) == 0 {
+		return 0, 0, fmt.Errorf("Cannot find deployment with label app=%s", service.name)
+	}
+
+	noOfAvailablePods := daemonSets.Items[0].Status.NumberReady
+	noOfUnavailablePods := daemonSets.Items[0].Status.DesiredNumberScheduled - noOfAvailablePods
+
+	return noOfAvailablePods, noOfUnavailablePods, nil
+}
+
+func checkServiceHealthByResiliency(service service, noOfAvailablePods int32, noOfUnavailablePods int32) (string, error) {
 	if noOfAvailablePods == 0 {
 		return "", errors.New("All pods are unavailable")
 	}
 
-	if noOfUnavailablePods != 0 {
+	if !service.isResilient && noOfUnavailablePods != 0 {
+		return "", fmt.Errorf("There are %v pods unavailable", noOfUnavailablePods)
+	}
+
+	if service.isResilient && noOfUnavailablePods != 0 {
 		return fmt.Sprintf("There are %v pods unavailable", noOfUnavailablePods), nil
 	}
 
@@ -135,7 +174,7 @@ func newServiceHealthCheck(service service, healthcheckService healthcheckServic
 		Severity:         defaultSeverity,
 		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
-			return healthcheckService.checkServiceHealth(service.name)
+			return healthcheckService.checkServiceHealth(service)
 		},
 	}
 }

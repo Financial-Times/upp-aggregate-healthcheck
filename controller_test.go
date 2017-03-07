@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	nonExistingServiceName     = "non-existing-service"
+	nonExistingServiceName = "non-existing-service"
 	serviceNameForRemoveAckErr = "serviceNameWithRemoveAckError"
 )
 
@@ -69,19 +69,27 @@ func (m *MockService) getPodByName(string) (pod, error) {
 	}, nil
 }
 
-func (m *MockService) checkServiceHealth(string) (string, error) {
+func (m *MockService) checkServiceHealth(service service) (string, error) {
 	return "", errors.New("Error reading healthcheck response: ")
 }
 
-func (m *MockService) checkPodHealth(pod,int32) error {
+func (m *MockService) checkServiceHealthForDeployment(service service) (int32, int32, error) {
+	return 0, 0, errors.New("")
+}
+
+func (m *MockService) checkServiceHealthForDaemonset(service service) (int32, int32, error) {
+	return 0, 0, errors.New("")
+}
+
+func (m *MockService) checkPodHealth(pod, int32) error {
 	return errors.New("Error reading healthcheck response: ")
 }
 
-func (m *MockService) getIndividualPodSeverity(pod,int32) (uint8, error) {
+func (m *MockService) getIndividualPodSeverity(pod, int32) (uint8, error) {
 	return 1, nil
 }
 
-func (m *MockService) getHealthChecksForPod(pod,int32) (healthcheckResponse, error) {
+func (m *MockService) getHealthChecksForPod(pod, int32) (healthcheckResponse, error) {
 	return healthcheckResponse{}, nil
 }
 
