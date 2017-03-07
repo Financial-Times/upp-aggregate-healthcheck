@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	nonExistingServiceName = "non-existing-service"
+	nonExistingServiceName     = "non-existing-service"
 	serviceNameForRemoveAckErr = "serviceNameWithRemoveAckError"
 )
 
@@ -38,11 +38,11 @@ func (m *MockService) getServicesByNames(serviceNames []string) []service {
 
 	services := []service{
 		{
-			name:     "test-service-name",
-			ack:      "test ack",
+			name: "test-service-name",
+			ack:  "test ack",
 		},
 		{
-			name:     "test-service-name-2",
+			name: "test-service-name-2",
 		},
 	}
 

@@ -22,7 +22,7 @@ type healthcheckResponse struct {
 func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, error) {
 	var noOfAvailablePods, noOfUnavailablePods int32
 	var err error
-	if service.isDaemon == true {
+	if service.isDaemon {
 		noOfAvailablePods, noOfUnavailablePods, err = hs.checkServiceHealthForDaemonset(service)
 	} else {
 		noOfAvailablePods, noOfUnavailablePods, err = hs.checkServiceHealthForDeployment(service)
@@ -36,7 +36,7 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, er
 }
 
 func (hs *k8sHealthcheckService) checkServiceHealthForDeployment(service service) (int32, int32, error) {
-	k8sDeployments, err := hs.k8sClient.ExtensionsV1beta1().Deployments("default").List(v1.ListOptions{LabelSelector:fmt.Sprintf("app=%s", service.name)})
+	k8sDeployments, err := hs.k8sClient.ExtensionsV1beta1().Deployments("default").List(v1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", service.name)})
 	if err != nil {
 		return 0, 0, fmt.Errorf("Error retrieving deployment with label app=%s", service.name)
 	}
@@ -52,7 +52,7 @@ func (hs *k8sHealthcheckService) checkServiceHealthForDeployment(service service
 }
 
 func (hs *k8sHealthcheckService) checkServiceHealthForDaemonset(service service) (int32, int32, error) {
-	daemonSets, err := hs.k8sClient.ExtensionsV1beta1().DaemonSets("default").List(v1.ListOptions{LabelSelector:fmt.Sprintf("app=%s", service.name)})
+	daemonSets, err := hs.k8sClient.ExtensionsV1beta1().DaemonSets("default").List(v1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", service.name)})
 	if err != nil {
 		return 0, 0, fmt.Errorf("Error retrieving deployment with label app=%s", service.name)
 	}

@@ -1,24 +1,23 @@
 package main
 
 import (
-	"time"
-	"testing"
-	"net/http"
-	"net/http/httptest"
+	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/stretchr/testify/assert"
+	"net/http"
+	"net/http/httptest"
 	"os"
-	"fmt"
+	"testing"
+	"time"
 )
 
 type mockController struct {
-
 }
 
 const (
-	invalidCategoryName = "invalid"
+	invalidCategoryName  = "invalid"
 	disabledCategoryName = "disabled"
-	validPodName = "validPod"
+	validPodName         = "validPod"
 )
 
 func (m *mockController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, map[string]category, error) {
@@ -26,14 +25,14 @@ func (m *mockController) buildServicesHealthResult(providedCategories []string, 
 
 	if providedCategories[0] != invalidCategoryName {
 		matchingCategories["default"] = category{
-			name:"default",
-			isEnabled:true,
+			name:      "default",
+			isEnabled: true,
 		}
 	}
 	if providedCategories[0] == disabledCategoryName {
 		matchingCategories["default"] = category{
-			name:"default",
-			isEnabled:false,
+			name:      "default",
+			isEnabled: false,
 		}
 	}
 
@@ -49,59 +48,59 @@ func (m *mockController) buildServicesHealthResult(providedCategories []string, 
 	return health, matchingCategories, map[string]category{}, nil
 }
 
-func (m *mockController)runServiceChecksByServiceNames([]service, map[string]category) []fthealth.CheckResult {
+func (m *mockController) runServiceChecksByServiceNames([]service, map[string]category) []fthealth.CheckResult {
 	return []fthealth.CheckResult{}
 }
 
-func (m *mockController)runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
+func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
 	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}
 }
 
-func (m *mockController)buildPodsHealthResult(string, bool) (fthealth.HealthResult, error) {
+func (m *mockController) buildPodsHealthResult(string, bool) (fthealth.HealthResult, error) {
 	return fthealth.HealthResult{}, nil
 }
 
-func (m *mockController)runPodChecksFor(string) ([]fthealth.CheckResult, error) {
+func (m *mockController) runPodChecksFor(string) ([]fthealth.CheckResult, error) {
 	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController)collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
+func (m *mockController) collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
 	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}
 }
 
-func (m *mockController)updateCachedHealth([]service, map[string]category) {
+func (m *mockController) updateCachedHealth([]service, map[string]category) {
 
 }
 
-func (m *mockController)scheduleCheck(measuredService, time.Duration, *time.Timer) {
+func (m *mockController) scheduleCheck(measuredService, time.Duration, *time.Timer) {
 
 }
 
-func (m *mockController)getIndividualPodHealth(string) ([]byte, string, error) {
+func (m *mockController) getIndividualPodHealth(string) ([]byte, string, error) {
 	return []byte("test pod health"), "", nil
 }
 
-func (m *mockController)addAck(string, string) error {
+func (m *mockController) addAck(string, string) error {
 	return nil
 }
 
-func (m *mockController)updateStickyCategory(string, bool) error {
+func (m *mockController) updateStickyCategory(string, bool) error {
 	return nil
 }
 
-func (m *mockController)removeAck(string) error {
+func (m *mockController) removeAck(string) error {
 	return nil
 }
 
-func (m *mockController)getEnvironment() string {
+func (m *mockController) getEnvironment() string {
 	return ""
 }
 
-func (m *mockController)getSeverityForService(string, int32) uint8 {
+func (m *mockController) getSeverityForService(string, int32) uint8 {
 	return 1
 }
 
-func (m *mockController)getSeverityForPod(string, int32) uint8 {
+func (m *mockController) getSeverityForPod(string, int32) uint8 {
 	return 1
 }
 
@@ -109,7 +108,7 @@ func initializeTestHandler() *httpHandler {
 	mockController := new(mockController)
 	return &httpHandler{
 		pathPrefix: "",
-		controller:mockController,
+		controller: mockController,
 	}
 }
 
@@ -280,4 +279,3 @@ func TestServiceHealthCheckDefaultCategory(t *testing.T) {
 	handler.ServeHTTP(respRecorder, req)
 	assert.Equal(t, http.StatusOK, respRecorder.Code)
 }
-

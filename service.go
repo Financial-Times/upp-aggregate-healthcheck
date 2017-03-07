@@ -5,11 +5,11 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
 	"k8s.io/client-go/rest"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
-	"net"
 )
 
 type k8sHealthcheckService struct {
@@ -35,10 +35,10 @@ type healthcheckService interface {
 }
 
 const (
-	defaultRefreshRate = 60
-	defaultSeverity = uint8(2)
+	defaultRefreshRate       = 60
+	defaultSeverity          = uint8(2)
 	ackMessagesConfigMapName = "healthcheck.ack.messages"
-	defaultAppPort = int32(8080)
+	defaultAppPort           = int32(8080)
 )
 
 func initializeHealthCheckService() *k8sHealthcheckService {
@@ -137,7 +137,7 @@ func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) e
 }
 
 func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
-	k8sPods, err := hs.k8sClient.CoreV1().Pods("default").List(v1.ListOptions{FieldSelector:fmt.Sprintf("metadata.name=%s", podName)})
+	k8sPods, err := hs.k8sClient.CoreV1().Pods("default").List(v1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", podName)})
 	if err != nil {
 		return pod{}, fmt.Errorf("Failed to get the pod with name %s from k8s cluster, error was %v", podName, err.Error())
 	}
@@ -151,7 +151,7 @@ func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
 }
 
 func (hs *k8sHealthcheckService) getServicesByNames(serviceNames []string) []service {
-	k8sServices, err := hs.k8sClient.CoreV1().Services("default").List(v1.ListOptions{LabelSelector:"hasHealthcheck=true"})
+	k8sServices, err := hs.k8sClient.CoreV1().Services("default").List(v1.ListOptions{LabelSelector: "hasHealthcheck=true"})
 
 	if err != nil {
 		errorLogger.Printf("Failed to get the list of services from k8s cluster, error was %v", err.Error())
@@ -238,9 +238,9 @@ func populateCategory(k8sCatData map[string]string) category {
 
 func populatePod(k8sPod v1.Pod) pod {
 	return pod{
-		name: k8sPod.Name,
-		ip:   k8sPod.Status.PodIP,
-		serviceName:k8sPod.Labels["app"],
+		name:        k8sPod.Name,
+		ip:          k8sPod.Status.PodIP,
+		serviceName: k8sPod.Labels["app"],
 	}
 }
 
@@ -302,11 +302,11 @@ func populateService(k8sService v1.Service, acks map[string]string) service {
 	}
 
 	return service{
-		name: serviceName,
-		ack:  acks[k8sService.Name],
-		appPort: getAppPortForService(k8sService),
-		isDaemon:isDaemon,
-		isResilient:isResilient,
+		name:        serviceName,
+		ack:         acks[k8sService.Name],
+		appPort:     getAppPortForService(k8sService),
+		isDaemon:    isDaemon,
+		isResilient: isResilient,
 	}
 }
 func getAppPortForService(k8sService v1.Service) int32 {
