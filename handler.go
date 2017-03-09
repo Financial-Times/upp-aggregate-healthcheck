@@ -46,11 +46,11 @@ type AddAckForm struct {
 var defaultCategories = []string{"default"}
 
 const (
-	timeLayout = "15:04:05 MST"
+	timeLayout              = "15:04:05 MST"
 	healthcheckTemplateName = "html-templates/healthcheck-template.html"
-	addAckMsgTemplatePath = "html-templates/add-ack-message-form-template.html"
-	healthcheckPath = "/__health"
-	jsonContentType = "application/json"
+	addAckMsgTemplatePath   = "html-templates/add-ack-message-form-template.html"
+	healthcheckPath         = "/__health"
+	jsonContentType         = "application/json"
 )
 
 func handleResponseWriterErr(err error) {
@@ -204,8 +204,7 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	useCache := useCache(r.URL)
-	healthResult, err := h.controller.buildPodsHealthResult(serviceName, useCache)
+	healthResult, err := h.controller.buildPodsHealthResult(serviceName)
 
 	infoLogger.Printf("Checking pods health for service [%s], useCache: %t", serviceName, useCache)
 	if err != nil {
@@ -255,7 +254,7 @@ func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
 	useCache := useCache(r.URL)
 	healthResults, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache)
 
-	if len(validCategories) == 0  && err == nil {
+	if len(validCategories) == 0 && err == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
@@ -400,14 +399,14 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix s
 
 		addOrRemoveAckPath, addOrRemoveAckPathName := buildAddOrRemoveAckPath(individualCheck.Name, pathPrefix, individualCheck.Ack)
 		hc := IndividualHealthcheckParams{
-			Name:          individualCheck.Name,
-			Status:        getServiceStatusFromCheck(individualCheck),
-			LastUpdated:   individualCheck.LastUpdated.Format(timeLayout),
-			MoreInfoPath:  fmt.Sprintf("%s/__pods-health?service-name=%s", pathPrefix, individualCheck.Name),
-			AddOrRemoveAckPath:addOrRemoveAckPath,
+			Name:                   individualCheck.Name,
+			Status:                 getServiceStatusFromCheck(individualCheck),
+			LastUpdated:            individualCheck.LastUpdated.Format(timeLayout),
+			MoreInfoPath:           fmt.Sprintf("%s/__pods-health?service-name=%s", pathPrefix, individualCheck.Name),
+			AddOrRemoveAckPath:     addOrRemoveAckPath,
 			AddOrRemoveAckPathName: addOrRemoveAckPathName,
-			AckMessage:    individualCheck.Ack,
-			Output:        individualCheck.Output,
+			AckMessage:             individualCheck.Ack,
+			Output:                 individualCheck.Output,
 		}
 
 		indiviualServiceChecks = append(indiviualServiceChecks, hc)
@@ -506,7 +505,7 @@ func getCategoriesString(categories map[string]category) string {
 
 	len := len(formattedCategoryNames)
 	if len > 0 {
-		formattedCategoryNames = formattedCategoryNames[:len - 1]
+		formattedCategoryNames = formattedCategoryNames[:len-1]
 	}
 
 	return formattedCategoryNames

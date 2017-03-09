@@ -1,12 +1,12 @@
 package main
 
 import (
-	"k8s.io/client-go/1.5/kubernetes/fake"
-	"testing"
 	"github.com/stretchr/testify/assert"
+	"io/ioutil"
+	"k8s.io/client-go/kubernetes/fake"
 	"net/http"
 	"strings"
-	"io/ioutil"
+	"testing"
 )
 
 type MockWebClient struct{}
@@ -16,8 +16,8 @@ type mockTransport struct {
 }
 
 const (
-	validIP = "1.0.0.0"
-	validSeverity = uint8(1)
+	validIP                             = "1.0.0.0"
+	validSeverity                       = uint8(1)
 	validFailingHealthCheckResponseBody = `{
   "schemaVersion": 1,
   "name": "CMSNotifierApplication",
@@ -76,8 +76,8 @@ func initializeMockService(httpClient *http.Client) *k8sHealthcheckService {
 func initializeMockHTTPClient(responseStatusCode int, responseBody string) *http.Client {
 	client := http.DefaultClient
 	client.Transport = &mockTransport{
-		responseStatusCode:responseStatusCode,
-		responseBody:responseBody,
+		responseStatusCode: responseStatusCode,
+		responseBody:       responseBody,
 	}
 
 	return client
@@ -98,40 +98,40 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 
 func TestGetHealthChecksForPodInternalServerErr(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusInternalServerError, ""))
-	_, err := service.getHealthChecksForPod(pod{name:"test", ip:validIP, }, 8080)
+	_, err := service.getHealthChecksForPod(pod{name: "test", ip: validIP}, 8080)
 	assert.NotNil(t, err)
 }
 
 func TestGetHealthChecksForPodHealthAvailable(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validFailingHealthCheckResponseBody))
-	healthCheckResponse, err := service.getHealthChecksForPod(pod{name:"test", ip:validIP, }, 8080)
+	healthCheckResponse, err := service.getHealthChecksForPod(pod{name: "test", ip: validIP}, 8080)
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(healthCheckResponse.Checks))
 }
 
 func TestGetIndividualPodSeverityErrorWhilePodHealthCheck(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusInternalServerError, ""))
-	severity, err := service.getIndividualPodSeverity(pod{name:"test", ip:validIP, }, 8080)
+	severity, err := service.getIndividualPodSeverity(pod{name: "test", ip: validIP}, 8080)
 	assert.NotNil(t, err)
 	assert.Equal(t, defaultSeverity, severity)
 }
 
 func TestGetIndividualPodSeverityValidPodHealth(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validFailingHealthCheckResponseBody))
-	severity, err := service.getIndividualPodSeverity(pod{name:"test", ip:validIP, }, 8080)
+	severity, err := service.getIndividualPodSeverity(pod{name: "test", ip: validIP}, 8080)
 	assert.Nil(t, err)
 	assert.Equal(t, validSeverity, severity)
 }
 
 func TestCheckPodHealthFailingChecks(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validFailingHealthCheckResponseBody))
-	err := service.checkPodHealth(pod{name:"test", ip:validIP, }, 8080)
+	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080)
 	assert.NotNil(t, err)
 }
 
 func TestCheckPodHealthPassingChecks(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validPassingHealthCheckResponseBody))
-	err := service.checkPodHealth(pod{name:"test", ip:validIP, }, 8080)
+	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080)
 	assert.Nil(t, err)
 }
 
@@ -153,8 +153,33 @@ func TestAddAckConfigMapNotFound(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestGetServicesByNamesInvalidServiceName(t *testing.T) {
-	service := initializeMockService(nil)
-	services := service.getServicesByNames([]string{"invalidServiceName"})
-	assert.Zero(t, len(services))
+func TestCheckServiceHealthByResiliencyNoPodsAvailable(t *testing.T) {
+	_, err := checkServiceHealthByResiliency(service{}, 0, 3)
+	assert.NotNil(t, err)
+}
+
+func TestCheckServiceHealthByResiliencyWithNonResilientServiceAndUnvavailablePods(t *testing.T) {
+	s := service{
+		isResilient: false,
+	}
+	_, err := checkServiceHealthByResiliency(s, 1, 3)
+	assert.NotNil(t, err)
+}
+
+func TestCheckServiceHealthByResiliencyWithResilientServiceAndUnvavailablePods(t *testing.T) {
+	s := service{
+		isResilient: true,
+	}
+	msg, err := checkServiceHealthByResiliency(s, 1, 3)
+	assert.Nil(t, err)
+	assert.NotNil(t, msg)
+}
+
+func TestCheckServiceHealthByResiliencyHappyFlow(t *testing.T) {
+	s := service{
+		isResilient: false,
+	}
+	msg, err := checkServiceHealthByResiliency(s, 1, 0)
+	assert.Nil(t, err)
+	assert.Equal(t, "", msg)
 }

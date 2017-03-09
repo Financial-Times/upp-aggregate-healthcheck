@@ -9,7 +9,7 @@ import (
 	"sort"
 )
 
-func (c *healthCheckController) buildPodsHealthResult(serviceName string, useCache bool) (fthealth.HealthResult, error) {
+func (c *healthCheckController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
 	desc := fmt.Sprintf("Health of pods that are under service %s served without cache.", serviceName)
 
 	checkResults, err := c.runPodChecksFor(serviceName)
@@ -35,16 +35,14 @@ func (c *healthCheckController) buildPodsHealthResult(serviceName string, useCac
 }
 
 func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.CheckResult, error) {
-	pods, err := c.healthCheckService.getPodsForService(serviceName)
-
-	if err != nil {
-		return []fthealth.CheckResult{}, fmt.Errorf("Cannot get pods for service %s, error was: %s", serviceName, err.Error())
-	}
-
 	services := c.healthCheckService.getServicesByNames([]string{serviceName})
-
 	if len(services) == 0 {
 		return []fthealth.CheckResult{}, fmt.Errorf("Cannot find service with name %s", serviceName)
+	}
+
+	pods, err := c.healthCheckService.getPodsForService(serviceName)
+	if err != nil {
+		return []fthealth.CheckResult{}, fmt.Errorf("Cannot get pods for service %s, error was: %s", serviceName, err.Error())
 	}
 
 	var checks []fthealth.Check
@@ -71,7 +69,6 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 }
 
 func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, string, error) {
-
 	podToBeChecked, err := c.healthCheckService.getPodByName(podName)
 	if err != nil {
 		return nil, "", errors.New("Error retrieving pod: " + err.Error())

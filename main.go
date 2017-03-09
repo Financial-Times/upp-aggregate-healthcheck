@@ -39,7 +39,7 @@ func main() {
 		controller := initializeController(*environment)
 		handler := &httpHandler{
 			controller: controller,
-			pathPrefix : *pathPrefix,
+			pathPrefix: *pathPrefix,
 		}
 
 		listen(handler, *pathPrefix)
