@@ -35,16 +35,14 @@ func (c *healthCheckController) buildPodsHealthResult(serviceName string) (fthea
 }
 
 func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.CheckResult, error) {
-	pods, err := c.healthCheckService.getPodsForService(serviceName)
-
-	if err != nil {
-		return []fthealth.CheckResult{}, fmt.Errorf("Cannot get pods for service %s, error was: %s", serviceName, err.Error())
-	}
-
 	services := c.healthCheckService.getServicesByNames([]string{serviceName})
-
 	if len(services) == 0 {
 		return []fthealth.CheckResult{}, fmt.Errorf("Cannot find service with name %s", serviceName)
+	}
+
+	pods, err := c.healthCheckService.getPodsForService(serviceName)
+	if err != nil {
+		return []fthealth.CheckResult{}, fmt.Errorf("Cannot get pods for service %s, error was: %s", serviceName, err.Error())
 	}
 
 	var checks []fthealth.Check
