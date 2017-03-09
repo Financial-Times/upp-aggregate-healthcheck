@@ -24,8 +24,8 @@ type healthcheckService interface {
 	getPodsForService(string) ([]pod, error)
 	getPodByName(string) (pod, error)
 	checkServiceHealth(service) (string, error)
-	checkServiceHealthForDeployment(service) (int32, int32, error)
-	checkServiceHealthForDaemonset(service) (int32, int32, error)
+	getPodAvailabilityForDeployment(service) (int32, int32, error)
+	getPodAvailabilityForDaemonSet(service) (int32, int32, error)
 	checkPodHealth(pod, int32) error
 	getIndividualPodSeverity(pod, int32) (uint8, error)
 	getHealthChecksForPod(pod, int32) (healthcheckResponse, error)

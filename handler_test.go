@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	"github.com/golang/go/src/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
@@ -17,10 +18,19 @@ type mockController struct {
 const (
 	invalidCategoryName  = "invalid"
 	disabledCategoryName = "disabled"
+	categoryWithChecks   = "catWithChecks"
+	brokenCategoryName   = "brokencat"
+	brokenServiceName    = "brokenServiceName"
 	validPodName         = "validPod"
+	validServiceName     = "validServiceName"
+	brokenPodName        = "brokenPod"
 )
 
 func (m *mockController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, map[string]category, error) {
+	if len(providedCategories) == 1 && providedCategories[0] == brokenCategoryName {
+		return fthealth.HealthResult{}, map[string]category{}, map[string]category{}, errors.New("Broken category")
+	}
+
 	matchingCategories := map[string]category{}
 
 	if providedCategories[0] != invalidCategoryName {
@@ -36,12 +46,27 @@ func (m *mockController) buildServicesHealthResult(providedCategories []string, 
 		}
 	}
 
+	var checks []fthealth.CheckResult
+	finalOk := true
+	if len(providedCategories) == 1 && providedCategories[0] == categoryWithChecks {
+		checks = []fthealth.CheckResult{
+			{
+				Ok: true,
+			},
+			{
+				Ok: false,
+			},
+		}
+
+		finalOk = false
+	}
+
 	health := fthealth.HealthResult{
-		Checks:        []fthealth.CheckResult{},
+		Checks:        checks,
 		Description:   "test",
 		Name:          "cluster health",
 		SchemaVersion: 1,
-		Ok:            true,
+		Ok:            finalOk,
 		Severity:      1,
 	}
 
@@ -56,7 +81,31 @@ func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.Ch
 	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}
 }
 
-func (m *mockController) buildPodsHealthResult(string, bool) (fthealth.HealthResult, error) {
+func (m *mockController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
+	if serviceName == brokenServiceName {
+		return fthealth.HealthResult{}, errors.New("Broken pod")
+	}
+
+	if serviceName == validServiceName {
+		checks := []fthealth.CheckResult{
+			{
+				Ok: true,
+			},
+			{
+				Ok: false,
+			},
+		}
+
+		return fthealth.HealthResult{
+			Checks:        checks,
+			Description:   "test",
+			Name:          "cluster health",
+			SchemaVersion: 1,
+			Ok:            true,
+			Severity:      1,
+		}, nil
+	}
+
 	return fthealth.HealthResult{}, nil
 }
 
@@ -76,19 +125,34 @@ func (m *mockController) scheduleCheck(measuredService, time.Duration, *time.Tim
 
 }
 
-func (m *mockController) getIndividualPodHealth(string) ([]byte, string, error) {
+func (m *mockController) getIndividualPodHealth(podName string) ([]byte, string, error) {
+	if podName == brokenPodName {
+		return []byte{}, "", errors.New("Broken pod")
+	}
 	return []byte("test pod health"), "", nil
 }
 
-func (m *mockController) addAck(string, string) error {
+func (m *mockController) addAck(serviceName string, message string) error {
+	if serviceName == brokenServiceName {
+		return errors.New("Broken service")
+	}
+
 	return nil
 }
 
-func (m *mockController) updateStickyCategory(string, bool) error {
+func (m *mockController) updateStickyCategory(categoryName string, isEnabled bool) error {
+	if categoryName == brokenCategoryName {
+		return errors.New("Broken category")
+	}
+
 	return nil
 }
 
-func (m *mockController) removeAck(string) error {
+func (m *mockController) removeAck(serviceName string) error {
+	if serviceName == brokenServiceName {
+		return errors.New("Broken service")
+	}
+
 	return nil
 }
 
@@ -137,6 +201,32 @@ func TestRemoveAckWithNonEmptyServiceName(t *testing.T) {
 	assert.Equal(t, http.StatusMovedPermanently, respRecorder.Code)
 }
 
+func TestRemoveAckWithInternalError(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", fmt.Sprintf("/rem-ack?service-name=%s", brokenServiceName), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handleRemoveAck)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusInternalServerError, respRecorder.Code)
+}
+
+func TestAddAckWithEmptyServiceName(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handleAddAck)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusBadRequest, respRecorder.Code)
+}
+
 func TestAddAckWithNonEmptyServiceName(t *testing.T) {
 	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
@@ -150,6 +240,45 @@ func TestAddAckWithNonEmptyServiceName(t *testing.T) {
 	assert.Equal(t, http.StatusMovedPermanently, respRecorder.Code)
 }
 
+func TestAddAckWithBrokenService(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", fmt.Sprintf("/add-ack?service-name=%s", brokenServiceName), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handleAddAck)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusInternalServerError, respRecorder.Code)
+}
+
+func TestAddAckFromWithNonEmptyServiceName(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", "/add-ack?service-name=testservice", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handleAddAckForm)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusOK, respRecorder.Code)
+}
+
+func TestAddAckFromWithEmptyServiceName(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handleAddAckForm)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusBadRequest, respRecorder.Code)
+}
+
 func TestDisableCategoryWithEmptyCategoryName(t *testing.T) {
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "", nil)
@@ -160,6 +289,18 @@ func TestDisableCategoryWithEmptyCategoryName(t *testing.T) {
 	handler := http.HandlerFunc(aggHealthCheckcHandler.handleDisableCategory)
 	handler.ServeHTTP(respRecorder, req)
 	assert.Equal(t, http.StatusBadRequest, respRecorder.Code)
+}
+
+func TestDisableCategoryWithIntrnalError(t *testing.T) {
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", fmt.Sprintf("disable-category?category-name=%s", brokenCategoryName), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handleDisableCategory)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusInternalServerError, respRecorder.Code)
 }
 
 func TestDisableCategoryWithValidCategoryName(t *testing.T) {
@@ -227,6 +368,32 @@ func TestGoodToGoDisabledCategory(t *testing.T) {
 	assert.Equal(t, http.StatusServiceUnavailable, respRecorder.Code)
 }
 
+func TestGoodToGoBrokenCategory(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", fmt.Sprintf("health?categories=%s", brokenCategoryName), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handleGoodToGo)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusServiceUnavailable, respRecorder.Code)
+}
+
+func TestGoodToGoWithFailingCheck(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", fmt.Sprintf("health?categories=%s", categoryWithChecks), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handleGoodToGo)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusServiceUnavailable, respRecorder.Code)
+}
+
 func TestIndividualPodCheckEmptyPodName(t *testing.T) {
 	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
@@ -253,6 +420,19 @@ func TestIndividualPodCheckValidPodName(t *testing.T) {
 	assert.Equal(t, http.StatusOK, respRecorder.Code)
 }
 
+func TestIndividualPodCheckBrokenPod(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", fmt.Sprintf("pod?pod-name=%s", brokenPodName), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handleIndividualPodHealthCheck)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusInternalServerError, respRecorder.Code)
+}
+
 func TestServiceHealthCheckInvalidCategory(t *testing.T) {
 	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
@@ -266,6 +446,19 @@ func TestServiceHealthCheckInvalidCategory(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, respRecorder.Code)
 }
 
+func TestServiceHealthCheckInternalError(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", fmt.Sprintf("health?categories=%s", brokenCategoryName), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handleServicesHealthCheck)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusInternalServerError, respRecorder.Code)
+}
+
 func TestServiceHealthCheckDefaultCategory(t *testing.T) {
 	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
@@ -276,6 +469,72 @@ func TestServiceHealthCheckDefaultCategory(t *testing.T) {
 	}
 	respRecorder := httptest.NewRecorder()
 	handler := http.HandlerFunc(aggHealthCheckcHandler.handleServicesHealthCheck)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusOK, respRecorder.Code)
+}
+
+func TestServiceHealthCheckDefaultCategoryHtmlResponse(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handleServicesHealthCheck)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusOK, respRecorder.Code)
+}
+
+func TestPodsHealthCheckEmptyServiceName(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handlePodsHealthCheck)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusBadRequest, respRecorder.Code)
+}
+
+func TestPodsHealthCheckBrokenService(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", fmt.Sprintf("pods-health?service-name=%s", brokenServiceName), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handlePodsHealthCheck)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusInternalServerError, respRecorder.Code)
+}
+
+func TestPodsHealthCheckHappyFlow(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", fmt.Sprintf("pods-health?service-name=%s", validServiceName), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handlePodsHealthCheck)
+	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusOK, respRecorder.Code)
+}
+
+func TestPodsHealthCheckHappyFlowJson(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	aggHealthCheckcHandler := initializeTestHandler()
+	req, err := http.NewRequest("GET", fmt.Sprintf("pods-health?service-name=%s", validServiceName), nil)
+	req.Header.Add("Accept", "application/json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	respRecorder := httptest.NewRecorder()
+	handler := http.HandlerFunc(aggHealthCheckcHandler.handlePodsHealthCheck)
 	handler.ServeHTTP(respRecorder, req)
 	assert.Equal(t, http.StatusOK, respRecorder.Code)
 }

@@ -22,7 +22,7 @@ type controller interface {
 	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
 	runServiceChecksByServiceNames([]service, map[string]category) []fthealth.CheckResult
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
-	buildPodsHealthResult(string, bool) (fthealth.HealthResult, error)
+	buildPodsHealthResult(string) (fthealth.HealthResult, error)
 	runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	updateCachedHealth([]service, map[string]category)

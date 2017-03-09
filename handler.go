@@ -204,8 +204,7 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	useCache := useCache(r.URL)
-	healthResult, err := h.controller.buildPodsHealthResult(serviceName, useCache)
+	healthResult, err := h.controller.buildPodsHealthResult(serviceName)
 
 	infoLogger.Printf("Checking pods health for service [%s], useCache: %t", serviceName, useCache)
 	if err != nil {
