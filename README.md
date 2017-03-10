@@ -1,4 +1,5 @@
-[![Circle CI](https://circleci.com/gh/Financial-Times/upp-aggregate-healthcheck.svg?style=shield)](https://circleci.com/gh/Financial-Times/upp-aggregate-healthcheck)
+[![Circle CI](https://circleci.com/gh/Financial-Times/upp-aggregate-healthcheck.svg?style=shield)](https://circleci.com/gh/Financial-Times/upp-aggregate-healthcheck) [![Go Report Card](https://goreportcard.com/badge/github.com/Financial-Times/upp-aggregate-healthcheck)](https://goreportcard.com/report/github.com/Financial-Times/upp-aggregate-healthcheck) [![Coverage Status](https://coveralls.io/repos/github/Financial-Times/upp-aggregate-healthcheck/badge.svg)](https://coveralls.io/github/Financial-Times/upp-aggregate-healthcheck)
+
 # upp-aggregate-healthcheck
 The purpose of this service is to serve the functionality of aggregating healthchecks from services and pods in the Kubernetes cluster.
 
