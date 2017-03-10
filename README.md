@@ -31,7 +31,9 @@ The purpose of this service is to serve the functionality of aggregating healthc
  The list of functionalities that can be used outside of the cluster are:
   * Add/Remove acknowledge
   * Enable/Disable sticky categories
-
+ To run the service locally, you will need to run the following commands first to get the vendored dependencies for this project:
+ `go get github.com/kardianos/govendor`
+ `govendor sync`
 ## Endpoints
  In the following section, aggregate-healthcheck endpoints are described.
  Note that this app has two options of retrieving healthchecks:
