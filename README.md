@@ -1,5 +1,6 @@
-[![Circle CI](https://circleci.com/gh/Financial-Times/upp-aggregate-healthcheck.svg?style=shield)](https://circleci.com/gh/Financial-Times/upp-aggregate-healthcheck)
 # upp-aggregate-healthcheck
+[![Circle CI](https://circleci.com/gh/Financial-Times/upp-aggregate-healthcheck.svg?style=shield)](https://circleci.com/gh/Financial-Times/upp-aggregate-healthcheck) [![Go Report Card](https://goreportcard.com/badge/github.com/Financial-Times/upp-aggregate-healthcheck)](https://goreportcard.com/report/github.com/Financial-Times/upp-aggregate-healthcheck) [![Coverage Status](https://coveralls.io/repos/github/Financial-Times/upp-aggregate-healthcheck/badge.svg)](https://coveralls.io/github/Financial-Times/upp-aggregate-healthcheck)
+
 The purpose of this service is to serve the functionality of aggregating healthchecks from services and pods in the Kubernetes cluster.
 
 ## Usage
@@ -25,12 +26,15 @@ The purpose of this service is to serve the functionality of aggregating healthc
  Categories can be sticky, meaning that if one of the services become unhealthy, the category will be disabled, meaning that it will be unhealthy,
   until manual re-enabling it. There is an endpoint for enabling a category.
 ## Running locally
+To run the service locally, you will need to run the following commands first to get the vendored dependencies for this project:
+  `go get github.com/kardianos/govendor` and
+  `govendor sync`
+ 
  There is a limited number of functionalities that can be used locally, because we are querying all the apps, inside the pods and there is no current
   solution of accessing them outside of the cluster, without using port-forwarding.
  The list of functionalities that can be used outside of the cluster are:
   * Add/Remove acknowledge
   * Enable/Disable sticky categories
-
 ## Endpoints
  In the following section, aggregate-healthcheck endpoints are described.
  Note that this app has two options of retrieving healthchecks:
