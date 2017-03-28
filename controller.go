@@ -16,6 +16,7 @@ type healthCheckController struct {
 type measuredService struct {
 	service      service
 	cachedHealth *cachedHealth
+	bufferedHealths *BufferedHealths
 }
 
 type controller interface {
@@ -34,6 +35,7 @@ type controller interface {
 	getEnvironment() string
 	getSeverityForService(string, int32) uint8
 	getSeverityForPod(string, int32) uint8
+	getMeasuredServices() map[string]measuredService
 }
 
 func initializeController(environment string) *healthCheckController {
