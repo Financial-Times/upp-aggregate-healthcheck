@@ -55,6 +55,17 @@ func (c *healthCheckController) updateCachedHealth(services []service, categorie
 			go c.scheduleCheck(newMService, refreshPeriod, time.NewTimer(0))
 		}
 	}
+
+	//removing services that do not exist anymore
+	if _, ok := categories["default"]; ok {
+		for measuredServiceName, measuredService := range c.measuredServices {
+			if !isStringInSlice(measuredServiceName, services) {
+				infoLogger.Printf("Deleting service with name %s from cache, since it doesn't exist anymore", measuredServiceName)
+				delete(c.measuredServices, measuredServiceName)
+				measuredService.cachedHealth.terminate <- true
+			}
+		}
+	}
 }
 
 func (c *healthCheckController) scheduleCheck(mService measuredService, refreshPeriod time.Duration, timer *time.Timer) {

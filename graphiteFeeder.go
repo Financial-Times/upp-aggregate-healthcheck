@@ -21,8 +21,7 @@ type GraphiteFeeder struct {
 	environment string
 	connection  net.Conn
 	ticker      *time.Ticker
-	controller  controller //todo: add here controller interface to get the map of measured services.
-			       //todo: ensure that ALL services are checked.
+	controller  controller
 }
 
 type BufferedHealths struct {
@@ -36,7 +35,7 @@ func NewBufferedHealths() *BufferedHealths {
 
 func NewGraphiteFeeder(host string, port int, environment string, controller controller) *GraphiteFeeder {
 	connection := tcpConnect(host, port)
-	ticker := time.NewTicker(60 * time.Second) //todo: should this value be configurable?
+	ticker := time.NewTicker(60 * time.Second)
 	return &GraphiteFeeder{host, port, environment, connection, ticker, controller}
 }
 
@@ -70,7 +69,6 @@ func (g GraphiteFeeder) sendPilotLight() error {
 }
 
 func (g GraphiteFeeder) sendBuffers() error {
-	//todo: ensure that all services are measured and cached when starting the agg-hc service
 	for _, mService := range g.controller.getMeasuredServices() {
 		err := g.sendOneBuffer(mService)
 		if err != nil {
