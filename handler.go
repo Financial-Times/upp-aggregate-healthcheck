@@ -206,7 +206,7 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 
 	healthResult, err := h.controller.buildPodsHealthResult(serviceName)
 
-	infoLogger.Printf("Checking pods health for service [%s], useCache: %t", serviceName, useCache)
+	infoLogger.Printf("Checking pods health for service [%s]", serviceName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot perform checks for service with name %s, error was: %v", serviceName, err.Error())
