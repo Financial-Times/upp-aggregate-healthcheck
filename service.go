@@ -137,16 +137,12 @@ func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) e
 }
 
 func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
-	k8sPods, err := hs.k8sClient.CoreV1().Pods("default").List(v1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", podName)})
+	k8sPod, err := hs.k8sClient.CoreV1().Pods("default").Get(podName)
 	if err != nil {
 		return pod{}, fmt.Errorf("Failed to get the pod with name %s from k8s cluster, error was %v", podName, err.Error())
 	}
 
-	if len(k8sPods.Items) == 0 {
-		return pod{}, fmt.Errorf("Pod with name %s was not found in cluster, error was %v", podName, err.Error())
-	}
-
-	p := populatePod(k8sPods.Items[0])
+	p := populatePod(*k8sPod)
 	return p, nil
 }
 
@@ -331,15 +327,11 @@ func getAcks(k8sClient kubernetes.Interface) (map[string]string, error) {
 }
 
 func getAcksConfigMap(k8sClient kubernetes.Interface) (v1.ConfigMap, error) {
-	k8sAckConfigMaps, err := k8sClient.CoreV1().ConfigMaps("default").List(v1.ListOptions{FieldSelector: fmt.Sprintf("metadata.name=%s", ackMessagesConfigMapName)})
+	k8sAckConfigMap, err := k8sClient.CoreV1().ConfigMaps("default").Get(ackMessagesConfigMapName)
 
 	if err != nil {
-		return v1.ConfigMap{}, fmt.Errorf("Cannot get configMap with name: %s from k8s cluster. Error was: %s", ackMessagesConfigMapName, err.Error())
+		return v1.ConfigMap{}, fmt.Errorf("Cannot fin configMap with name: %s. Error was: %s", ackMessagesConfigMapName, err.Error())
 	}
 
-	if len(k8sAckConfigMaps.Items) == 0 {
-		return v1.ConfigMap{}, fmt.Errorf("Cannot find configMap with name: %s", ackMessagesConfigMapName)
-	}
-
-	return k8sAckConfigMaps.Items[0], nil
+	return *k8sAckConfigMap, nil
 }

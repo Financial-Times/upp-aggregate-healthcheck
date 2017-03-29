@@ -6,7 +6,6 @@ import (
 	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"io/ioutil"
-	"k8s.io/client-go/pkg/api/v1"
 	"net/http"
 )
 
@@ -36,33 +35,25 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, er
 }
 
 func (hs *k8sHealthcheckService) getPodAvailabilityForDeployment(service service) (int32, int32, error) {
-	k8sDeployments, err := hs.k8sClient.ExtensionsV1beta1().Deployments("default").List(v1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", service.name)})
+	k8sDeployment, err := hs.k8sClient.ExtensionsV1beta1().Deployments("default").Get(service.name)
 	if err != nil {
-		return 0, 0, fmt.Errorf("Error retrieving deployment with label app=%s", service.name)
+		return 0, 0, fmt.Errorf("Error retrieving deployment with name %s", service.name)
 	}
 
-	if len(k8sDeployments.Items) == 0 {
-		return 0, 0, fmt.Errorf("Cannot find deployment with label app=%s", service.name)
-	}
-
-	noOfUnavailablePods := k8sDeployments.Items[0].Status.UnavailableReplicas
-	noOfAvailablePods := k8sDeployments.Items[0].Status.AvailableReplicas
+	noOfUnavailablePods := k8sDeployment.Status.UnavailableReplicas
+	noOfAvailablePods := k8sDeployment.Status.AvailableReplicas
 
 	return noOfAvailablePods, noOfUnavailablePods, nil
 }
 
 func (hs *k8sHealthcheckService) getPodAvailabilityForDaemonSet(service service) (int32, int32, error) {
-	daemonSets, err := hs.k8sClient.ExtensionsV1beta1().DaemonSets("default").List(v1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", service.name)})
+	daemonSet, err := hs.k8sClient.ExtensionsV1beta1().DaemonSets("default").Get(service.name)
 	if err != nil {
-		return 0, 0, fmt.Errorf("Error retrieving deployment with label app=%s", service.name)
+		return 0, 0, fmt.Errorf("Error retrieving daemonset with name %s", service.name)
 	}
 
-	if len(daemonSets.Items) == 0 {
-		return 0, 0, fmt.Errorf("Cannot find deployment with label app=%s", service.name)
-	}
-
-	noOfAvailablePods := daemonSets.Items[0].Status.NumberReady
-	noOfUnavailablePods := daemonSets.Items[0].Status.DesiredNumberScheduled - noOfAvailablePods
+	noOfAvailablePods := daemonSet.Status.NumberReady
+	noOfUnavailablePods := daemonSet.Status.DesiredNumberScheduled - noOfAvailablePods
 
 	return noOfAvailablePods, noOfUnavailablePods, nil
 }
