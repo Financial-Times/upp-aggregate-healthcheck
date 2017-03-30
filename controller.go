@@ -14,9 +14,9 @@ type healthCheckController struct {
 }
 
 type measuredService struct {
-	service      service
-	cachedHealth *cachedHealth
-	bufferedHealths *BufferedHealths
+	service         service
+	cachedHealth    *cachedHealth
+	bufferedHealths *bufferedHealths
 }
 
 type controller interface {

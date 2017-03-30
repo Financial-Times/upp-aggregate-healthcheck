@@ -1,0 +1,1 @@
+package upp_aggregate_healthcheck

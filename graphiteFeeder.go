@@ -1,45 +1,48 @@
 package main
 
 import (
-	"time"
-	"net"
-	"strconv"
-	"fmt"
 	"errors"
+	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	"net"
 	"strings"
+	"time"
 )
 
 const (
 	pilotLightFormat = "coco.health.%s.pilot-light 1 %d\n"
-	metricFormat     = "coco.health.%s.services.%s %d %d\n"
+	metricFormat = "coco.health.%s.services.%s %d %d\n"
 )
 
-type GraphiteFeeder struct {
-	host        string
-	port        int
+type graphiteFeeder struct {
+	url         string
 	environment string
 	connection  net.Conn
 	ticker      *time.Ticker
 	controller  controller
 }
 
-type BufferedHealths struct {
+type bufferedHealths struct {
 	buffer chan fthealth.CheckResult
 }
 
-func NewBufferedHealths() *BufferedHealths {
+func newBufferedHealths() *bufferedHealths {
 	buffer := make(chan fthealth.CheckResult, 60)
-	return &BufferedHealths{buffer}
+	return &bufferedHealths{buffer}
 }
 
-func NewGraphiteFeeder(host string, port int, environment string, controller controller) *GraphiteFeeder {
-	connection := tcpConnect(host, port)
+func newGraphiteFeeder(url string, environment string, controller controller) *graphiteFeeder {
+	connection := tcpConnect(url)
 	ticker := time.NewTicker(60 * time.Second)
-	return &GraphiteFeeder{host, port, environment, connection, ticker, controller}
+	return &graphiteFeeder{
+		url: url, environment:environment,
+		connection: connection,
+		ticker:ticker,
+		controller:controller,
+	}
 }
 
-func (g GraphiteFeeder) feed() {
+func (g graphiteFeeder) feed() {
 	for range g.ticker.C {
 		errPilot := g.sendPilotLight()
 		if errPilot != nil {
@@ -55,20 +58,16 @@ func (g GraphiteFeeder) feed() {
 	}
 }
 
-func (g GraphiteFeeder) sendPilotLight() error {
+func (g graphiteFeeder) sendPilotLight() error {
 	if g.connection == nil {
-		return errors.New("Can't send pilot light, no Graphite connection is set.")
+		return errors.New("Can't send pilot light, no Graphite connection is set")
 	}
 
 	_, err := fmt.Fprintf(g.connection, pilotLightFormat, g.environment, time.Now().Unix())
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return err
 }
 
-func (g GraphiteFeeder) sendBuffers() error {
+func (g graphiteFeeder) sendBuffers() error {
 	for _, mService := range g.controller.getMeasuredServices() {
 		err := g.sendOneBuffer(mService)
 		if err != nil {
@@ -78,7 +77,7 @@ func (g GraphiteFeeder) sendBuffers() error {
 	return nil
 }
 
-func (g GraphiteFeeder) sendOneBuffer(mService measuredService) error {
+func (g graphiteFeeder) sendOneBuffer(mService measuredService) error {
 	for {
 		select {
 		case checkResult := <-mService.bufferedHealths.buffer:
@@ -93,35 +92,32 @@ func (g GraphiteFeeder) sendOneBuffer(mService measuredService) error {
 	}
 }
 
-func (g *GraphiteFeeder) sendOne(check fthealth.CheckResult) error {
+func (g *graphiteFeeder) sendOne(check fthealth.CheckResult) error {
 	if g.connection == nil {
-		return errors.New("Can't send results, no Graphite connection.")
+		return errors.New("Can't send results, no Graphite connection")
 	}
 	name := strings.Replace(check.Name, ".", "-", -1)
 	_, err := fmt.Fprintf(g.connection, metricFormat, g.environment, name, inverseBoolToInt(check.Ok), check.LastUpdated.Unix())
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
-func addBack(bufferedHealths *BufferedHealths, checkResult fthealth.CheckResult) {
+func addBack(bufferedHealths *bufferedHealths, checkResult fthealth.CheckResult) {
 	select {
 	case bufferedHealths.buffer <- checkResult:
 	default:
 	}
 }
 
-func (g *GraphiteFeeder) reconnect() {
+func (g *graphiteFeeder) reconnect() {
 	infoLogger.Println("Reconnecting to Graphite host.")
 	if g.connection != nil {
 		g.connection.Close()
 	}
-	g.connection = tcpConnect(g.host, g.port)
+	g.connection = tcpConnect(g.url)
 }
 
-func tcpConnect(host string, port int) net.Conn {
-	conn, err := net.Dial("tcp", host + ":" + strconv.Itoa(port))
+func tcpConnect(url string) net.Conn {
+	conn, err := net.Dial("tcp", url)
 	if err != nil {
 		warnLogger.Printf("Error while creating TCP connection [%v]", err)
 		return nil
