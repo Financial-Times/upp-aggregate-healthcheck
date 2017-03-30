@@ -11,7 +11,7 @@ import (
 
 const (
 	pilotLightFormat = "coco.health.%s.pilot-light 1 %d\n"
-	metricFormat = "coco.health.%s.services.%s %d %d\n"
+	metricFormat     = "coco.health.%s.services.%s %d %d\n"
 )
 
 type graphiteFeeder struct {
@@ -35,10 +35,10 @@ func newGraphiteFeeder(url string, environment string, controller controller) *g
 	connection := tcpConnect(url)
 	ticker := time.NewTicker(60 * time.Second)
 	return &graphiteFeeder{
-		url: url, environment:environment,
+		url: url, environment: environment,
 		connection: connection,
-		ticker:ticker,
-		controller:controller,
+		ticker:     ticker,
+		controller: controller,
 	}
 }
 
@@ -119,7 +119,7 @@ func (g *graphiteFeeder) reconnect() {
 func tcpConnect(url string) net.Conn {
 	conn, err := net.Dial("tcp", url)
 	if err != nil {
-		warnLogger.Printf("Error while creating TCP connection [%v]", err)
+		warnLogger.Printf("Cannot create TCP connection [%v]", err)
 		return nil
 	}
 	tcpConn := conn.(*net.TCPConn)
