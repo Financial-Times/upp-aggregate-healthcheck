@@ -14,8 +14,9 @@ const (
 
 func newMeasuredService(service service) measuredService {
 	cachedHealth := newCachedHealth()
+	bufferedHealths := newBufferedHealths()
 	go cachedHealth.maintainLatest()
-	return measuredService{service, cachedHealth}
+	return measuredService{service, cachedHealth, bufferedHealths}
 }
 
 func (c *healthCheckController) collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
@@ -65,21 +66,29 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 	}
 
 	// run check
-	healthResult := fthealth.RunCheck(mService.service.name,
+	checkResult := fthealth.RunCheck(mService.service.name,
 		fmt.Sprintf("Checks the health of %v", mService.service.name),
 		true,
 		newServiceHealthCheck(mService.service, c.healthCheckService)).Checks[0]
 
-	healthResult.Ack = mService.service.ack
+	checkResult.Ack = mService.service.ack
 
-	if !healthResult.Ok {
-		severity := c.getSeverityForService(healthResult.Name, mService.service.appPort)
-		healthResult.Severity = severity
+	if !checkResult.Ok {
+		severity := c.getSeverityForService(checkResult.Name, mService.service.appPort)
+		checkResult.Severity = severity
 	}
 
-	mService.cachedHealth.toWriteToCache <- healthResult
+	mService.cachedHealth.toWriteToCache <- checkResult
+	select {
+	case mService.bufferedHealths.buffer <- checkResult:
+	default:
+	}
 
 	go c.scheduleCheck(mService, refreshPeriod, time.NewTimer(refreshPeriod))
+}
+
+func (c *healthCheckController) getMeasuredServices() map[string]measuredService {
+	return c.measuredServices
 }
 
 func findShortestPeriod(categories map[string]category) time.Duration {
