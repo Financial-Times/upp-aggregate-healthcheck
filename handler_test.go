@@ -73,6 +73,10 @@ func (m *mockController) buildServicesHealthResult(providedCategories []string, 
 	return health, matchingCategories, map[string]category{}, nil
 }
 
+func (m *mockController) getMeasuredServices() map[string]measuredService {
+	return map[string]measuredService{}
+}
+
 func (m *mockController) runServiceChecksByServiceNames([]service, map[string]category) []fthealth.CheckResult {
 	return []fthealth.CheckResult{}
 }

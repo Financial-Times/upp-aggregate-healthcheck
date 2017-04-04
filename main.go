@@ -33,6 +33,13 @@ func main() {
 		EnvVar: "PATH_PREFIX",
 	})
 
+	graphiteURL := app.String(cli.StringOpt{
+		Name:   "graphite-host",
+		Value:  "graphite.ft.com:2003",
+		Desc:   "Graphite url",
+		EnvVar: "GRAPHITE_URL",
+	})
+
 	app.Action = func() {
 		initLogs(os.Stdout, os.Stdout, os.Stderr)
 
@@ -41,6 +48,9 @@ func main() {
 			controller: controller,
 			pathPrefix: *pathPrefix,
 		}
+
+		graphiteFeeder := newGraphiteFeeder(*graphiteURL, *environment, controller)
+		go graphiteFeeder.feed()
 
 		listen(handler, *pathPrefix)
 	}
