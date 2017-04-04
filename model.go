@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 type pod struct {
 	name        string
@@ -22,4 +25,14 @@ type category struct {
 	refreshPeriod time.Duration
 	isSticky      bool
 	isEnabled     bool
+}
+
+type deployment struct {
+	numberOfAvailableReplicas   int
+	numberOfUnavailableReplicas int
+}
+
+type deploymentsMap struct {
+	sync.RWMutex
+	m map[string]deployment
 }
