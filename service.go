@@ -51,6 +51,7 @@ func (hs *k8sHealthcheckService) watchDeployments() {
 		errorLogger.Printf("Error while starting to watch deployments: %s", err.Error())
 	}
 
+	infoLogger.Print("Started watching deployments")
 	resultChannel := watcher.ResultChan()
 	for msg := range resultChannel {
 		switch msg.Type {
@@ -74,9 +75,12 @@ func (hs *k8sHealthcheckService) watchDeployments() {
 			hs.deployments.Unlock()
 			infoLogger.Printf("Deployment %s has been removed", k8sDeployment.Name)
 		default:
-			errorLogger.Print("Error received on watch deployments. Channel may be full ")
+			errorLogger.Print("Error received on watch deployments. Channel may be full")
 		}
 	}
+
+	errorLogger.Print("Deployments watching terminated. Reconnecting...")
+	hs.watchDeployments()
 }
 
 func initializeHealthCheckService() *k8sHealthcheckService {
