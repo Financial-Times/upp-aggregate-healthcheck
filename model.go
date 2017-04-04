@@ -28,8 +28,8 @@ type category struct {
 }
 
 type deployment struct {
-	numberOfAvailableReplicas   int
-	numberOfUnavailableReplicas int
+	numberOfAvailableReplicas   int32
+	numberOfUnavailableReplicas int32
 }
 
 type deploymentsMap struct {
