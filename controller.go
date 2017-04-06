@@ -133,6 +133,20 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services []servic
 
 	healthChecks := fthealth.RunCheck("Forced check run", "", true, checks...).Checks
 
+	for i, individualHealthcheck := range healthChecks {
+		if !individualHealthcheck.Ok {
+			service,err := getServiceFromListByName(individualHealthcheck.Name, services)
+
+			if err != nil {
+				warnLogger.Printf("Cannot compute severity for service with name %s. Using default value.",individualHealthcheck.Name)
+				continue
+			}
+
+			severity := c.getSeverityForService(individualHealthcheck.Name, service.appPort)
+			healthChecks[i].Severity = severity
+		}
+	}
+
 	for _, service := range services {
 		if service.ack != "" {
 			updateHealthCheckWithAckMsg(healthChecks, service.name, service.ack)
@@ -142,6 +156,16 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services []servic
 	c.updateCachedHealth(services, categories)
 
 	return healthChecks
+}
+
+func getServiceFromListByName(serviceName string, services []service) (service, error) {
+	for _, service := range services {
+		if service.name == serviceName {
+			return service, nil
+		}
+	}
+
+	return service{}, fmt.Errorf("Cannot find service with name %s", serviceName)
 }
 
 func (c *healthCheckController) runServiceChecksFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
@@ -184,6 +208,10 @@ func updateHealthCheckWithAckMsg(healthChecks []fthealth.CheckResult, name strin
 func getFinalResult(checkResults []fthealth.CheckResult, categories map[string]category) (bool, uint8) {
 	finalOk := true
 	var finalSeverity uint8 = 2
+
+	if len(checkResults) == 0 {
+		return false, finalSeverity
+	}
 
 	for _, category := range categories {
 		if !category.isEnabled {
