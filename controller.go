@@ -13,12 +13,6 @@ type healthCheckController struct {
 	measuredServices   map[string]measuredService
 }
 
-type measuredService struct {
-	service         service
-	cachedHealth    *cachedHealth
-	bufferedHealths *bufferedHealths
-}
-
 type controller interface {
 	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
 	runServiceChecksByServiceNames([]service, map[string]category) []fthealth.CheckResult

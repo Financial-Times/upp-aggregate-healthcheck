@@ -36,3 +36,9 @@ type deploymentsMap struct {
 	sync.RWMutex
 	m map[string]deployment
 }
+
+type measuredService struct {
+	service         service
+	cachedHealth    *cachedHealth
+	bufferedHealths *bufferedHealths
+}

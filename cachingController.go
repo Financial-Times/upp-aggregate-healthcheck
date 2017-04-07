@@ -66,15 +66,16 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 	}
 
 	// run check
-	checkResult := fthealth.RunCheck(mService.service.name,
-		fmt.Sprintf("Checks the health of %v", mService.service.name),
+	serviceToBeChecked :=  mService.service
+	checkResult := fthealth.RunCheck(serviceToBeChecked.name,
+		fmt.Sprintf("Checks the health of %v", serviceToBeChecked.name),
 		true,
-		newServiceHealthCheck(mService.service, c.healthCheckService)).Checks[0]
+		newServiceHealthCheck(serviceToBeChecked, c.healthCheckService)).Checks[0]
 
-	checkResult.Ack = mService.service.ack
+	checkResult.Ack = serviceToBeChecked.ack
 
 	if !checkResult.Ok {
-		severity := c.getSeverityForService(checkResult.Name, mService.service.appPort)
+		severity := c.getSeverityForService(checkResult.Name, serviceToBeChecked.appPort)
 		checkResult.Severity = severity
 	}
 
