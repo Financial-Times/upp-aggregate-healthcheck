@@ -22,6 +22,7 @@ const (
 	nonExistingCategoryName = "nonExistingCategoryName"
 	validCat = "validCat"
 	validService = "validService"
+	validEnvName="valid-env-name"
 )
 
 type MockService struct {
@@ -373,6 +374,30 @@ func TestRunServiceChecksForStickyCategory(t *testing.T) {
 	assert.False(t, categories["test"].isEnabled)
 }
 
+func TestRunServiceChecksForStickyCategoryUpdateError(t *testing.T) {
+	categories := make(map[string]category)
+	categories["publishing"] = category{
+		services: []string{"test-service-name"},
+	}
+
+	categories[nonExistingCategoryName] = category{
+		services:  []string{"test-service-name"},
+		isSticky:  true,
+		isEnabled: true,
+	}
+	categories["test"] = category{
+		services:  []string{"test-service-name"},
+		isSticky:  true,
+		isEnabled: true,
+	}
+
+	controller := initializeMockController("test", nil)
+	checkResult, _ := controller.runServiceChecksFor(categories)
+	assert.NotNil(t, checkResult)
+	assert.False(t, categories["test"].isEnabled)
+}
+
+
 func TestGetMatchingCategoriesHappyFlow(t *testing.T) {
 	categories := make(map[string]category)
 	categories["publishing"] = category{
@@ -394,7 +419,25 @@ func TestGetFinalResultCategoryDisabled(t *testing.T) {
 		isEnabled: false,
 	}
 
-	finalOk, _ := getFinalResult([]fthealth.CheckResult{}, categories)
+	checkResults := []fthealth.CheckResult{
+		{
+			Ok:false,
+			Severity:1,
+
+		},
+	}
+
+	finalOk, _ := getFinalResult(checkResults, categories)
 
 	assert.False(t, finalOk)
+}
+
+func TestGetEnvironment(t *testing.T) {
+	healthCheckController := &healthCheckController{
+		environment:validEnvName,
+	}
+
+	env := healthCheckController.getEnvironment()
+
+	assert.Equal(t,validEnvName,env)
 }
