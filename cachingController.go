@@ -23,14 +23,14 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 	var checkResults []fthealth.CheckResult
 	categorisedResults := make(map[string][]fthealth.CheckResult)
 	serviceNames := getServiceNamesFromCategories(categories)
-	services := c.healthCheckService.getServicesByNames(serviceNames)
-	var servicesThatAreNotInCache []service
+	services := c.healthCheckService.getServicesMapByNames(serviceNames)
+	servicesThatAreNotInCache := make(map[string]service)
 	for _, service := range services {
 		if mService, ok := c.measuredServices[service.name]; ok {
 			checkResult := <-mService.cachedHealth.toReadFromCache
 			checkResults = append(checkResults, checkResult)
 		} else {
-			servicesThatAreNotInCache = append(servicesThatAreNotInCache, service)
+			servicesThatAreNotInCache[service.name] = service
 		}
 	}
 
@@ -42,7 +42,7 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 	return checkResults, categorisedResults
 }
 
-func (c *healthCheckController) updateCachedHealth(services []service, categories map[string]category) {
+func (c *healthCheckController) updateCachedHealth(services map[string]service, categories map[string]category) {
 	// adding new services, not touching existing
 	for _, service := range services {
 		if mService, ok := c.measuredServices[service.name]; !ok || !reflect.DeepEqual(service, c.measuredServices[service.name].service) {
@@ -65,8 +65,15 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 	case <-timer.C:
 	}
 
+	if !c.healthCheckService.isServicePresent(mService.service.name) {
+		infoLogger.Printf("Service with name %s doesn't exist anymore, removing it from cache", mService.service.name)
+		delete(c.measuredServices,mService.service.name)
+		mService.cachedHealth.terminate <- true
+		return
+	}
+
 	// run check
-	serviceToBeChecked :=  mService.service
+	serviceToBeChecked := mService.service
 	checkResult := fthealth.RunCheck(serviceToBeChecked.name,
 		fmt.Sprintf("Checks the health of %v", serviceToBeChecked.name),
 		true,

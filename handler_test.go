@@ -77,7 +77,7 @@ func (m *mockController) getMeasuredServices() map[string]measuredService {
 	return map[string]measuredService{}
 }
 
-func (m *mockController) runServiceChecksByServiceNames([]service, map[string]category) []fthealth.CheckResult {
+func (m *mockController) runServiceChecksByServiceNames(map[string]service, map[string]category) []fthealth.CheckResult {
 	return []fthealth.CheckResult{}
 }
 
@@ -121,7 +121,7 @@ func (m *mockController) collectChecksFromCachesFor(map[string]category) ([]fthe
 	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}
 }
 
-func (m *mockController) updateCachedHealth([]service, map[string]category) {
+func (m *mockController) updateCachedHealth(map[string]service, map[string]category) {
 
 }
 

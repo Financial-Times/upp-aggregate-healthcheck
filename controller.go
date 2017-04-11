@@ -15,12 +15,12 @@ type healthCheckController struct {
 
 type controller interface {
 	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
-	runServiceChecksByServiceNames([]service, map[string]category) []fthealth.CheckResult
+	runServiceChecksByServiceNames(map[string]service, map[string]category) []fthealth.CheckResult
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	buildPodsHealthResult(string) (fthealth.HealthResult, error)
 	runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
-	updateCachedHealth([]service, map[string]category)
+	updateCachedHealth(map[string]service, map[string]category)
 	scheduleCheck(measuredService, time.Duration, *time.Timer)
 	getIndividualPodHealth(string) ([]byte, string, error)
 	addAck(string, string) error
@@ -52,9 +52,7 @@ func (c *healthCheckController) updateStickyCategory(categoryName string, isEnab
 }
 
 func (c *healthCheckController) removeAck(serviceName string) error {
-	services := c.healthCheckService.getServicesByNames([]string{serviceName})
-
-	if len(services) == 0 {
+	if !c.healthCheckService.isServicePresent(serviceName) {
 		return fmt.Errorf("Cannot find service with name %s", serviceName)
 	}
 
@@ -68,9 +66,7 @@ func (c *healthCheckController) removeAck(serviceName string) error {
 }
 
 func (c *healthCheckController) addAck(serviceName string, ackMessage string) error {
-	services := c.healthCheckService.getServicesByNames([]string{serviceName})
-
-	if len(services) == 0 {
+	if !c.healthCheckService.isServicePresent(serviceName) {
 		return fmt.Errorf("Cannot find service with name %s", serviceName)
 	}
 
@@ -117,7 +113,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	return health, matchingCategories, nil, nil
 }
 
-func (c *healthCheckController) runServiceChecksByServiceNames(services []service, categories map[string]category) []fthealth.CheckResult {
+func (c *healthCheckController) runServiceChecksByServiceNames(services map[string]service, categories map[string]category) []fthealth.CheckResult {
 	var checks []fthealth.Check
 
 	for _, service := range services {
@@ -129,15 +125,13 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services []servic
 
 	for i, individualHealthcheck := range healthChecks {
 		if !individualHealthcheck.Ok {
-			service,err := getServiceFromListByName(individualHealthcheck.Name, services)
-
-			if err != nil {
-				warnLogger.Printf("Cannot compute severity for service with name %s. Using default value.",individualHealthcheck.Name)
-				continue
+			unhealthyService, ok := services[individualHealthcheck.Name];
+			if ok {
+				severity := c.getSeverityForService(individualHealthcheck.Name, unhealthyService.appPort)
+				healthChecks[i].Severity = severity
+			} else {
+				warnLogger.Printf("Cannot compute severity for service with name %s because it was not found. Using default value.", individualHealthcheck.Name)
 			}
-
-			severity := c.getSeverityForService(individualHealthcheck.Name, service.appPort)
-			healthChecks[i].Severity = severity
 		}
 	}
 
@@ -152,20 +146,10 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services []servic
 	return healthChecks
 }
 
-func getServiceFromListByName(serviceName string, services []service) (service, error) {
-	for _, service := range services {
-		if service.name == serviceName {
-			return service, nil
-		}
-	}
-
-	return service{}, fmt.Errorf("Cannot find service with name %s", serviceName)
-}
-
 func (c *healthCheckController) runServiceChecksFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
 	categorisedResults := make(map[string][]fthealth.CheckResult)
 	serviceNames := getServiceNamesFromCategories(categories)
-	services := c.healthCheckService.getServicesByNames(serviceNames)
+	services := c.healthCheckService.getServicesMapByNames(serviceNames)
 	healthChecks := c.runServiceChecksByServiceNames(services, categories)
 
 	for catIndex, category := range categories {

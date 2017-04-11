@@ -8,19 +8,20 @@ import (
 	"os"
 	"testing"
 	"time"
+	"fmt"
 )
 
 const (
-	nonExistingServiceName  = "non-existing-service"
-	serviceNameForAckErr    = "serviceNameWithAckError"
-	invalidNameForService   = "invalidNameForService"
-	nonExistingPodName      = "nonExistingPodName"
+	nonExistingServiceName = "non-existing-service"
+	serviceNameForAckErr = "serviceNameWithAckError"
+	invalidNameForService = "invalidNameForService"
+	nonExistingPodName = "nonExistingPodName"
 	podWithCriticalSeverity = "podWithCriticalSeverity"
-	failingPod              = "failingPod"
-	podWithBrokenService    = "podWithBrokenService"
+	failingPod = "failingPod"
+	podWithBrokenService = "podWithBrokenService"
 	nonExistingCategoryName = "nonExistingCategoryName"
-	validCat                = "validCat"
-	validService            = "validService"
+	validCat = "validCat"
+	validService = "validService"
 )
 
 type MockService struct {
@@ -48,19 +49,38 @@ func (m *MockService) updateCategory(categoryName string, isEnabled bool) error 
 
 	return nil
 }
-func (m *MockService) getServicesByNames(serviceNames []string) []service {
-	if len(serviceNames) != 0 && serviceNames[0] == nonExistingServiceName {
-		return []service{}
+
+func (m *MockService) isServicePresent(serviceName string) bool {
+	if serviceName == nonExistingServiceName {
+		return false
 	}
 
-	services := []service{
-		{
-			name: "test-service-name",
-			ack:  "test ack",
-		},
-		{
-			name: "test-service-name-2",
-		},
+	return true
+}
+
+func (m *MockService) getServiceByName(serviceName string) (service, error) {
+	if(serviceName == nonExistingServiceName) {
+		return service{},fmt.Errorf("Cannot find service with name %s",serviceName)
+	}
+
+	return service{
+		name: "test-service-name",
+		ack:  "test ack",
+	}, nil
+}
+
+func (m *MockService) getServicesMapByNames(serviceNames []string) map[string]service {
+	if len(serviceNames) != 0 && serviceNames[0] == nonExistingServiceName {
+		return map[string]service{}
+	}
+
+	services := make(map[string]service)
+	services["test-service-name"] = service{
+		name: "test-service-name",
+		ack:  "test ack",
+	}
+	services["test-service-name-2"] = service{
+		name: "test-service-name-2",
 	}
 
 	return services

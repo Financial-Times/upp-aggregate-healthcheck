@@ -11,14 +11,6 @@ type pod struct {
 	serviceName string
 }
 
-type service struct {
-	name        string
-	ack         string
-	appPort     int32
-	isResilient bool
-	isDaemon    bool
-}
-
 type category struct {
 	name          string
 	services      []string
@@ -35,6 +27,19 @@ type deployment struct {
 type deploymentsMap struct {
 	sync.RWMutex
 	m map[string]deployment
+}
+
+type service struct {
+	name        string
+	ack         string
+	appPort     int32
+	isResilient bool
+	isDaemon    bool
+}
+
+type servicesMap struct {
+	sync.RWMutex
+	m map[string]service
 }
 
 type measuredService struct {
