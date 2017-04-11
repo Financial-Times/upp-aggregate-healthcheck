@@ -18,8 +18,10 @@ type mockTransport struct {
 const (
 	validIP = "1.0.0.0"
 	validK8sServiceName = "validServiceName"
+	validK8sServiceNameWithAck = "validK8sServiceNameWithAck"
 	nonExistingK8sServiceName ="vnonExistingServiceName"
 	validSeverity = uint8(1)
+	ackMsg = "ack-msg"
 	validFailingHealthCheckResponseBody = `{
   "schemaVersion": 1,
   "name": "CMSNotifierApplication",
@@ -65,6 +67,22 @@ const (
   ]
 }`
 )
+
+func initializeMockServiceWithK8sServices() *k8sHealthcheckService {
+	services := make(map[string]service)
+	services[validK8sServiceName] = service{
+		name:validServiceName,
+	}
+	services[validK8sServiceNameWithAck] = service{
+		name:validK8sServiceNameWithAck,
+		ack:"test",
+	}
+	return &k8sHealthcheckService{
+		services: servicesMap{
+			m:services,
+		},
+	}
+}
 
 func initializeMockServiceWithDeployments() *k8sHealthcheckService {
 	deployments := make(map[string]deployment)
@@ -144,6 +162,12 @@ func TestCheckPodHealthFailingChecks(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestCheckPodHealthWithInvalidUrl(t *testing.T) {
+	service := initializeMockService(nil)
+	err := service.checkPodHealth(pod{name: "test", ip: "%s"}, 8080)
+	assert.NotNil(t, err)
+}
+
 func TestCheckPodHealthPassingChecks(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validPassingHealthCheckResponseBody))
 	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080)
@@ -220,3 +244,14 @@ func TestCheckServiceHealthWithDeploymentNonExistingServiceName(t *testing.T) {
 	_,err := k8sHcService.checkServiceHealth(s)
 	assert.NotNil(t, err)
 }
+
+func TestUpdateAcksForServicesEmptyAckList(t *testing.T) {
+	hcService := initializeMockServiceWithK8sServices()
+	acks := make(map[string]string)
+	acks[validK8sServiceName] = ackMsg
+	hcService.updateAcksForServices(acks)
+
+	assert.Equal(t, hcService.services.m[validK8sServiceNameWithAck].ack,"")
+	assert.Equal(t, hcService.services.m[validK8sServiceName].ack,ackMsg)
+}
+
