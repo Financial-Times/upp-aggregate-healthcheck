@@ -360,7 +360,7 @@ func populateCategory(k8sCatData map[string]string) category {
 
 	isEnabled, err := strconv.ParseBool(k8sCatData["category.enabled"])
 	if err != nil {
-		infoLogger.Printf("isEnabled flag is not set for category with name for category with name [%s]. Using default value of true.", categoryName)
+		infoLogger.Printf("isEnabled flag is not set for category with name [%s]. Using default value of true.", categoryName)
 		isEnabled = true
 	}
 
@@ -371,9 +371,10 @@ func populateCategory(k8sCatData map[string]string) category {
 	}
 
 	refreshRatePeriod := time.Duration(refreshRateSeconds * int64(time.Second))
+	categories := strings.Replace(k8sCatData["category.services"], " ", "", -1)
 	return category{
 		name:          categoryName,
-		services:      strings.Split(k8sCatData["category.services"], ","),
+		services:      strings.Split(categories, ","),
 		refreshPeriod: refreshRatePeriod,
 		isSticky:      isSticky,
 		isEnabled:     isEnabled,

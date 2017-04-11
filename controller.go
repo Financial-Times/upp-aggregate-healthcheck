@@ -156,7 +156,7 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 		if category.isSticky && category.isEnabled {
 			for _, serviceName := range category.services {
 				for _, healthCheck := range healthChecks {
-					if healthCheck.Name == serviceName {
+					if healthCheck.Name == serviceName && !healthCheck.Ok {
 						infoLogger.Printf("Sticky category [%s] is unhealthy, disabling it.", category.name)
 						category.isEnabled = false
 						categories[catIndex] = category
