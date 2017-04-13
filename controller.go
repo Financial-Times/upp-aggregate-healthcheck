@@ -125,8 +125,7 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services map[stri
 
 	for i, individualHealthcheck := range healthChecks {
 		if !individualHealthcheck.Ok {
-			unhealthyService, ok := services[individualHealthcheck.Name]
-			if ok {
+			if unhealthyService, ok := services[individualHealthcheck.Name]; ok {
 				severity := c.getSeverityForService(individualHealthcheck.Name, unhealthyService.appPort)
 				healthChecks[i].Severity = severity
 			} else {
@@ -153,18 +152,20 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 	healthChecks := c.runServiceChecksByServiceNames(services, categories)
 
 	for catIndex, category := range categories {
-		if category.isSticky && category.isEnabled {
-			for _, serviceName := range category.services {
-				for _, healthCheck := range healthChecks {
-					if healthCheck.Name == serviceName && !healthCheck.Ok {
-						infoLogger.Printf("Sticky category [%s] is unhealthy, disabling it.", category.name)
-						category.isEnabled = false
-						categories[catIndex] = category
+		if !isEnabledAndSticky(category) {
+			continue
+		}
 
-						err := c.healthCheckService.updateCategory(category.name, false)
-						if err != nil {
-							errorLogger.Printf("Cannot disable sticky category with name %s. Error was: %s", category.name, err.Error())
-						}
+		for _, serviceName := range category.services {
+			for _, healthCheck := range healthChecks {
+				if healthCheck.Name == serviceName && !healthCheck.Ok {
+					infoLogger.Printf("Sticky category [%s] is unhealthy, disabling it.", category.name)
+					category.isEnabled = false
+					categories[catIndex] = category
+
+					err := c.healthCheckService.updateCategory(category.name, false)
+					if err != nil {
+						errorLogger.Printf("Cannot disable sticky category with name %s. Error was: %s", category.name, err.Error())
 					}
 				}
 			}
@@ -172,6 +173,10 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 	}
 
 	return healthChecks, categorisedResults
+}
+
+func isEnabledAndSticky(category category) bool {
+	return category.isSticky && category.isEnabled
 }
 
 func updateHealthCheckWithAckMsg(healthChecks []fthealth.CheckResult, name string, ackMsg string) {

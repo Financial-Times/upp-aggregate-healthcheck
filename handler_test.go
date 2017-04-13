@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
-	"github.com/golang/go/src/pkg/errors"
+	"errors"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
