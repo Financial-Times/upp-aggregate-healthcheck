@@ -430,12 +430,12 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 		if check.Ack != "" {
 			ackCount++
 		}
-
+		podName := extractPodName(check.Name)
 		hc := IndividualHealthcheckParams{
 			Name:         check.Name,
 			Status:       getServiceStatusFromCheck(check),
 			LastUpdated:  check.LastUpdated.Format(timeLayout),
-			MoreInfoPath: fmt.Sprintf("%s/__pod-individual-health?pod-name=%s", pathPrefix, check.Name),
+			MoreInfoPath: fmt.Sprintf("%s/__pod-individual-health?pod-name=%s", pathPrefix, podName),
 			AckMessage:   check.Ack,
 			Output:       check.Output,
 		}
@@ -444,6 +444,16 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 	}
 
 	return indiviualServiceChecks, ackCount
+}
+
+func extractPodName(checkName string) string {
+	s := strings.Split(checkName,"")
+
+	if len(s)>=1 {
+		return s[0]
+	}
+
+	return ""
 }
 
 func populateAggregatePodChecks(healthResult fthealth.HealthResult, environment string, serviceName string, pathPrefix string) *AggregateHealthcheckParams {
