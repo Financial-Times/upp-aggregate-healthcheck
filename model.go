@@ -7,6 +7,7 @@ import (
 
 type pod struct {
 	name        string
+	node        string
 	ip          string
 	serviceName string
 }

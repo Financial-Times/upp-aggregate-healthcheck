@@ -288,7 +288,7 @@ func (hs *k8sHealthcheckService) getServiceByName(serviceName string) (service, 
 	defer hs.services.RUnlock()
 
 	if service, ok := hs.services.m[serviceName]; ok {
-		return service,nil
+		return service, nil
 	}
 
 	return service{}, fmt.Errorf("Cannot find service with name %s", serviceName)
@@ -384,6 +384,7 @@ func populateCategory(k8sCatData map[string]string) category {
 func populatePod(k8sPod v1.Pod) pod {
 	return pod{
 		name:        k8sPod.Name,
+		node:        k8sPod.Spec.NodeName,
 		ip:          k8sPod.Status.PodIP,
 		serviceName: k8sPod.Labels["app"],
 	}

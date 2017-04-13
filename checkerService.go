@@ -148,12 +148,19 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 }
 
 func newPodHealthCheck(pod pod, service service, healthcheckService healthcheckService) fthealth.Check {
+	var checkName string
+	if service.isDaemon {
+		checkName = fmt.Sprintf("%s-%s",pod.name,pod.node)
+	} else {
+		checkName = pod.name
+	}
+
 	return fthealth.Check{
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
-		Name:             pod.name,
+		Name:             checkName,
 		PanicGuide:       "https://sites.google.com/a/ft.com/technology/systems/dynamic-semantic-publishing/coco/runbook",
 		Severity:         defaultSeverity,
-		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
+		TechnicalSummary: "The pod is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
 			return "", healthcheckService.checkPodHealth(pod, service.appPort)
 		},
