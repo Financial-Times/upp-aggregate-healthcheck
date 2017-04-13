@@ -41,11 +41,11 @@ type healthcheckService interface {
 }
 
 const (
-	defaultRefreshRate = 60
-	defaultSeverity = uint8(2)
-	ackMessagesConfigMapName = "healthcheck.ack.messages"
+	defaultRefreshRate                = 60
+	defaultSeverity                   = uint8(2)
+	ackMessagesConfigMapName          = "healthcheck.ack.messages"
 	ackMessagesConfigMapLabelSelector = "healthcheck-acknowledgements-for=aggregate-healthcheck"
-	defaultAppPort = int32(8080)
+	defaultAppPort                    = int32(8080)
 )
 
 func (hs *k8sHealthcheckService) updateAcksForServices(acksMap map[string]string) {
@@ -189,7 +189,7 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 		httpClient:  httpClient,
 		k8sClient:   k8sClient,
 		deployments: deploymentsMap{m: deployments},
-		services: servicesMap{m:services},
+		services:    servicesMap{m: services},
 	}
 
 	go k8sService.watchDeployments()

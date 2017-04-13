@@ -16,12 +16,12 @@ type mockTransport struct {
 }
 
 const (
-	validIP = "1.0.0.0"
-	validK8sServiceName = "validServiceName"
-	validK8sServiceNameWithAck = "validK8sServiceNameWithAck"
-	nonExistingK8sServiceName ="vnonExistingServiceName"
-	validSeverity = uint8(1)
-	ackMsg = "ack-msg"
+	validIP                             = "1.0.0.0"
+	validK8sServiceName                 = "validServiceName"
+	validK8sServiceNameWithAck          = "validK8sServiceNameWithAck"
+	nonExistingK8sServiceName           = "vnonExistingServiceName"
+	validSeverity                       = uint8(1)
+	ackMsg                              = "ack-msg"
 	validFailingHealthCheckResponseBody = `{
   "schemaVersion": 1,
   "name": "CMSNotifierApplication",
@@ -71,15 +71,15 @@ const (
 func initializeMockServiceWithK8sServices() *k8sHealthcheckService {
 	services := make(map[string]service)
 	services[validK8sServiceName] = service{
-		name:validServiceName,
+		name: validServiceName,
 	}
 	services[validK8sServiceNameWithAck] = service{
-		name:validK8sServiceNameWithAck,
-		ack:"test",
+		name: validK8sServiceNameWithAck,
+		ack:  "test",
 	}
 	return &k8sHealthcheckService{
 		services: servicesMap{
-			m:services,
+			m: services,
 		},
 	}
 }
@@ -87,12 +87,12 @@ func initializeMockServiceWithK8sServices() *k8sHealthcheckService {
 func initializeMockServiceWithDeployments() *k8sHealthcheckService {
 	deployments := make(map[string]deployment)
 	deployments[validK8sServiceName] = deployment{
-		numberOfUnavailableReplicas:0,
-		numberOfAvailableReplicas:2,
+		numberOfUnavailableReplicas: 0,
+		numberOfAvailableReplicas:   2,
 	}
 	return &k8sHealthcheckService{
 		deployments: deploymentsMap{
-			m:deployments,
+			m: deployments,
 		},
 	}
 }
@@ -226,22 +226,22 @@ func TestCheckServiceHealthByResiliencyHappyFlow(t *testing.T) {
 func TestCheckServiceHealthWithDeploymentHappyFlow(t *testing.T) {
 	k8sHcService := initializeMockServiceWithDeployments()
 	s := service{
-		name:validK8sServiceName,
+		name:        validK8sServiceName,
 		isResilient: false,
 	}
 
-	_,err := k8sHcService.checkServiceHealth(s)
+	_, err := k8sHcService.checkServiceHealth(s)
 	assert.Nil(t, err)
 }
 
 func TestCheckServiceHealthWithDeploymentNonExistingServiceName(t *testing.T) {
 	k8sHcService := initializeMockServiceWithDeployments()
 	s := service{
-		name:nonExistingK8sServiceName,
+		name:        nonExistingK8sServiceName,
 		isResilient: false,
 	}
 
-	_,err := k8sHcService.checkServiceHealth(s)
+	_, err := k8sHcService.checkServiceHealth(s)
 	assert.NotNil(t, err)
 }
 
@@ -251,7 +251,6 @@ func TestUpdateAcksForServicesEmptyAckList(t *testing.T) {
 	acks[validK8sServiceName] = ackMsg
 	hcService.updateAcksForServices(acks)
 
-	assert.Equal(t, hcService.services.m[validK8sServiceNameWithAck].ack,"")
-	assert.Equal(t, hcService.services.m[validK8sServiceName].ack,ackMsg)
+	assert.Equal(t, hcService.services.m[validK8sServiceNameWithAck].ack, "")
+	assert.Equal(t, hcService.services.m[validK8sServiceName].ack, ackMsg)
 }
-

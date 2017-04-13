@@ -67,7 +67,7 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 
 	if !c.healthCheckService.isServicePresent(mService.service.name) {
 		infoLogger.Printf("Service with name %s doesn't exist anymore, removing it from cache", mService.service.name)
-		delete(c.measuredServices,mService.service.name)
+		delete(c.measuredServices, mService.service.name)
 		mService.cachedHealth.terminate <- true
 		return
 	}

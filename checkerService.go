@@ -150,7 +150,7 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 func newPodHealthCheck(pod pod, service service, healthcheckService healthcheckService) fthealth.Check {
 	var checkName string
 	if service.isDaemon {
-		checkName = fmt.Sprintf("%s (%s)",service.name,pod.node)
+		checkName = fmt.Sprintf("%s (%s)", pod.name, pod.node)
 	} else {
 		checkName = pod.name
 	}

@@ -447,9 +447,9 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 }
 
 func extractPodName(checkName string) string {
-	s := strings.Split(checkName,"")
+	s := strings.Split(checkName, " ")
 
-	if len(s)>=1 {
+	if len(s) >= 1 {
 		return s[0]
 	}
 

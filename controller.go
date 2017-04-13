@@ -125,7 +125,7 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services map[stri
 
 	for i, individualHealthcheck := range healthChecks {
 		if !individualHealthcheck.Ok {
-			unhealthyService, ok := services[individualHealthcheck.Name];
+			unhealthyService, ok := services[individualHealthcheck.Name]
 			if ok {
 				severity := c.getSeverityForService(individualHealthcheck.Name, unhealthyService.appPort)
 				healthChecks[i].Severity = severity
