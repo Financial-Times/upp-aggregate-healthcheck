@@ -206,7 +206,7 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 
 	healthResult, err := h.controller.buildPodsHealthResult(serviceName)
 
-	infoLogger.Printf("Checking pods health for service [%s], useCache: %t", serviceName, useCache)
+	infoLogger.Printf("Checking pods health for service [%s]", serviceName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		errorLogger.Printf("Cannot perform checks for service with name %s, error was: %v", serviceName, err.Error())
@@ -430,12 +430,12 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 		if check.Ack != "" {
 			ackCount++
 		}
-
+		podName := extractPodName(check.Name)
 		hc := IndividualHealthcheckParams{
 			Name:         check.Name,
 			Status:       getServiceStatusFromCheck(check),
 			LastUpdated:  check.LastUpdated.Format(timeLayout),
-			MoreInfoPath: fmt.Sprintf("%s/__pod-individual-health?pod-name=%s", pathPrefix, check.Name),
+			MoreInfoPath: fmt.Sprintf("%s/__pod-individual-health?pod-name=%s", pathPrefix, podName),
 			AckMessage:   check.Ack,
 			Output:       check.Output,
 		}
@@ -444,6 +444,16 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 	}
 
 	return indiviualServiceChecks, ackCount
+}
+
+func extractPodName(checkName string) string {
+	s := strings.Split(checkName, " ")
+
+	if len(s) >= 1 {
+		return s[0]
+	}
+
+	return ""
 }
 
 func populateAggregatePodChecks(healthResult fthealth.HealthResult, environment string, serviceName string, pathPrefix string) *AggregateHealthcheckParams {

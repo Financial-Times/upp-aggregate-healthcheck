@@ -13,20 +13,14 @@ type healthCheckController struct {
 	measuredServices   map[string]measuredService
 }
 
-type measuredService struct {
-	service         service
-	cachedHealth    *cachedHealth
-	bufferedHealths *bufferedHealths
-}
-
 type controller interface {
 	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
-	runServiceChecksByServiceNames([]service, map[string]category) []fthealth.CheckResult
+	runServiceChecksByServiceNames(map[string]service, map[string]category) []fthealth.CheckResult
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
 	buildPodsHealthResult(string) (fthealth.HealthResult, error)
 	runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult)
-	updateCachedHealth([]service, map[string]category)
+	updateCachedHealth(map[string]service, map[string]category)
 	scheduleCheck(measuredService, time.Duration, *time.Timer)
 	getIndividualPodHealth(string) ([]byte, string, error)
 	addAck(string, string) error
@@ -58,9 +52,7 @@ func (c *healthCheckController) updateStickyCategory(categoryName string, isEnab
 }
 
 func (c *healthCheckController) removeAck(serviceName string) error {
-	services := c.healthCheckService.getServicesByNames([]string{serviceName})
-
-	if len(services) == 0 {
+	if !c.healthCheckService.isServicePresent(serviceName) {
 		return fmt.Errorf("Cannot find service with name %s", serviceName)
 	}
 
@@ -74,9 +66,7 @@ func (c *healthCheckController) removeAck(serviceName string) error {
 }
 
 func (c *healthCheckController) addAck(serviceName string, ackMessage string) error {
-	services := c.healthCheckService.getServicesByNames([]string{serviceName})
-
-	if len(services) == 0 {
+	if !c.healthCheckService.isServicePresent(serviceName) {
 		return fmt.Errorf("Cannot find service with name %s", serviceName)
 	}
 
@@ -123,7 +113,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	return health, matchingCategories, nil, nil
 }
 
-func (c *healthCheckController) runServiceChecksByServiceNames(services []service, categories map[string]category) []fthealth.CheckResult {
+func (c *healthCheckController) runServiceChecksByServiceNames(services map[string]service, categories map[string]category) []fthealth.CheckResult {
 	var checks []fthealth.Check
 
 	for _, service := range services {
@@ -132,6 +122,17 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services []servic
 	}
 
 	healthChecks := fthealth.RunCheck("Forced check run", "", true, checks...).Checks
+
+	for i, individualHealthcheck := range healthChecks {
+		if !individualHealthcheck.Ok {
+			if unhealthyService, ok := services[individualHealthcheck.Name]; ok {
+				severity := c.getSeverityForService(individualHealthcheck.Name, unhealthyService.appPort)
+				healthChecks[i].Severity = severity
+			} else {
+				warnLogger.Printf("Cannot compute severity for service with name %s because it was not found. Using default value.", individualHealthcheck.Name)
+			}
+		}
+	}
 
 	for _, service := range services {
 		if service.ack != "" {
@@ -147,22 +148,24 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services []servic
 func (c *healthCheckController) runServiceChecksFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
 	categorisedResults := make(map[string][]fthealth.CheckResult)
 	serviceNames := getServiceNamesFromCategories(categories)
-	services := c.healthCheckService.getServicesByNames(serviceNames)
+	services := c.healthCheckService.getServicesMapByNames(serviceNames)
 	healthChecks := c.runServiceChecksByServiceNames(services, categories)
 
 	for catIndex, category := range categories {
-		if category.isSticky && category.isEnabled {
-			for _, serviceName := range category.services {
-				for _, healthCheck := range healthChecks {
-					if healthCheck.Name == serviceName {
-						infoLogger.Printf("Sticky category [%s] is unhealthy, disabling it.", category.name)
-						category.isEnabled = false
-						categories[catIndex] = category
+		if !isEnabledAndSticky(category) {
+			continue
+		}
 
-						err := c.healthCheckService.updateCategory(category.name, false)
-						if err != nil {
-							errorLogger.Printf("Cannot disable sticky category with name %s. Error was: %s", category.name, err.Error())
-						}
+		for _, serviceName := range category.services {
+			for _, healthCheck := range healthChecks {
+				if healthCheck.Name == serviceName && !healthCheck.Ok {
+					infoLogger.Printf("Sticky category [%s] is unhealthy, disabling it.", category.name)
+					category.isEnabled = false
+					categories[catIndex] = category
+
+					err := c.healthCheckService.updateCategory(category.name, false)
+					if err != nil {
+						errorLogger.Printf("Cannot disable sticky category with name %s. Error was: %s", category.name, err.Error())
 					}
 				}
 			}
@@ -170,6 +173,10 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 	}
 
 	return healthChecks, categorisedResults
+}
+
+func isEnabledAndSticky(category category) bool {
+	return category.isSticky && category.isEnabled
 }
 
 func updateHealthCheckWithAckMsg(healthChecks []fthealth.CheckResult, name string, ackMsg string) {
@@ -184,6 +191,10 @@ func updateHealthCheckWithAckMsg(healthChecks []fthealth.CheckResult, name strin
 func getFinalResult(checkResults []fthealth.CheckResult, categories map[string]category) (bool, uint8) {
 	finalOk := true
 	var finalSeverity uint8 = 2
+
+	if len(checkResults) == 0 {
+		return false, finalSeverity
+	}
 
 	for _, category := range categories {
 		if !category.isEnabled {

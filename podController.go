@@ -35,9 +35,9 @@ func (c *healthCheckController) buildPodsHealthResult(serviceName string) (fthea
 }
 
 func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.CheckResult, error) {
-	services := c.healthCheckService.getServicesByNames([]string{serviceName})
-	if len(services) == 0 {
-		return []fthealth.CheckResult{}, fmt.Errorf("Cannot find service with name %s", serviceName)
+	serviceToBeChecked, err := c.healthCheckService.getServiceByName(serviceName)
+	if err != nil {
+		return []fthealth.CheckResult{}, err
 	}
 
 	pods, err := c.healthCheckService.getPodsForService(serviceName)
@@ -46,7 +46,6 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 	}
 
 	var checks []fthealth.Check
-	serviceToBeChecked := services[0]
 	for _, pod := range pods {
 		check := newPodHealthCheck(pod, serviceToBeChecked, c.healthCheckService)
 		checks = append(checks, check)
@@ -74,13 +73,13 @@ func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, 
 		return nil, "", errors.New("Error retrieving pod: " + err.Error())
 	}
 
-	services := c.healthCheckService.getServicesByNames([]string{podToBeChecked.serviceName})
+	service, err := c.healthCheckService.getServiceByName(podToBeChecked.serviceName)
 
 	appPort := defaultAppPort
-	if len(services) > 0 {
-		appPort = services[0].appPort
-	} else {
+	if err != nil {
 		warnLogger.Printf("Cannot get service with name %s. Using default app port [%d]", podToBeChecked.serviceName, defaultAppPort)
+	} else {
+		appPort = service.appPort
 	}
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/__health", podToBeChecked.ip, appPort), nil)

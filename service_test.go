@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"os"
 )
 
 type MockWebClient struct{}
@@ -16,8 +17,12 @@ type mockTransport struct {
 }
 
 const (
-	validIP                             = "1.0.0.0"
-	validSeverity                       = uint8(1)
+	validIP = "1.0.0.0"
+	validK8sServiceName = "validServiceName"
+	validK8sServiceNameWithAck = "validK8sServiceNameWithAck"
+	nonExistingK8sServiceName = "vnonExistingServiceName"
+	validSeverity = uint8(1)
+	ackMsg = "ack-msg"
 	validFailingHealthCheckResponseBody = `{
   "schemaVersion": 1,
   "name": "CMSNotifierApplication",
@@ -63,6 +68,35 @@ const (
   ]
 }`
 )
+
+func initializeMockServiceWithK8sServices() *k8sHealthcheckService {
+	services := make(map[string]service)
+	services[validK8sServiceName] = service{
+		name: validServiceName,
+	}
+	services[validK8sServiceNameWithAck] = service{
+		name: validK8sServiceNameWithAck,
+		ack:  "test",
+	}
+	return &k8sHealthcheckService{
+		services: servicesMap{
+			m: services,
+		},
+	}
+}
+
+func initializeMockServiceWithDeployments() *k8sHealthcheckService {
+	deployments := make(map[string]deployment)
+	deployments[validK8sServiceName] = deployment{
+		numberOfUnavailableReplicas: 0,
+		numberOfAvailableReplicas:   2,
+	}
+	return &k8sHealthcheckService{
+		deployments: deploymentsMap{
+			m: deployments,
+		},
+	}
+}
 
 func initializeMockService(httpClient *http.Client) *k8sHealthcheckService {
 	mockK8sClient := fake.NewSimpleClientset()
@@ -129,6 +163,13 @@ func TestCheckPodHealthFailingChecks(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
+func TestCheckPodHealthWithInvalidUrl(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
+	service := initializeMockService(nil)
+	err := service.checkPodHealth(pod{name: "test", ip: "%s"}, 8080)
+	assert.NotNil(t, err)
+}
+
 func TestCheckPodHealthPassingChecks(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validPassingHealthCheckResponseBody))
 	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080)
@@ -182,4 +223,36 @@ func TestCheckServiceHealthByResiliencyHappyFlow(t *testing.T) {
 	msg, err := checkServiceHealthByResiliency(s, 1, 0)
 	assert.Nil(t, err)
 	assert.Equal(t, "", msg)
+}
+
+func TestCheckServiceHealthWithDeploymentHappyFlow(t *testing.T) {
+	k8sHcService := initializeMockServiceWithDeployments()
+	s := service{
+		name:        validK8sServiceName,
+		isResilient: false,
+	}
+
+	_, err := k8sHcService.checkServiceHealth(s)
+	assert.Nil(t, err)
+}
+
+func TestCheckServiceHealthWithDeploymentNonExistingServiceName(t *testing.T) {
+	k8sHcService := initializeMockServiceWithDeployments()
+	s := service{
+		name:        nonExistingK8sServiceName,
+		isResilient: false,
+	}
+
+	_, err := k8sHcService.checkServiceHealth(s)
+	assert.NotNil(t, err)
+}
+
+func TestUpdateAcksForServicesEmptyAckList(t *testing.T) {
+	hcService := initializeMockServiceWithK8sServices()
+	acks := make(map[string]string)
+	acks[validK8sServiceName] = ackMsg
+	hcService.updateAcksForServices(acks)
+
+	assert.Equal(t, hcService.services.m[validK8sServiceNameWithAck].ack, "")
+	assert.Equal(t, hcService.services.m[validK8sServiceName].ack, ackMsg)
 }

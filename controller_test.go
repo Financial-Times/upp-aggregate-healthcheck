@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -21,6 +22,7 @@ const (
 	nonExistingCategoryName = "nonExistingCategoryName"
 	validCat                = "validCat"
 	validService            = "validService"
+	validEnvName            = "valid-env-name"
 )
 
 type MockService struct {
@@ -48,19 +50,38 @@ func (m *MockService) updateCategory(categoryName string, isEnabled bool) error 
 
 	return nil
 }
-func (m *MockService) getServicesByNames(serviceNames []string) []service {
-	if len(serviceNames) != 0 && serviceNames[0] == nonExistingServiceName {
-		return []service{}
+
+func (m *MockService) isServicePresent(serviceName string) bool {
+	if serviceName == nonExistingServiceName {
+		return false
 	}
 
-	services := []service{
-		{
-			name: "test-service-name",
-			ack:  "test ack",
-		},
-		{
-			name: "test-service-name-2",
-		},
+	return true
+}
+
+func (m *MockService) getServiceByName(serviceName string) (service, error) {
+	if serviceName == nonExistingServiceName {
+		return service{}, fmt.Errorf("Cannot find service with name %s", serviceName)
+	}
+
+	return service{
+		name: "test-service-name",
+		ack:  "test ack",
+	}, nil
+}
+
+func (m *MockService) getServicesMapByNames(serviceNames []string) map[string]service {
+	if len(serviceNames) != 0 && serviceNames[0] == nonExistingServiceName {
+		return map[string]service{}
+	}
+
+	services := make(map[string]service)
+	services["test-service-name"] = service{
+		name: "test-service-name",
+		ack:  "test ack",
+	}
+	services["test-service-name-2"] = service{
+		name: "test-service-name-2",
 	}
 
 	return services
@@ -353,6 +374,29 @@ func TestRunServiceChecksForStickyCategory(t *testing.T) {
 	assert.False(t, categories["test"].isEnabled)
 }
 
+func TestRunServiceChecksForStickyCategoryUpdateError(t *testing.T) {
+	categories := make(map[string]category)
+	categories["publishing"] = category{
+		services: []string{"test-service-name"},
+	}
+
+	categories[nonExistingCategoryName] = category{
+		services:  []string{"test-service-name"},
+		isSticky:  true,
+		isEnabled: true,
+	}
+	categories["test"] = category{
+		services:  []string{"test-service-name"},
+		isSticky:  true,
+		isEnabled: true,
+	}
+
+	controller := initializeMockController("test", nil)
+	checkResult, _ := controller.runServiceChecksFor(categories)
+	assert.NotNil(t, checkResult)
+	assert.False(t, categories["test"].isEnabled)
+}
+
 func TestGetMatchingCategoriesHappyFlow(t *testing.T) {
 	categories := make(map[string]category)
 	categories["publishing"] = category{
@@ -374,7 +418,24 @@ func TestGetFinalResultCategoryDisabled(t *testing.T) {
 		isEnabled: false,
 	}
 
-	finalOk, _ := getFinalResult([]fthealth.CheckResult{}, categories)
+	checkResults := []fthealth.CheckResult{
+		{
+			Ok:       false,
+			Severity: 1,
+		},
+	}
+
+	finalOk, _ := getFinalResult(checkResults, categories)
 
 	assert.False(t, finalOk)
+}
+
+func TestGetEnvironment(t *testing.T) {
+	healthCheckController := &healthCheckController{
+		environment: validEnvName,
+	}
+
+	env := healthCheckController.getEnvironment()
+
+	assert.Equal(t, validEnvName, env)
 }

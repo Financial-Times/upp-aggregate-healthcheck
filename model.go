@@ -1,11 +1,33 @@
 package main
 
-import "time"
+import (
+	"sync"
+	"time"
+)
 
 type pod struct {
 	name        string
+	node        string
 	ip          string
 	serviceName string
+}
+
+type category struct {
+	name          string
+	services      []string
+	refreshPeriod time.Duration
+	isSticky      bool
+	isEnabled     bool
+}
+
+type deployment struct {
+	numberOfAvailableReplicas   int32
+	numberOfUnavailableReplicas int32
+}
+
+type deploymentsMap struct {
+	sync.RWMutex
+	m map[string]deployment
 }
 
 type service struct {
@@ -16,10 +38,13 @@ type service struct {
 	isDaemon    bool
 }
 
-type category struct {
-	name          string
-	services      []string
-	refreshPeriod time.Duration
-	isSticky      bool
-	isEnabled     bool
+type servicesMap struct {
+	sync.RWMutex
+	m map[string]service
+}
+
+type measuredService struct {
+	service         service
+	cachedHealth    *cachedHealth
+	bufferedHealths *bufferedHealths
 }

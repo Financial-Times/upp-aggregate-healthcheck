@@ -18,7 +18,9 @@
 			"checksumSHA1": "FUhczVSvt/VQAlWfzATo1YLez2E=",
 			"path": "github.com/Financial-Times/go-fthealth/v1a",
 			"revision": "f9074331b3ab48bca0e6d0afc211a673d88ac925",
-			"revisionTime": "2016-06-16T09:04:59Z"
+			"revisionTime": "2016-06-16T09:04:59Z",
+			"version": "0.1.0",
+			"versionExact": "0.1.0"
 		},
 		{
 			"checksumSHA1": "9Ob5JNGzi/pGXYMuHclig69IHPk=",
@@ -182,10 +184,18 @@
 			"revisionTime": "2016-11-22T19:10:42Z"
 		},
 		{
-			"checksumSHA1": "zmCk+lgIeiOf0Ng9aFP9aFy8ksE=",
+			"checksumSHA1": "g/V4qrXjUGG9B+e3hB+4NAYJ5Gs=",
+			"path": "github.com/gorilla/context",
+			"revision": "08b5f424b9271eedf6f9f0ce86cb9396ed337a42",
+			"revisionTime": "2016-08-17T18:46:32Z"
+		},
+		{
+			"checksumSHA1": "F5dR3/i70EhSIMZfeIV+H8/PtvM=",
 			"path": "github.com/gorilla/mux",
-			"revision": "599cba5e7b6137d46ddf58fb1765f5d928e69604",
-			"revisionTime": "2017-02-28T22:43:54Z"
+			"revision": "392c28fe23e1c45ddba891b0320b3b5df220beea",
+			"revisionTime": "2017-01-18T13:43:44Z",
+			"version": "v1.3.0",
+			"versionExact": "v1.3.0"
 		},
 		{
 			"checksumSHA1": "pYoO37aSFZl2uJAXpePBDnGItZc=",
@@ -250,20 +260,34 @@
 		{
 			"checksumSHA1": "/kKwYqD04AkkDZFQhGwklKw3RFA=",
 			"path": "github.com/stretchr/testify",
-			"revision": "4d4bfba8f1d1027c4fdbe371823030df51419987",
-			"revisionTime": "2017-01-30T11:31:45Z"
+			"revision": "69483b4bd14f5845b5a1e55bca19e954e827f1d0",
+			"revisionTime": "2016-09-25T01:54:16Z",
+			"version": "v1.1.4",
+			"versionExact": "v1.1.4"
+		},
+		{
+			"checksumSHA1": "q1qqfgDOGwfEuMlbHWNjYf09ACM=",
+			"path": "github.com/stretchr/testify/assert",
+			"revision": "69483b4bd14f5845b5a1e55bca19e954e827f1d0",
+			"revisionTime": "2016-09-25T01:54:16Z",
+			"version": "v1.1.4",
+			"versionExact": "v1.1.4"
 		},
 		{
 			"checksumSHA1": "fg3TzS9/QK3wZbzei3Z6O8XPLHg=",
 			"path": "github.com/stretchr/testify/http",
-			"revision": "4d4bfba8f1d1027c4fdbe371823030df51419987",
-			"revisionTime": "2017-01-30T11:31:45Z"
+			"revision": "69483b4bd14f5845b5a1e55bca19e954e827f1d0",
+			"revisionTime": "2016-09-25T01:54:16Z",
+			"version": "v1.1.4",
+			"versionExact": "v1.1.4"
 		},
 		{
-			"checksumSHA1": "WGwMB6WljaeGKzuNCX5M4E8LADE=",
+			"checksumSHA1": "Je6cJkYWj2SoaHDMGpE00BGi9sw=",
 			"path": "github.com/stretchr/testify/mock",
-			"revision": "4d4bfba8f1d1027c4fdbe371823030df51419987",
-			"revisionTime": "2017-01-30T11:31:45Z"
+			"revision": "69483b4bd14f5845b5a1e55bca19e954e827f1d0",
+			"revisionTime": "2016-09-25T01:54:16Z",
+			"version": "v1.1.4",
+			"versionExact": "v1.1.4"
 		},
 		{
 			"checksumSHA1": "MWqyOvDMkW+XYe2RJ5mplvut+aE=",
