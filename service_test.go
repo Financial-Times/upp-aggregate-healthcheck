@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"os"
 )
 
 type MockWebClient struct{}
@@ -16,12 +17,12 @@ type mockTransport struct {
 }
 
 const (
-	validIP                             = "1.0.0.0"
-	validK8sServiceName                 = "validServiceName"
-	validK8sServiceNameWithAck          = "validK8sServiceNameWithAck"
-	nonExistingK8sServiceName           = "vnonExistingServiceName"
-	validSeverity                       = uint8(1)
-	ackMsg                              = "ack-msg"
+	validIP = "1.0.0.0"
+	validK8sServiceName = "validServiceName"
+	validK8sServiceNameWithAck = "validK8sServiceNameWithAck"
+	nonExistingK8sServiceName = "vnonExistingServiceName"
+	validSeverity = uint8(1)
+	ackMsg = "ack-msg"
 	validFailingHealthCheckResponseBody = `{
   "schemaVersion": 1,
   "name": "CMSNotifierApplication",
@@ -163,6 +164,7 @@ func TestCheckPodHealthFailingChecks(t *testing.T) {
 }
 
 func TestCheckPodHealthWithInvalidUrl(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	service := initializeMockService(nil)
 	err := service.checkPodHealth(pod{name: "test", ip: "%s"}, 8080)
 	assert.NotNil(t, err)
