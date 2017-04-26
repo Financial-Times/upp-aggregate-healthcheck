@@ -179,7 +179,7 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 	// creates the clientset
 	k8sClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		errorLogger.Printf("Failed to create k8s client, error was: %v", err.Error())
+		panic(fmt.Sprintf("Failed to create k8s client, error was: %v", err.Error()))
 	}
 
 	deployments := make(map[string]deployment)
@@ -298,7 +298,6 @@ func (hs *k8sHealthcheckService) getServicesMapByNames(serviceNames []string) ma
 	if len(serviceNames) == 0 {
 		hs.services.RLock()
 		defer hs.services.RUnlock()
-		//TODO: check if this map can be modified after it is returned.
 		return hs.services.m
 	}
 

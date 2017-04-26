@@ -42,6 +42,7 @@ func main() {
 
 	app.Action = func() {
 		initLogs(os.Stdout, os.Stdout, os.Stderr)
+		infoLogger("Starting app with params: [environment: %s], [pathPrefix: %s], [graphiteURL: %s]",*environment,*pathPrefix,*graphiteURL)
 
 		controller := initializeController(*environment)
 		handler := &httpHandler{
@@ -64,6 +65,7 @@ func main() {
 func listen(httpHandler *httpHandler, pathPrefix string) {
 	r := mux.NewRouter()
 	s := r.PathPrefix(pathPrefix).Subrouter()
+	r.HandleFunc("/__gtg", httpHandler.handleGoodToGo)
 	s.HandleFunc("/add-ack", httpHandler.handleAddAck).Methods("POST")
 	s.HandleFunc("/enable-category", httpHandler.handleEnableCategory)
 	s.HandleFunc("/disable-category", httpHandler.handleDisableCategory)
@@ -73,9 +75,7 @@ func listen(httpHandler *httpHandler, pathPrefix string) {
 	s.HandleFunc("/", httpHandler.handleServicesHealthCheck)
 	s.HandleFunc("/__pods-health", httpHandler.handlePodsHealthCheck)
 	s.HandleFunc("/__pod-individual-health", httpHandler.handleIndividualPodHealthCheck)
-	s.HandleFunc("/__gtg", httpHandler.handleGoodToGo)
 	s.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("resources/"))))
-
 	err := http.ListenAndServe(":8080", r)
 	if err != nil {
 		panic(fmt.Sprintf("Cannot set up HTTP listener. Error was: %v", err))
