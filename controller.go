@@ -190,7 +190,7 @@ func updateHealthCheckWithAckMsg(healthChecks []fthealth.CheckResult, name strin
 
 func getFinalResult(checkResults []fthealth.CheckResult, categories map[string]category) (bool, uint8) {
 	finalOk := true
-	var finalSeverity uint8 = 2
+	finalSeverity := defaultSeverity
 
 	if len(checkResults) == 0 {
 		return false, finalSeverity
