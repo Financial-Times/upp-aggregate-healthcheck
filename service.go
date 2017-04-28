@@ -162,7 +162,7 @@ func (hs *k8sHealthcheckService) watchDeployments() {
 
 func initializeHealthCheckService() *k8sHealthcheckService {
 	httpClient := &http.Client{
-		Timeout: 20 * time.Second,
+		Timeout: 5 * time.Second,
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 100,
 			Dial: (&net.Dialer{

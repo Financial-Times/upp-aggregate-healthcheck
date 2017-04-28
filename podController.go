@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"sort"
+	"sync"
 )
 
 func (c *healthCheckController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
@@ -52,17 +53,22 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 	}
 
 	healthChecks := fthealth.RunCheck("Forced check run", "", true, checks...).Checks
-
+	wg := sync.WaitGroup{}
 	for i, check := range healthChecks {
 		if !check.Ok {
-			severity := c.getSeverityForPod(check.Name, serviceToBeChecked.appPort)
-			healthChecks[i].Severity = severity
+			wg.Add(1)
+			go func(podName string, appPort int32) {
+				severity := c.getSeverityForPod(podName, appPort)
+				healthChecks[i].Severity = severity
+				wg.Done()
+			}(check.Name,serviceToBeChecked.appPort)
 		}
 
 		if serviceToBeChecked.ack != "" {
 			healthChecks[i].Ack = serviceToBeChecked.ack
 		}
 	}
+	wg.Wait()
 
 	return healthChecks, nil
 }
