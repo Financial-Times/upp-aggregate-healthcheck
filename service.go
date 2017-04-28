@@ -68,7 +68,7 @@ func (hs *k8sHealthcheckService) watchAcks() {
 		errorLogger.Printf("Error while starting to watch acks configMap with label selector: %s. Error was: %s", ackMessagesConfigMapLabelSelector, err.Error())
 	}
 
-	infoLogger.Print("Started watching services")
+	infoLogger.Print("Started watching acks configMap")
 	resultChannel := watcher.ResultChan()
 	for msg := range resultChannel {
 		switch msg.Type {
@@ -353,13 +353,11 @@ func populateCategory(k8sCatData map[string]string) category {
 	categoryName := k8sCatData["category.name"]
 	isSticky, err := strconv.ParseBool(k8sCatData["category.issticky"])
 	if err != nil {
-		infoLogger.Printf("isSticky flag is not set for category with name [%s]. Using default value of false.", categoryName)
 		isSticky = false
 	}
 
 	isEnabled, err := strconv.ParseBool(k8sCatData["category.enabled"])
 	if err != nil {
-		infoLogger.Printf("isEnabled flag is not set for category with name [%s]. Using default value of true.", categoryName)
 		isEnabled = true
 	}
 

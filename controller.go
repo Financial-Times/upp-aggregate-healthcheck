@@ -5,6 +5,7 @@ import (
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"sort"
 	"time"
+	"sync"
 )
 
 type healthCheckController struct {
@@ -123,16 +124,22 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services map[stri
 
 	healthChecks := fthealth.RunCheck("Forced check run", "", true, checks...).Checks
 
+	wg := sync.WaitGroup{}
 	for i, individualHealthcheck := range healthChecks {
 		if !individualHealthcheck.Ok {
 			if unhealthyService, ok := services[individualHealthcheck.Name]; ok {
-				severity := c.getSeverityForService(individualHealthcheck.Name, unhealthyService.appPort)
-				healthChecks[i].Severity = severity
+				wg.Add(1)
+				go func(i int, serviceName string,appPort int32) {
+					severity := c.getSeverityForService(serviceName, appPort)
+					healthChecks[i].Severity = severity
+					wg.Done()
+				}(i,individualHealthcheck.Name,unhealthyService.appPort)
 			} else {
 				warnLogger.Printf("Cannot compute severity for service with name %s because it was not found. Using default value.", individualHealthcheck.Name)
 			}
 		}
 	}
+	wg.Wait()
 
 	for _, service := range services {
 		if service.ack != "" {
