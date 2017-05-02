@@ -42,7 +42,7 @@ func main() {
 
 	app.Action = func() {
 		initLogs(os.Stdout, os.Stdout, os.Stderr)
-		infoLogger.Printf("Starting app with params: [environment: %s], [pathPrefix: %s], [graphiteURL: %s]",*environment,*pathPrefix,*graphiteURL)
+		infoLogger.Printf("Starting app with params: [environment: %s], [pathPrefix: %s], [graphiteURL: %s]", *environment, *pathPrefix, *graphiteURL)
 
 		controller := initializeController(*environment)
 		handler := &httpHandler{

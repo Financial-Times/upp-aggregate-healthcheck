@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"k8s.io/client-go/kubernetes/fake"
 	"net/http"
+	"os"
 	"strings"
 	"testing"
-	"os"
 )
 
 type MockWebClient struct{}
@@ -17,12 +17,12 @@ type mockTransport struct {
 }
 
 const (
-	validIP = "1.0.0.0"
-	validK8sServiceName = "validServiceName"
-	validK8sServiceNameWithAck = "validK8sServiceNameWithAck"
-	nonExistingK8sServiceName = "vnonExistingServiceName"
-	validSeverity = uint8(1)
-	ackMsg = "ack-msg"
+	validIP                             = "1.0.0.0"
+	validK8sServiceName                 = "validServiceName"
+	validK8sServiceNameWithAck          = "validK8sServiceNameWithAck"
+	nonExistingK8sServiceName           = "vnonExistingServiceName"
+	validSeverity                       = uint8(1)
+	ackMsg                              = "ack-msg"
 	validFailingHealthCheckResponseBody = `{
   "schemaVersion": 1,
   "name": "CMSNotifierApplication",

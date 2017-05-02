@@ -56,18 +56,18 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 	wg := sync.WaitGroup{}
 	for i := range healthChecks {
 		wg.Add(1)
-		go func(i int, appPort int32) {
+		go func(i int, serviceToBeChecked service) {
 			healthCheck := healthChecks[i]
 			if !healthCheck.Ok {
-				severity := c.getSeverityForPod(healthCheck.Name, appPort)
+				severity := c.getSeverityForPod(healthCheck.Name, serviceToBeChecked.appPort)
 				healthChecks[i].Severity = severity
 			}
-			wg.Done()
-		}(i, serviceToBeChecked.appPort)
 
-		if serviceToBeChecked.ack != "" {
-			healthChecks[i].Ack = serviceToBeChecked.ack
-		}
+			if serviceToBeChecked.ack != "" {
+				healthChecks[i].Ack = serviceToBeChecked.ack
+			}
+			wg.Done()
+		}(i, serviceToBeChecked)
 	}
 	wg.Wait()
 

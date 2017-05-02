@@ -4,8 +4,8 @@ import (
 	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"sort"
-	"time"
 	"sync"
+	"time"
 )
 
 type healthCheckController struct {

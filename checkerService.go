@@ -80,7 +80,7 @@ func checkServiceHealthByResiliency(service service, noOfAvailablePods int32, no
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
 	health, err := hs.getHealthChecksForPod(pod, appPort)
 	if err != nil {
-		errorLogger.Printf("Cannot perform healthcheck for pod with name %s. Error was: %s",pod.name, err.Error())
+		errorLogger.Printf("Cannot perform healthcheck for pod with name %s. Error was: %s", pod.name, err.Error())
 		return errors.New("Cannot perform healthcheck for pod")
 	}
 

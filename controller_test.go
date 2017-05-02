@@ -431,9 +431,9 @@ func TestGetFinalResultCategoryDisabled(t *testing.T) {
 }
 
 func TestGetFinalResultEmptyCheckResultsList(t *testing.T) {
-	finalOk,finalSeverity := getFinalResult([]fthealth.CheckResult{}, map[string]category{})
-	assert.False(t,finalOk)
-	assert.Equal(t,defaultSeverity,finalSeverity)
+	finalOk, finalSeverity := getFinalResult([]fthealth.CheckResult{}, map[string]category{})
+	assert.False(t, finalOk)
+	assert.Equal(t, defaultSeverity, finalSeverity)
 }
 
 func TestGetEnvironment(t *testing.T) {
