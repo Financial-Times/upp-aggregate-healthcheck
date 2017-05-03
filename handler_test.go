@@ -1,9 +1,9 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
-	"errors"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"

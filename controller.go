@@ -4,6 +4,7 @@ import (
 	"fmt"
 	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"sort"
+	"sync"
 	"time"
 )
 
@@ -123,16 +124,23 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services map[stri
 
 	healthChecks := fthealth.RunCheck("Forced check run", "", true, checks...).Checks
 
-	for i, individualHealthcheck := range healthChecks {
-		if !individualHealthcheck.Ok {
-			if unhealthyService, ok := services[individualHealthcheck.Name]; ok {
-				severity := c.getSeverityForService(individualHealthcheck.Name, unhealthyService.appPort)
-				healthChecks[i].Severity = severity
-			} else {
-				warnLogger.Printf("Cannot compute severity for service with name %s because it was not found. Using default value.", individualHealthcheck.Name)
+	wg := sync.WaitGroup{}
+	for i := range healthChecks {
+		wg.Add(1)
+		go func(i int) {
+			healthCheck := healthChecks[i]
+			if !healthCheck.Ok {
+				if unhealthyService, ok := services[healthCheck.Name]; ok {
+					severity := c.getSeverityForService(healthCheck.Name, unhealthyService.appPort)
+					healthChecks[i].Severity = severity
+				} else {
+					warnLogger.Printf("Cannot compute severity for service with name %s because it was not found. Using default value.", healthCheck.Name)
+				}
 			}
-		}
+			wg.Done()
+		}(i)
 	}
+	wg.Wait()
 
 	for _, service := range services {
 		if service.ack != "" {
@@ -190,7 +198,7 @@ func updateHealthCheckWithAckMsg(healthChecks []fthealth.CheckResult, name strin
 
 func getFinalResult(checkResults []fthealth.CheckResult, categories map[string]category) (bool, uint8) {
 	finalOk := true
-	var finalSeverity uint8 = 2
+	finalSeverity := defaultSeverity
 
 	if len(checkResults) == 0 {
 		return false, finalSeverity

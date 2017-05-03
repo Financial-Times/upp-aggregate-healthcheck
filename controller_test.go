@@ -94,11 +94,11 @@ func (m *MockService) getPodsForService(serviceName string) ([]pod, error) {
 
 	return []pod{
 		{
-			name: "test-pod-name1-8425234-9hdfg ",
+			name: "test-pod-name2-8425234-9hdfg ",
 			ip:   "10.2.51.2",
 		},
 		{
-			name: "test-pod-name2-8425234-9hdfg ",
+			name: "test-pod-name1-8425234-9hdfg ",
 			ip:   "10.2.51.2",
 		},
 	}, nil
@@ -428,6 +428,12 @@ func TestGetFinalResultCategoryDisabled(t *testing.T) {
 	finalOk, _ := getFinalResult(checkResults, categories)
 
 	assert.False(t, finalOk)
+}
+
+func TestGetFinalResultEmptyCheckResultsList(t *testing.T) {
+	finalOk, finalSeverity := getFinalResult([]fthealth.CheckResult{}, map[string]category{})
+	assert.False(t, finalOk)
+	assert.Equal(t, defaultSeverity, finalSeverity)
 }
 
 func TestGetEnvironment(t *testing.T) {

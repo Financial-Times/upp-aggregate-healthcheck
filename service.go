@@ -68,7 +68,7 @@ func (hs *k8sHealthcheckService) watchAcks() {
 		errorLogger.Printf("Error while starting to watch acks configMap with label selector: %s. Error was: %s", ackMessagesConfigMapLabelSelector, err.Error())
 	}
 
-	infoLogger.Print("Started watching services")
+	infoLogger.Print("Started watching acks configMap")
 	resultChannel := watcher.ResultChan()
 	for msg := range resultChannel {
 		switch msg.Type {
@@ -162,7 +162,7 @@ func (hs *k8sHealthcheckService) watchDeployments() {
 
 func initializeHealthCheckService() *k8sHealthcheckService {
 	httpClient := &http.Client{
-		Timeout: 60 * time.Second,
+		Timeout: 5 * time.Second,
 		Transport: &http.Transport{
 			MaxIdleConnsPerHost: 100,
 			Dial: (&net.Dialer{
@@ -179,7 +179,7 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 	// creates the clientset
 	k8sClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		errorLogger.Printf("Failed to create k8s client, error was: %v", err.Error())
+		panic(fmt.Sprintf("Failed to create k8s client, error was: %v", err.Error()))
 	}
 
 	deployments := make(map[string]deployment)
@@ -298,7 +298,6 @@ func (hs *k8sHealthcheckService) getServicesMapByNames(serviceNames []string) ma
 	if len(serviceNames) == 0 {
 		hs.services.RLock()
 		defer hs.services.RUnlock()
-		//TODO: check if this map can be modified after it is returned.
 		return hs.services.m
 	}
 
@@ -354,13 +353,11 @@ func populateCategory(k8sCatData map[string]string) category {
 	categoryName := k8sCatData["category.name"]
 	isSticky, err := strconv.ParseBool(k8sCatData["category.issticky"])
 	if err != nil {
-		infoLogger.Printf("isSticky flag is not set for category with name [%s]. Using default value of false.", categoryName)
 		isSticky = false
 	}
 
 	isEnabled, err := strconv.ParseBool(k8sCatData["category.enabled"])
 	if err != nil {
-		infoLogger.Printf("isEnabled flag is not set for category with name [%s]. Using default value of true.", categoryName)
 		isEnabled = true
 	}
 
