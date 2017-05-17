@@ -51,6 +51,8 @@ const (
 	addAckMsgTemplatePath   = "html-templates/add-ack-message-form-template.html"
 	healthcheckPath         = "/__health"
 	jsonContentType         = "application/json"
+	cacheControl            = "Cache-control"
+	noCache                 = "no-cache"
 )
 
 func handleResponseWriterErr(err error) {
@@ -110,6 +112,7 @@ func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set(cacheControl, noCache)
 	serviceName := getServiceNameFromURL(r.URL)
 	ackMessage := r.PostFormValue("ack-msg")
 	if serviceName == "" {
