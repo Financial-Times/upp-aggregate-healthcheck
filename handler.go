@@ -112,7 +112,6 @@ func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(cacheControl, noCache)
 	serviceName := getServiceNameFromURL(r.URL)
 	ackMessage := r.PostFormValue("ack-msg")
 	if serviceName == "" {
@@ -164,6 +163,7 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set(cacheControl, noCache)
 	categories := parseCategories(r.URL)
 	useCache := useCache(r.URL)
 	healthResult, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache)
