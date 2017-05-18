@@ -51,8 +51,6 @@ const (
 	addAckMsgTemplatePath   = "html-templates/add-ack-message-form-template.html"
 	healthcheckPath         = "/__health"
 	jsonContentType         = "application/json"
-	cacheControl            = "Cache-control"
-	noCache                 = "no-cache"
 )
 
 func handleResponseWriterErr(err error) {
@@ -166,10 +164,6 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.Request) {
-	//w.Header().Set(cacheControl, noCache)
-	w.Header().Set("Cache-Control","no-cache, no-store, must-revalidate")
-	w.Header().Set("Pragma","no-cache")
-	w.Header().Set("Expires","0")
 	categories := parseCategories(r.URL)
 	useCache := useCache(r.URL)
 	healthResult, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache)
