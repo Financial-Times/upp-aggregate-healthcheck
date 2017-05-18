@@ -91,6 +91,9 @@ func (h *httpHandler) handleEnableCategory(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Cache-Control","no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma","no-cache")
+	w.Header().Set("Expires","0")
 	serviceName := getServiceNameFromURL(r.URL)
 	if serviceName == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -163,7 +166,10 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set(cacheControl, noCache)
+	//w.Header().Set(cacheControl, noCache)
+	w.Header().Set("Cache-Control","no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma","no-cache")
+	w.Header().Set("Expires","0")
 	categories := parseCategories(r.URL)
 	useCache := useCache(r.URL)
 	healthResult, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache)
