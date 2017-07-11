@@ -13,4 +13,13 @@ resources:
     memory: 256Mi
 env:
   PATH_PREFIX: ""
-
+categories:
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.default
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    data:
+      category.name: default
+      category.refreshrate: "5"
