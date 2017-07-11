@@ -1,4 +1,4 @@
-upp-aggregate-healthcheck
+/upp-aggregate-healthcheck
 vendor/*/
 *.idea
 *.exe

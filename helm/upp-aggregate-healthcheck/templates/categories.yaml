@@ -1,0 +1,4 @@
+kind: ConfigMapList
+apiVersion: v1
+items:
+{{ toYaml .Values.categories | indent 4 }}
