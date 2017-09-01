@@ -1,0 +1,4 @@
+apiVersion: v1
+description: upp-aggregate-healthcheck Helm chart for Kubernetes
+name: upp-aggregate-healthcheck
+version: 0.0.0  # this entry can be left untouched as it is automatically handled by Jenkins pipeline
