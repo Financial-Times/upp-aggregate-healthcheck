@@ -65,19 +65,20 @@ func (hs *k8sHealthcheckService) getPodAvailabilityForDaemonSet(service service)
 }
 
 func checkServiceHealthByResiliency(service service, noOfAvailablePods int, noOfUnavailablePods int) (string, error) {
-	if noOfAvailablePods == 0 {
-		return "", errors.New("All pods are unavailable")
+	outputMsg := fmt.Sprintf("%v/%v pods available", noOfAvailablePods, noOfUnavailablePods + noOfAvailablePods)
+	if noOfAvailablePods == 0 && noOfUnavailablePods != 0 {
+		return "", errors.New(outputMsg)
 	}
+	//todo: remove the following checks, since we will get rid of resiliency.
+	//if !service.isResilient && noOfUnavailablePods != 0 {
+	//	return "", fmt.Errorf("There are %v/%v pods unavailable", noOfUnavailablePods, noOfUnavailablePods + noOfAvailablePods)
+	//}
+	//
+	//if service.isResilient && noOfUnavailablePods != 0 {
+	//	return fmt.Sprintf("There are %v/%v pods unavailable", noOfUnavailablePods, noOfUnavailablePods + noOfAvailablePods), nil
+	//}
 
-	if !service.isResilient && noOfUnavailablePods != 0 {
-		return "", fmt.Errorf("There are %v/%v pods unavailable", noOfUnavailablePods, noOfUnavailablePods + noOfAvailablePods)
-	}
-
-	if service.isResilient && noOfUnavailablePods != 0 {
-		return fmt.Sprintf("There are %v/%v pods unavailable", noOfUnavailablePods, noOfUnavailablePods + noOfAvailablePods), nil
-	}
-
-	return "", nil
+	return outputMsg, nil
 }
 
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
