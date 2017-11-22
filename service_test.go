@@ -195,56 +195,19 @@ func TestAddAckConfigMapNotFound(t *testing.T) {
 }
 
 func TestCheckServiceHealthByResiliencyNoPodsAvailable(t *testing.T) {
-	_, err := checkServiceHealthByResiliency(service{}, 0, 3)
-	assert.NotNil(t, err)
-}
-
-func TestCheckServiceHealthByResiliencyWithNonResilientServiceAndUnvavailablePods(t *testing.T) {
-	s := service{
-		isResilient: false,
-	}
-	_, err := checkServiceHealthByResiliency(s, 1, 3)
+	_, err := checkServiceHealthByResiliency(0, 3)
 	assert.NotNil(t, err)
 }
 
 func TestCheckServiceHealthByResiliencyWithResilientServiceAndUnvavailablePods(t *testing.T) {
-	s := service{
-		isResilient: true,
-	}
-	msg, err := checkServiceHealthByResiliency(s, 1, 3)
+	msg, err := checkServiceHealthByResiliency(1, 3)
 	assert.Nil(t, err)
 	assert.NotNil(t, msg)
 }
 
 func TestCheckServiceHealthByResiliencyHappyFlow(t *testing.T) {
-	s := service{
-		isResilient: false,
-	}
-	msg, err := checkServiceHealthByResiliency(s, 1, 0)
+	_, err := checkServiceHealthByResiliency(1, 0)
 	assert.Nil(t, err)
-	assert.Equal(t, "", msg)
-}
-
-func TestCheckServiceHealthWithDeploymentHappyFlow(t *testing.T) {
-	k8sHcService := initializeMockServiceWithDeployments()
-	s := service{
-		name:        validK8sServiceName,
-		isResilient: false,
-	}
-
-	_, err := k8sHcService.checkServiceHealth(s)
-	assert.Nil(t, err)
-}
-
-func TestCheckServiceHealthWithDeploymentNonExistingServiceName(t *testing.T) {
-	k8sHcService := initializeMockServiceWithDeployments()
-	s := service{
-		name:        nonExistingK8sServiceName,
-		isResilient: false,
-	}
-
-	_, err := k8sHcService.checkServiceHealth(s)
-	assert.NotNil(t, err)
 }
 
 func TestUpdateAcksForServicesEmptyAckList(t *testing.T) {
