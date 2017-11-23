@@ -194,22 +194,6 @@ func TestAddAckConfigMapNotFound(t *testing.T) {
 	assert.NotNil(t, err)
 }
 
-func TestCheckServiceHealthByResiliencyNoPodsAvailable(t *testing.T) {
-	_, err := checkServiceHealthByResiliency(0, 3)
-	assert.NotNil(t, err)
-}
-
-func TestCheckServiceHealthByResiliencyWithResilientServiceAndUnvavailablePods(t *testing.T) {
-	msg, err := checkServiceHealthByResiliency(1, 3)
-	assert.Nil(t, err)
-	assert.NotNil(t, msg)
-}
-
-func TestCheckServiceHealthByResiliencyHappyFlow(t *testing.T) {
-	_, err := checkServiceHealthByResiliency(1, 0)
-	assert.Nil(t, err)
-}
-
 func TestUpdateAcksForServicesEmptyAckList(t *testing.T) {
 	hcService := initializeMockServiceWithK8sServices()
 	acks := make(map[string]string)

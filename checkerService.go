@@ -33,8 +33,12 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, er
 		}
 	}
 
-	noOfAvailablePods := len(pods) - noOfUnavailablePods
-	return checkServiceHealthByResiliency(noOfAvailablePods, noOfUnavailablePods)
+	outputMsg := fmt.Sprintf("%v/%v pods available", len(pods) - noOfUnavailablePods, len(pods))
+	if len(pods)==0 || noOfUnavailablePods != 0 {
+		return "", errors.New(outputMsg)
+	}
+
+	return outputMsg, nil
 }
 
 func (hs *k8sHealthcheckService) getPodAvailabilityForDeployment(service service) (int32, int32, error) {
@@ -62,15 +66,6 @@ func (hs *k8sHealthcheckService) getPodAvailabilityForDaemonSet(service service)
 	noOfUnavailablePods := daemonSet.Status.DesiredNumberScheduled - noOfAvailablePods
 
 	return noOfAvailablePods, noOfUnavailablePods, nil
-}
-
-func checkServiceHealthByResiliency(noOfAvailablePods int, noOfUnavailablePods int) (string, error) {
-	outputMsg := fmt.Sprintf("%v/%v pods available", noOfAvailablePods, noOfUnavailablePods + noOfAvailablePods)
-	if noOfAvailablePods == 0 && noOfUnavailablePods != 0 {
-		return "", errors.New(outputMsg)
-	}
-
-	return outputMsg, nil
 }
 
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
