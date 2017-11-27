@@ -6,16 +6,10 @@ The purpose of this service is to aggregate the healthchecks from services and p
 ## Introduction
  In this section, the aggregate-healthcheck functionalities are described.
 ### Get services health
- A service is considered to be healthy if it has at least one pod that is able to serve requests. To determine which pods are able to serve requests,
- there is a readinessProbe configured on the deployment, which checks the GoodToGo endpoint of the app running inside the pod. If the GoodToGo responds
- with a 503 Service Unavailable status code, the pod will not serve requests anymore, until it will receive 200 OK status code on GoodToGo endpoint.
+ A service is considered to be healthy if it has all the pods healthy. To determine which pods are healthy, Aggregate Healthcheck service checks each pod's __health endpoint.
 
- For a service, if there is at least one pod that can serve requests, the service will be considered healthy, but if there are pods that are unavailable,
- a message will be displayed in the "Output" section of the corresponding service.
- As an exception, if a service is marked as non-resilient (it has the __isResilient: "false"__ label), it will be considered unhealthy if there is at least one pod which is unhealthy.
-
- Not that for services are grouped into categories, therefore there is the possibility to query the aggregate-healthcheck only for a certain list of categories.
- If no category is provided, the healthchecks of all services will be displayed.
+ Note that for services are grouped into categories, therefore there is the possibility to query the aggregate-healthcheck only for a certain list of categories.
+ If no category is provided, the health status of all services will be displayed.
 
 ### Get pods health for a service
  The healths of the pods are evaluated by querying the __health endpoint of apps inside the pods. Given a pod, if there is at least one check that fails,
@@ -25,16 +19,16 @@ The purpose of this service is to aggregate the healthchecks from services and p
  the general status of the aggregate-healthcheck will become healthy (it will also mention that there are 'n' services acknowledged).
 ### Sticky categories
  Categories can be sticky, meaning that if one of the services become unhealthy, the category will be disabled, meaning that it will be unhealthy,
-  until manual re-enabling it. There is an endpoint for enabling a category.
+ until manual re-enabling it. There is an endpoint for enabling a category.
 
 ## Running locally
 To run the service locally, you will need to run the following commands first to get the vendored dependencies for this project:
   `go get github.com/kardianos/govendor` and
   `govendor sync`
  
- There is a limited number of functionalities that can be used locally, because we are querying all the apps, inside the pods and there is no current
+ There is a limited number of functionality that can be used locally, because we are querying all the apps, inside the pods and there is no current
   solution of accessing them outside of the cluster, without using port-forwarding.
- The list of functionalities that can be used outside of the cluster are:
+ The list of all functionality that can be used outside of the cluster are:
   * Add/Remove acknowledge
   * Enable/Disable sticky categories
 
@@ -45,9 +39,6 @@ To run the service locally, you will need to run the following commands first to
  * The Kubernetes service should have __hasHealthcheck: "true"__ label.
  * The container should have Kubernetes `readinessProbe` configured to check the `__gtg` endpoint of the app
  * The app should have `__gtg` and `__health` endpoints.
- * Optionally the Kubernetes service can have:
-   - `isResilient: "false"` label which will cause the service to be unhealthy if there is at least one pod that is unhealthy. Default value for `isResilient` flag is `true`
-   - `isDaemon: "true"` label which indicates that the pods are managed by a daemonSet instead of a deployment. Default value for `isDaemon` flag is `false`, meaning that pods are managed by a Deployment.
 
 ## How to configure categories for aggregate-healthcheck
   Categories are stored in Kubernetes ConfigMaps. 
