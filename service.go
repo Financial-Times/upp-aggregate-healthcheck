@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/pkg/api/v1"
-	k8s "k8s.io/client-go/pkg/apis/extensions/v1beta1"
 	"k8s.io/client-go/pkg/watch"
 	"k8s.io/client-go/rest"
 	"net"
@@ -17,7 +16,6 @@ import (
 type k8sHealthcheckService struct {
 	k8sClient   kubernetes.Interface
 	httpClient  *http.Client
-	deployments deploymentsMap
 	services    servicesMap
 }
 
@@ -30,8 +28,6 @@ type healthcheckService interface {
 	getPodsForService(string) ([]pod, error)
 	getPodByName(string) (pod, error)
 	checkServiceHealth(service) (string, error)
-	getPodAvailabilityForDeployment(service) (int32, int32, error)
-	getPodAvailabilityForDaemonSet(service) (int32, int32, error)
 	checkPodHealth(pod, int32) error
 	getIndividualPodSeverity(pod, int32) (uint8, error)
 	getHealthChecksForPod(pod, int32) (healthcheckResponse, error)
@@ -121,45 +117,6 @@ func (hs *k8sHealthcheckService) watchServices() {
 	hs.watchServices()
 }
 
-func (hs *k8sHealthcheckService) watchDeployments() {
-	watcher, err := hs.k8sClient.ExtensionsV1beta1().Deployments("default").Watch(v1.ListOptions{})
-
-	if err != nil {
-		errorLogger.Printf("Error while starting to watch deployments: %s", err.Error())
-	}
-
-	infoLogger.Print("Started watching deployments")
-	resultChannel := watcher.ResultChan()
-	for msg := range resultChannel {
-		switch msg.Type {
-		case watch.Added, watch.Modified:
-			k8sDeployment := msg.Object.(*k8s.Deployment)
-			deployment := deployment{
-				numberOfAvailableReplicas:   k8sDeployment.Status.AvailableReplicas,
-				numberOfUnavailableReplicas: k8sDeployment.Status.UnavailableReplicas,
-			}
-
-			hs.deployments.Lock()
-			hs.deployments.m[k8sDeployment.Name] = deployment
-			hs.deployments.Unlock()
-
-			infoLogger.Printf("Deployment %s has been added or updated: No of available replicas: %d, no of unavailable replicas: %d", k8sDeployment.Name, k8sDeployment.Status.AvailableReplicas, k8sDeployment.Status.UnavailableReplicas)
-
-		case watch.Deleted:
-			k8sDeployment := msg.Object.(*k8s.Deployment)
-			hs.deployments.Lock()
-			delete(hs.deployments.m, k8sDeployment.Name)
-			hs.deployments.Unlock()
-			infoLogger.Printf("Deployment %s has been removed", k8sDeployment.Name)
-		default:
-			errorLogger.Print("Error received on watch deployments. Channel may be full")
-		}
-	}
-
-	infoLogger.Print("Deployments watching terminated. Reconnecting...")
-	hs.watchDeployments()
-}
-
 func initializeHealthCheckService() *k8sHealthcheckService {
 	httpClient := &http.Client{
 		Timeout: 12 * time.Second,
@@ -182,17 +139,14 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 		panic(fmt.Sprintf("Failed to create k8s client, error was: %v", err.Error()))
 	}
 
-	deployments := make(map[string]deployment)
 	services := make(map[string]service)
 
 	k8sService := &k8sHealthcheckService{
 		httpClient:  httpClient,
 		k8sClient:   k8sClient,
-		deployments: deploymentsMap{m: deployments},
 		services:    servicesMap{m: services},
 	}
 
-	go k8sService.watchDeployments()
 	go k8sService.watchServices()
 	go k8sService.watchAcks()
 

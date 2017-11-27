@@ -42,33 +42,6 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, er
 	return outputMsg, nil
 }
 
-func (hs *k8sHealthcheckService) getPodAvailabilityForDeployment(service service) (int32, int32, error) {
-	hs.deployments.RLock()
-	k8sDeployment, ok := hs.deployments.m[service.name]
-	defer hs.deployments.RUnlock()
-
-	if !ok {
-		return 0, 0, fmt.Errorf("Error retrieving deployment with name %s", service.name)
-	}
-
-	noOfUnavailablePods := k8sDeployment.numberOfUnavailableReplicas
-	noOfAvailablePods := k8sDeployment.numberOfAvailableReplicas
-
-	return noOfAvailablePods, noOfUnavailablePods, nil
-}
-
-func (hs *k8sHealthcheckService) getPodAvailabilityForDaemonSet(service service) (int32, int32, error) {
-	daemonSet, err := hs.k8sClient.ExtensionsV1beta1().DaemonSets("default").Get(service.name)
-	if err != nil {
-		return 0, 0, fmt.Errorf("Error retrieving daemonset with name %s", service.name)
-	}
-
-	noOfAvailablePods := daemonSet.Status.NumberReady
-	noOfUnavailablePods := daemonSet.Status.DesiredNumberScheduled - noOfAvailablePods
-
-	return noOfAvailablePods, noOfUnavailablePods, nil
-}
-
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
 	health, err := hs.getHealthChecksForPod(pod, appPort)
 	if err != nil {

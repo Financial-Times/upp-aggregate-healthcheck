@@ -25,11 +25,6 @@ type deployment struct {
 	numberOfUnavailableReplicas int32
 }
 
-type deploymentsMap struct {
-	sync.RWMutex
-	m map[string]deployment
-}
-
 type service struct {
 	name        string
 	ack         string

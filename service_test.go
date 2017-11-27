@@ -20,7 +20,6 @@ const (
 	validIP                             = "1.0.0.0"
 	validK8sServiceName                 = "validServiceName"
 	validK8sServiceNameWithAck          = "validK8sServiceNameWithAck"
-	nonExistingK8sServiceName           = "vnonExistingServiceName"
 	validSeverity                       = uint8(1)
 	ackMsg                              = "ack-msg"
 	validFailingHealthCheckResponseBody = `{
@@ -81,19 +80,6 @@ func initializeMockServiceWithK8sServices() *k8sHealthcheckService {
 	return &k8sHealthcheckService{
 		services: servicesMap{
 			m: services,
-		},
-	}
-}
-
-func initializeMockServiceWithDeployments() *k8sHealthcheckService {
-	deployments := make(map[string]deployment)
-	deployments[validK8sServiceName] = deployment{
-		numberOfUnavailableReplicas: 0,
-		numberOfAvailableReplicas:   2,
-	}
-	return &k8sHealthcheckService{
-		deployments: deploymentsMap{
-			m: deployments,
 		},
 	}
 }
