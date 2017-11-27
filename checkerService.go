@@ -33,8 +33,9 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, er
 		}
 	}
 
-	outputMsg := fmt.Sprintf("%v/%v pods available", len(pods) - noOfUnavailablePods, len(pods))
-	if len(pods)==0 || noOfUnavailablePods != 0 {
+	totalNoOfPods :=len(pods)
+	outputMsg := fmt.Sprintf("%v/%v pods available", totalNoOfPods - noOfUnavailablePods, totalNoOfPods)
+	if totalNoOfPods==0 || noOfUnavailablePods != 0 {
 		return "", errors.New(outputMsg)
 	}
 
