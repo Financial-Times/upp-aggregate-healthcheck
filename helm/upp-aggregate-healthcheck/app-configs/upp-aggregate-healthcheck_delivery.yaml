@@ -125,3 +125,25 @@ categories:
       category.services: system-healthcheck
       category.refreshrate: "60"
       category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.annotations-publish
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    data:
+      category.name: annotations-publish
+      category.services: public-annotations-api,system-healthcheck
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.annotations-read
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    data:
+      category.name: annotations-read
+      category.services: annotations-mapper,annotations-rw-neo4j,upp-next-video-annotations-mapper,pac-annotations-mapper,system-healthcheck
+      category.refreshrate: "60"
+      category.issticky: "false"
