@@ -19,62 +19,27 @@ type healthcheckResponse struct {
 }
 
 func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, error) {
-	var noOfAvailablePods, noOfUnavailablePods int32
 	var err error
-	if service.isDaemon {
-		noOfAvailablePods, noOfUnavailablePods, err = hs.getPodAvailabilityForDaemonSet(service)
-	} else {
-		noOfAvailablePods, noOfUnavailablePods, err = hs.getPodAvailabilityForDeployment(service)
-	}
-
+	pods, err := hs.getPodsForService(service.name)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("Cannot retrieve pods for service with name %s to perform healthcheck, error was: %s", service.name, err)
 	}
 
-	return checkServiceHealthByResiliency(service, noOfAvailablePods, noOfUnavailablePods)
-}
-
-func (hs *k8sHealthcheckService) getPodAvailabilityForDeployment(service service) (int32, int32, error) {
-	hs.deployments.RLock()
-	k8sDeployment, ok := hs.deployments.m[service.name]
-	defer hs.deployments.RUnlock()
-
-	if !ok {
-		return 0, 0, fmt.Errorf("Error retrieving deployment with name %s", service.name)
+	noOfUnavailablePods := 0
+	for _, pod := range pods {
+		err := hs.checkPodHealth(pod, service.appPort)
+		if err != nil {
+			noOfUnavailablePods++
+		}
 	}
 
-	noOfUnavailablePods := k8sDeployment.numberOfUnavailableReplicas
-	noOfAvailablePods := k8sDeployment.numberOfAvailableReplicas
-
-	return noOfAvailablePods, noOfUnavailablePods, nil
-}
-
-func (hs *k8sHealthcheckService) getPodAvailabilityForDaemonSet(service service) (int32, int32, error) {
-	daemonSet, err := hs.k8sClient.ExtensionsV1beta1().DaemonSets("default").Get(service.name)
-	if err != nil {
-		return 0, 0, fmt.Errorf("Error retrieving daemonset with name %s", service.name)
+	totalNoOfPods :=len(pods)
+	outputMsg := fmt.Sprintf("%v/%v pods available", totalNoOfPods - noOfUnavailablePods, totalNoOfPods)
+	if totalNoOfPods==0 || noOfUnavailablePods != 0 {
+		return "", errors.New(outputMsg)
 	}
 
-	noOfAvailablePods := daemonSet.Status.NumberReady
-	noOfUnavailablePods := daemonSet.Status.DesiredNumberScheduled - noOfAvailablePods
-
-	return noOfAvailablePods, noOfUnavailablePods, nil
-}
-
-func checkServiceHealthByResiliency(service service, noOfAvailablePods int32, noOfUnavailablePods int32) (string, error) {
-	if noOfAvailablePods == 0 {
-		return "", errors.New("All pods are unavailable")
-	}
-
-	if !service.isResilient && noOfUnavailablePods != 0 {
-		return "", fmt.Errorf("There are %v pods unavailable", noOfUnavailablePods)
-	}
-
-	if service.isResilient && noOfUnavailablePods != 0 {
-		return fmt.Sprintf("There are %v pods unavailable", noOfUnavailablePods), nil
-	}
-
-	return "", nil
+	return outputMsg, nil
 }
 
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {

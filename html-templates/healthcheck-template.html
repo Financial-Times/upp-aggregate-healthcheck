@@ -40,8 +40,8 @@
     <tr>
       <th>Name</th>
       <th>Health status</th>
-      <th>Last Updated</th>
       <th>Output</th>
+      <th>Last Updated</th>
       <th>Ack msg</th>
       <th>Action</th>
     </tr>
@@ -66,8 +66,22 @@
         {{end}}
         {{end}}
       </td>
+      <td>
+        {{if eq .Status "ok"}}
+        <span style='color: green;'>{{.Output}}</span>
+        {{else}}
+        {{if eq .Status "warning"}}
+        <span style='color: orange;'>{{.Output}}</span>
+        {{else}}
+        {{if eq .Status "critical"}}
+        <span style='color: red;'>{{.Output}}</span>
+        {{else}}
+        <span style='color: blue;'>{{.Output}}</span>
+        {{end}}
+        {{end}}
+        {{end}}
+      </td>
       <td>&nbsp;{{.LastUpdated}}</td>
-      <td>{{.Output}}</td>
       <td>&nbsp;<span style='color: blue;'><em>{{.AckMessage}}</em></span></td>
       {{if ne .AddOrRemoveAckPath ""}}
       <td><a href="{{.AddOrRemoveAckPath}}">{{.AddOrRemoveAckPathName}}</a></td>

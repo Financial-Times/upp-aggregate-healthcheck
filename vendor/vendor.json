@@ -362,7 +362,7 @@
 			"revisionTime": "2016-08-26T23:14:08Z"
 		},
 		{
-			"checksumSHA1": "9lOtRfhl48QxUwyx3YJNekCLTPE=",
+			"checksumSHA1": "PjqKI0KCcrl2MtsgUvzkwaLpSdI=",
 			"path": "golang.org/x/text/cases",
 			"revision": "2910a502d2bf9e43193af9d68ca516529614eed3",
 			"revisionTime": "2016-07-21T22:28:28Z"
@@ -374,7 +374,7 @@
 			"revisionTime": "2016-07-21T22:28:28Z"
 		},
 		{
-			"checksumSHA1": "vbYsvMa+yYFTrmD0bIVhA36DpgQ=",
+			"checksumSHA1": "DkHDKdSD4pSdH9iLx22i1UcPNJI=",
 			"path": "golang.org/x/text/language",
 			"revision": "2910a502d2bf9e43193af9d68ca516529614eed3",
 			"revisionTime": "2016-07-21T22:28:28Z"
@@ -392,7 +392,7 @@
 			"revisionTime": "2016-07-21T22:28:28Z"
 		},
 		{
-			"checksumSHA1": "1IuvLthKYvAb/tapHq+e/OH7KNk=",
+			"checksumSHA1": "8RJL5ieyKa9ZW82mtoNuQYID2fw=",
 			"path": "golang.org/x/text/secure/precis",
 			"revision": "2910a502d2bf9e43193af9d68ca516529614eed3",
 			"revisionTime": "2016-07-21T22:28:28Z"
@@ -404,19 +404,19 @@
 			"revisionTime": "2016-07-21T22:28:28Z"
 		},
 		{
-			"checksumSHA1": "2IEszVJvEtg9W9g2zuZsbxZNW/k=",
+			"checksumSHA1": "JGgdtPIIUWvKfX7N4bnbudwi6H0=",
 			"path": "golang.org/x/text/unicode/bidi",
 			"revision": "2910a502d2bf9e43193af9d68ca516529614eed3",
 			"revisionTime": "2016-07-21T22:28:28Z"
 		},
 		{
-			"checksumSHA1": "pDDMc5yLVQ2xeR9CajcgIJODPcw=",
+			"checksumSHA1": "zH09KVkfc23XyOWpkigO3ifVOmk=",
 			"path": "golang.org/x/text/unicode/norm",
 			"revision": "2910a502d2bf9e43193af9d68ca516529614eed3",
 			"revisionTime": "2016-07-21T22:28:28Z"
 		},
 		{
-			"checksumSHA1": "BU+BXnKIUJk/ncvbmW4v9248JWg=",
+			"checksumSHA1": "DU2uVxLEIj5lMcT+oFt49xKxLdY=",
 			"path": "golang.org/x/text/width",
 			"revision": "2910a502d2bf9e43193af9d68ca516529614eed3",
 			"revisionTime": "2016-07-21T22:28:28Z"
@@ -494,7 +494,7 @@
 			"revisionTime": "2015-09-24T14:23:14Z"
 		},
 		{
-			"checksumSHA1": "SSbMBSzzGF6XGcEnH5SijHEWLjA=",
+			"checksumSHA1": "hBin8FR+b38/hbMfFwH2YIGsSQc=",
 			"path": "k8s.io/client-go",
 			"revision": "e121606b0d09b2e1c467183ee46217fa85a6b672",
 			"tree": true,

@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 service:
   name: "" # The name of the service, should be defined in the specific app-configs folder.
-  hasHealthcheck: "true"
+  hasHealthcheck: "false"
 replicaCount: 1
 image:
   repository: coco/upp-aggregate-healthcheck
