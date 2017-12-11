@@ -14,9 +14,9 @@ import (
 )
 
 type k8sHealthcheckService struct {
-	k8sClient   kubernetes.Interface
-	httpClient  *http.Client
-	services    servicesMap
+	k8sClient  kubernetes.Interface
+	httpClient *http.Client
+	services   servicesMap
 }
 
 type healthcheckService interface {
@@ -37,17 +37,17 @@ type healthcheckService interface {
 }
 
 const (
-	defaultRefreshRate                = 60
-	defaultSeverity                   = uint8(2)
-	ackMessagesConfigMapName          = "healthcheck.ack.messages"
+	defaultRefreshRate = 60
+	defaultSeverity = uint8(2)
+	ackMessagesConfigMapName = "healthcheck.ack.messages"
 	ackMessagesConfigMapLabelSelector = "healthcheck-acknowledgements-for=aggregate-healthcheck"
-	defaultAppPort                    = int32(8080)
+	defaultAppPort = int32(8080)
 )
 
 func (hs *k8sHealthcheckService) updateAcksForServices(acksMap map[string]string) {
 	hs.services.Lock()
 	for serviceName, service := range hs.services.m {
-		if ackMsg, ok := acksMap[serviceName]; ok {
+		if ackMsg, found := acksMap[serviceName]; found {
 			service.ack = ackMsg
 		} else {
 			service.ack = ""
@@ -148,6 +148,7 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 	}
 
 	go k8sService.watchServices()
+	time.Sleep(2 * time.Second)
 	go k8sService.watchAcks()
 
 	return k8sService
