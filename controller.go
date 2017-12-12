@@ -31,6 +31,7 @@ type controller interface {
 	getSeverityForService(string, int32) uint8
 	getSeverityForPod(string, int32) uint8
 	getMeasuredServices() map[string]measuredService
+	getPodsForService(serviceName string) ([]pod, error)
 }
 
 func initializeController(environment string) *healthCheckController {
@@ -181,6 +182,10 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 	}
 
 	return healthChecks, categorisedResults
+}
+
+func (c *healthCheckController) getPodsForService(serviceName string) ([]pod, error) {
+	return c.healthCheckService.getPodsForService(serviceName)
 }
 
 func isEnabledAndSticky(category category) bool {

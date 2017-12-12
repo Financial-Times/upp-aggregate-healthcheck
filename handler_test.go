@@ -16,14 +16,14 @@ type mockController struct {
 }
 
 const (
-	invalidCategoryName  = "invalid"
+	invalidCategoryName = "invalid"
 	disabledCategoryName = "disabled"
-	categoryWithChecks   = "catWithChecks"
-	brokenCategoryName   = "brokencat"
-	brokenServiceName    = "brokenServiceName"
-	validPodName         = "validPod"
-	validServiceName     = "validServiceName"
-	brokenPodName        = "brokenPod"
+	categoryWithChecks = "catWithChecks"
+	brokenCategoryName = "brokencat"
+	brokenServiceName = "brokenServiceName"
+	validPodName = "validPod"
+	validServiceName = "validServiceName"
+	brokenPodName = "brokenPod"
 )
 
 func (m *mockController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, map[string]category, error) {
@@ -83,6 +83,10 @@ func (m *mockController) runServiceChecksByServiceNames(map[string]service, map[
 
 func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
 	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}
+}
+
+func (m *mockController) getPodsForService(serviceName string) ([]pod, error) {
+	return []pod{}, nil
 }
 
 func (m *mockController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {

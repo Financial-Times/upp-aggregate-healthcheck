@@ -46,11 +46,11 @@ type AddAckForm struct {
 var defaultCategories = []string{"default"}
 
 const (
-	timeLayout              = "15:04:05 MST"
+	timeLayout = "15:04:05 MST"
 	healthcheckTemplateName = "html-templates/healthcheck-template.html"
-	addAckMsgTemplatePath   = "html-templates/add-ack-message-form-template.html"
-	healthcheckPath         = "/__health"
-	jsonContentType         = "application/json"
+	addAckMsgTemplatePath = "html-templates/add-ack-message-form-template.html"
+	healthcheckPath = "/__health"
+	jsonContentType = "application/json"
 )
 
 func handleResponseWriterErr(err error) {
@@ -89,9 +89,9 @@ func (h *httpHandler) handleEnableCategory(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Cache-Control","no-cache, no-store, must-revalidate")
-	w.Header().Set("Pragma","no-cache")
-	w.Header().Set("Expires","0")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
 	serviceName := getServiceNameFromURL(r.URL)
 	if serviceName == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -187,6 +187,16 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 	}
 
 	if r.Header.Get("Accept") == jsonContentType {
+		for _, check := range healthResult.Checks {
+			pods, err := h.controller.getPodsForService(check.Name)
+			if err != nil {
+				warnLogger.Printf("Could not retrieve pods for service with name %s. The json response will not have individual pod checks URLs. Problem was: %s", check.Name, err)
+			} else {
+				podsHealthcheckURLs := getIndividualPodsHealthcheckURLs(h.pathPrefix, pods)
+				check.TechnicalSummary = fmt.Sprintf("%s Individual pod checks: %s", check.TechnicalSummary, podsHealthcheckURLs)
+			}
+		}
+
 		buildHealthcheckJSONResponse(w, healthResult)
 	} else {
 		env := h.controller.getEnvironment()
@@ -438,7 +448,7 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 			Name:         check.Name,
 			Status:       getServiceStatusFromCheck(check),
 			LastUpdated:  check.LastUpdated.Format(timeLayout),
-			MoreInfoPath: fmt.Sprintf("%s/__pod-individual-health?pod-name=%s", pathPrefix, podName),
+			MoreInfoPath: getIndividualPodHealthcheckURL(pathPrefix, podName),
 			AckMessage:   check.Ack,
 			Output:       check.Output,
 		}
@@ -447,6 +457,20 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 	}
 
 	return indiviualServiceChecks, ackCount
+}
+
+func getIndividualPodsHealthcheckURLs(pathPrefix string, pods []pod) []string {
+	var podsHealthcheckURLs []string
+	for _, pod := range pods {
+		individualPodHealthcheckURL := getIndividualPodHealthcheckURL(pathPrefix, pod.name)
+		podsHealthcheckURLs = append(podsHealthcheckURLs, individualPodHealthcheckURL)
+	}
+
+	return podsHealthcheckURLs
+}
+
+func getIndividualPodHealthcheckURL(pathPrefix, podName string) string {
+	return fmt.Sprintf("%s/__pod-individual-health?pod-name=%s", pathPrefix, podName)
 }
 
 func extractPodName(checkName string) string {
@@ -518,7 +542,7 @@ func getCategoriesString(categories map[string]category) string {
 
 	len := len(formattedCategoryNames)
 	if len > 0 {
-		formattedCategoryNames = formattedCategoryNames[:len-1]
+		formattedCategoryNames = formattedCategoryNames[:len - 1]
 	}
 
 	return formattedCategoryNames
