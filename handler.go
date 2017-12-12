@@ -187,16 +187,10 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 	}
 
 	if r.Header.Get("Accept") == jsonContentType {
-		for _, check := range healthResult.Checks {
-			pods, err := h.controller.getPodsForService(check.Name)
-			if err != nil {
-				warnLogger.Printf("Could not retrieve pods for service with name %s. The json response will not have individual pod checks URLs. Problem was: %s", check.Name, err)
-			} else {
-				podsHealthcheckURLs := getIndividualPodsHealthcheckURLs(h.pathPrefix, pods)
-				check.TechnicalSummary = fmt.Sprintf("%s Individual pod checks: %s", check.TechnicalSummary, podsHealthcheckURLs)
-			}
+		for _, serviceCheck := range healthResult.Checks {
+			serviceHealthcheckURL := getServiceHealthcheckURL(h.pathPrefix, serviceCheck.Name)
+			serviceCheck.TechnicalSummary = fmt.Sprintf("%s Service healthcheck: %s", serviceCheck.TechnicalSummary, serviceHealthcheckURL)
 		}
-
 		buildHealthcheckJSONResponse(w, healthResult)
 	} else {
 		env := h.controller.getEnvironment()
@@ -459,16 +453,6 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 	return indiviualServiceChecks, ackCount
 }
 
-func getIndividualPodsHealthcheckURLs(pathPrefix string, pods []pod) []string {
-	var podsHealthcheckURLs []string
-	for _, pod := range pods {
-		individualPodHealthcheckURL := getIndividualPodHealthcheckURL(pathPrefix, pod.name)
-		podsHealthcheckURLs = append(podsHealthcheckURLs, individualPodHealthcheckURL)
-	}
-
-	return podsHealthcheckURLs
-}
-
 func getIndividualPodHealthcheckURL(pathPrefix, podName string) string {
 	return fmt.Sprintf("%s/__pod-individual-health?pod-name=%s", pathPrefix, podName)
 }
@@ -488,13 +472,17 @@ func populateAggregatePodChecks(healthResult fthealth.HealthResult, environment 
 	aggregateChecks := &AggregateHealthcheckParams{
 		PageTitle:               fmt.Sprintf("UPP %s cluster's pods of service %s", environment, serviceName),
 		GeneralStatus:           getGeneralStatus(healthResult),
-		RefreshFromCachePath:    fmt.Sprintf("%s/__pods-health?service-name=%s", pathPrefix, serviceName),
+		RefreshFromCachePath:    getServiceHealthcheckURL(pathPrefix, serviceName),
 		RefreshWithoutCachePath: fmt.Sprintf("%s/__pods-health?cache=false&service-name=%s", pathPrefix, serviceName),
 		IndividualHealthChecks:  individualChecks,
 		AckCount:                ackCount,
 	}
 
 	return aggregateChecks
+}
+
+func getServiceHealthcheckURL(pathPrefix, serviceName string) string {
+	return fmt.Sprintf("%s/__pods-health?service-name=%s", pathPrefix, serviceName)
 }
 
 func buildPageTitle(environment string, categories string) string {
