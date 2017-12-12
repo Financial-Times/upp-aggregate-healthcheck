@@ -13,7 +13,7 @@ import (
 type httpHandler struct {
 	controller controller
 	pathPrefix string
-	hostURL    string
+	clusterURL string
 }
 
 //IndividualHealthcheckParams struct used to populate HTML template with individual checks
@@ -189,7 +189,7 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 
 	if r.Header.Get("Accept") == jsonContentType {
 		for i, serviceCheck := range healthResult.Checks {
-			serviceHealthcheckURL := getServiceHealthcheckURL(h.hostURL, h.pathPrefix, serviceCheck.Name)
+			serviceHealthcheckURL := getServiceHealthcheckURL(h.clusterURL, h.pathPrefix, serviceCheck.Name)
 			healthResult.Checks[i].TechnicalSummary = fmt.Sprintf("%s Service healthcheck: %s", serviceCheck.TechnicalSummary, serviceHealthcheckURL)
 		}
 

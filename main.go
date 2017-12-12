@@ -40,11 +40,11 @@ func main() {
 		EnvVar: "GRAPHITE_URL",
 	})
 
-	hostURL := app.String(cli.StringOpt{
-		Name:   "host-url",
+	clusterURL := app.String(cli.StringOpt{
+		Name:   "cluster-url",
 		Value:  "",
-		Desc:   "host URL",
-		EnvVar: "HOST_URL",
+		Desc:   "Cluster URL",
+		EnvVar: "CLUSTER_URL",
 	})
 
 	app.Action = func() {
@@ -55,7 +55,7 @@ func main() {
 		handler := &httpHandler{
 			controller: controller,
 			pathPrefix: *pathPrefix,
-			hostURL:    *hostURL,
+			clusterURL:    *clusterURL,
 		}
 
 		graphiteFeeder := newGraphiteFeeder(*graphiteURL, *environment, controller)
