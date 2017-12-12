@@ -85,10 +85,6 @@ func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.Ch
 	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}
 }
 
-func (m *mockController) getPodsForService(serviceName string) ([]pod, error) {
-	return []pod{}, nil
-}
-
 func (m *mockController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
 	if serviceName == brokenServiceName {
 		return fthealth.HealthResult{}, errors.New("Broken pod")
