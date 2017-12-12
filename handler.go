@@ -190,7 +190,10 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 		for _, serviceCheck := range healthResult.Checks {
 			serviceHealthcheckURL := getServiceHealthcheckURL(h.pathPrefix, serviceCheck.Name)
 			serviceCheck.TechnicalSummary = fmt.Sprintf("%s Service healthcheck: %s", serviceCheck.TechnicalSummary, serviceHealthcheckURL)
+			//todo: remove this.
+			infoLogger.Printf("technical summary is %s", serviceCheck.TechnicalSummary)
 		}
+		infoLogger.Printf("technical summary is 2: %s", healthResult.Checks[0].TechnicalSummary)
 		buildHealthcheckJSONResponse(w, healthResult)
 	} else {
 		env := h.controller.getEnvironment()
