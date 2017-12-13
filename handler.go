@@ -47,11 +47,11 @@ type AddAckForm struct {
 var defaultCategories = []string{"default"}
 
 const (
-	timeLayout = "15:04:05 MST"
+	timeLayout              = "15:04:05 MST"
 	healthcheckTemplateName = "html-templates/healthcheck-template.html"
-	addAckMsgTemplatePath = "html-templates/add-ack-message-form-template.html"
-	healthcheckPath = "/__health"
-	jsonContentType = "application/json"
+	addAckMsgTemplatePath   = "html-templates/add-ack-message-form-template.html"
+	healthcheckPath         = "/__health"
+	jsonContentType         = "application/json"
 )
 
 func handleResponseWriterErr(err error) {
@@ -537,7 +537,7 @@ func getCategoriesString(categories map[string]category) string {
 
 	len := len(formattedCategoryNames)
 	if len > 0 {
-		formattedCategoryNames = formattedCategoryNames[:len - 1]
+		formattedCategoryNames = formattedCategoryNames[:len-1]
 	}
 
 	return formattedCategoryNames

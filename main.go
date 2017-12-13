@@ -55,7 +55,7 @@ func main() {
 		handler := &httpHandler{
 			controller: controller,
 			pathPrefix: *pathPrefix,
-			clusterURL:    *clusterURL,
+			clusterURL: *clusterURL,
 		}
 
 		graphiteFeeder := newGraphiteFeeder(*graphiteURL, *environment, controller)
