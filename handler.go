@@ -225,6 +225,11 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 	}
 
 	if r.Header.Get("Accept") == jsonContentType {
+		for i, podCheck := range healthResult.Checks {
+			serviceHealthcheckURL := getIndividualPodHealthcheckURL(h.clusterURL, h.pathPrefix, podCheck.Name)
+			healthResult.Checks[i].TechnicalSummary = fmt.Sprintf("%s Pod healthcheck: %s", podCheck.TechnicalSummary, serviceHealthcheckURL)
+		}
+
 		buildHealthcheckJSONResponse(w, healthResult)
 	} else {
 		env := h.controller.getEnvironment()
@@ -444,7 +449,7 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 			Name:         check.Name,
 			Status:       getServiceStatusFromCheck(check),
 			LastUpdated:  check.LastUpdated.Format(timeLayout),
-			MoreInfoPath: getIndividualPodHealthcheckURL(pathPrefix, podName),
+			MoreInfoPath: getIndividualPodHealthcheckURL("", pathPrefix, podName),
 			AckMessage:   check.Ack,
 			Output:       check.Output,
 		}
@@ -455,8 +460,8 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 	return indiviualServiceChecks, ackCount
 }
 
-func getIndividualPodHealthcheckURL(pathPrefix, podName string) string {
-	return fmt.Sprintf("%s/__pod-individual-health?pod-name=%s", pathPrefix, podName)
+func getIndividualPodHealthcheckURL(clusterURL, pathPrefix, podName string) string {
+	return fmt.Sprintf("%s%s/__pod-individual-health?pod-name=%s", clusterURL, pathPrefix, podName)
 }
 
 func extractPodName(checkName string) string {
