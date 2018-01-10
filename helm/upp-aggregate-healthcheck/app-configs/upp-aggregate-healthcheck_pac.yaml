@@ -1,0 +1,6 @@
+# Values used for the deployed application.
+replicaCount: 1
+service:
+  name: upp-aggregate-healthcheck
+env:
+  PATH_PREFIX: "/__health"
