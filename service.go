@@ -147,9 +147,8 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 		services:   servicesMap{m: services},
 	}
 
-	go k8sService.watchServices()
-	time.Sleep(2 * time.Second)
 	go k8sService.watchAcks()
+	go k8sService.watchServices()
 
 	return k8sService
 }
