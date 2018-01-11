@@ -47,7 +47,6 @@ const (
 
 func (hs *k8sHealthcheckService) updateAcksForServices(acksMap map[string]string) {
 	hs.services.Lock()
-	hs.acks = acksMap
 	for serviceName, service := range hs.services.m {
 		if ackMsg, found := acksMap[serviceName]; found {
 			service.ack = ackMsg
@@ -73,8 +72,10 @@ func (hs *k8sHealthcheckService) watchAcks() {
 		case watch.Added, watch.Modified:
 			k8sConfigMap := msg.Object.(*v1.ConfigMap)
 			hs.updateAcksForServices(k8sConfigMap.Data)
+			hs.acks = k8sConfigMap.Data
 			infoLogger.Printf("Acks configMap has been updated: %s", k8sConfigMap.Data)
 		case watch.Deleted:
+			hs.acks = make(map[string]string)
 			errorLogger.Print("Acks configMap has been deleted. From now on the acks will no longer be available.")
 		default:
 			errorLogger.Print("Error received on watch acks configMap. Channel may be full")
