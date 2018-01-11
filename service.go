@@ -17,6 +17,7 @@ type k8sHealthcheckService struct {
 	k8sClient  kubernetes.Interface
 	httpClient *http.Client
 	services   servicesMap
+	acks       map[string]string
 }
 
 type healthcheckService interface {
@@ -46,6 +47,7 @@ const (
 
 func (hs *k8sHealthcheckService) updateAcksForServices(acksMap map[string]string) {
 	hs.services.Lock()
+	hs.acks = acksMap
 	for serviceName, service := range hs.services.m {
 		if ackMsg, found := acksMap[serviceName]; found {
 			service.ack = ackMsg
@@ -95,7 +97,7 @@ func (hs *k8sHealthcheckService) watchServices() {
 		switch msg.Type {
 		case watch.Added, watch.Modified:
 			k8sService := msg.Object.(*v1.Service)
-			service := populateService(k8sService)
+			service := populateService(k8sService, hs.acks)
 
 			hs.services.Lock()
 			hs.services.m[service.name] = service
@@ -341,7 +343,7 @@ func populatePod(k8sPod v1.Pod) pod {
 	}
 }
 
-func populateService(k8sService *v1.Service) service {
+func populateService(k8sService *v1.Service, acks map[string]string) service {
 	//services are resilient by default.
 	isResilient := true
 	isDaemon := false
@@ -366,6 +368,7 @@ func populateService(k8sService *v1.Service) service {
 		appPort:     getAppPortForService(k8sService),
 		isDaemon:    isDaemon,
 		isResilient: isResilient,
+		ack:         acks[serviceName],
 	}
 }
 
