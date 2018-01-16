@@ -14,9 +14,10 @@ import (
 )
 
 type k8sHealthcheckService struct {
-	k8sClient   kubernetes.Interface
-	httpClient  *http.Client
-	services    servicesMap
+	k8sClient  kubernetes.Interface
+	httpClient *http.Client
+	services   servicesMap
+	acks       map[string]string
 }
 
 type healthcheckService interface {
@@ -47,7 +48,7 @@ const (
 func (hs *k8sHealthcheckService) updateAcksForServices(acksMap map[string]string) {
 	hs.services.Lock()
 	for serviceName, service := range hs.services.m {
-		if ackMsg, ok := acksMap[serviceName]; ok {
+		if ackMsg, found := acksMap[serviceName]; found {
 			service.ack = ackMsg
 		} else {
 			service.ack = ""
@@ -71,8 +72,10 @@ func (hs *k8sHealthcheckService) watchAcks() {
 		case watch.Added, watch.Modified:
 			k8sConfigMap := msg.Object.(*v1.ConfigMap)
 			hs.updateAcksForServices(k8sConfigMap.Data)
+			hs.acks = k8sConfigMap.Data
 			infoLogger.Printf("Acks configMap has been updated: %s", k8sConfigMap.Data)
 		case watch.Deleted:
+			hs.acks = make(map[string]string)
 			errorLogger.Print("Acks configMap has been deleted. From now on the acks will no longer be available.")
 		default:
 			errorLogger.Print("Error received on watch acks configMap. Channel may be full")
@@ -95,7 +98,7 @@ func (hs *k8sHealthcheckService) watchServices() {
 		switch msg.Type {
 		case watch.Added, watch.Modified:
 			k8sService := msg.Object.(*v1.Service)
-			service := populateService(k8sService)
+			service := populateService(k8sService, hs.acks)
 
 			hs.services.Lock()
 			hs.services.m[service.name] = service
@@ -142,13 +145,13 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 	services := make(map[string]service)
 
 	k8sService := &k8sHealthcheckService{
-		httpClient:  httpClient,
-		k8sClient:   k8sClient,
-		services:    servicesMap{m: services},
+		httpClient: httpClient,
+		k8sClient:  k8sClient,
+		services:   servicesMap{m: services},
 	}
 
-	go k8sService.watchServices()
 	go k8sService.watchAcks()
+	go k8sService.watchServices()
 
 	return k8sService
 }
@@ -341,7 +344,7 @@ func populatePod(k8sPod v1.Pod) pod {
 	}
 }
 
-func populateService(k8sService *v1.Service) service {
+func populateService(k8sService *v1.Service, acks map[string]string) service {
 	//services are resilient by default.
 	isResilient := true
 	isDaemon := false
@@ -366,6 +369,7 @@ func populateService(k8sService *v1.Service) service {
 		appPort:     getAppPortForService(k8sService),
 		isDaemon:    isDaemon,
 		isResilient: isResilient,
+		ack:         acks[serviceName],
 	}
 }
 

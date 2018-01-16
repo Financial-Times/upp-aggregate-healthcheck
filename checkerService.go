@@ -33,9 +33,9 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, er
 		}
 	}
 
-	totalNoOfPods :=len(pods)
+	totalNoOfPods := len(pods)
 	outputMsg := fmt.Sprintf("%v/%v pods available", totalNoOfPods - noOfUnavailablePods, totalNoOfPods)
-	if totalNoOfPods==0 || noOfUnavailablePods != 0 {
+	if totalNoOfPods == 0 || noOfUnavailablePods != 0 {
 		return "", errors.New(outputMsg)
 	}
 
@@ -83,6 +83,7 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 		return healthcheckResponse{}, errors.New("Error constructing healthcheck request: " + err.Error())
 	}
 
+	req.Header.Set("Accept", "application/json")
 	resp, err := hs.httpClient.Do(req)
 	if err != nil {
 		return healthcheckResponse{}, errors.New("Error performing healthcheck request: " + err.Error())

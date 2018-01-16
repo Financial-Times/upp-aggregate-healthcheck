@@ -30,6 +30,11 @@ spec:
             configMapKeyRef:
               name: global-config
               key: environment
+        - name: CLUSTER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: global-config
+              key: cluster.url
         - name: GRAPHITE_URL
           valueFrom:
             configMapKeyRef:
