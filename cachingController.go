@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 	"math"
 	"reflect"
 	"time"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 )
 
 const (
@@ -100,7 +101,6 @@ func (c *healthCheckController) getMeasuredServices() map[string]measuredService
 }
 
 func findShortestPeriod(categories map[string]category) time.Duration {
-
 	if len(categories) == 0 {
 		return defaultRefreshPeriod
 	}
