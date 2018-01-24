@@ -386,7 +386,7 @@ func TestRunServiceChecksForStickyCategoryUpdateError(t *testing.T) {
 	}
 
 	controller := initializeMockController("test", nil)
-	hc, categories, _, _ := controller.buildServicesHealthResult([]string{"test", "publishing", nonExistingCategoryName}, false)
+	hc, categories, _, _ := controller.buildServicesHealthResult([]string{"test", "publishing", nonExistingCategoryName}, true)
 
 	assert.NotNil(t, hc)
 	assert.False(t, hc.Ok)
