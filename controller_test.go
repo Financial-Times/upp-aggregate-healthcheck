@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"os"
 	"testing"
 	"time"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -361,8 +362,9 @@ func TestRunServiceChecksForStickyCategory(t *testing.T) {
 	}
 
 	controller := initializeMockController("test", nil)
-	checkResult, _ := controller.runServiceChecksFor(categories)
-	assert.NotNil(t, checkResult)
+	hc, categories, _, _ := controller.buildServicesHealthResult([]string{"test", "publishing"}, false)
+
+	assert.NotNil(t, hc)
 	assert.False(t, categories["test"].isEnabled)
 }
 
@@ -384,8 +386,10 @@ func TestRunServiceChecksForStickyCategoryUpdateError(t *testing.T) {
 	}
 
 	controller := initializeMockController("test", nil)
-	checkResult, _ := controller.runServiceChecksFor(categories)
-	assert.NotNil(t, checkResult)
+	hc, categories, _, _ := controller.buildServicesHealthResult([]string{"test", "publishing", nonExistingCategoryName}, true)
+
+	assert.NotNil(t, hc)
+	assert.False(t, hc.Ok)
 	assert.False(t, categories["test"].isEnabled)
 }
 
