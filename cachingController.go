@@ -106,7 +106,6 @@ func (c *healthCheckController) getMeasuredServices() map[string]measuredService
 }
 
 func findShortestPeriod(categories map[string]category) time.Duration {
-
 	if len(categories) == 0 {
 		return defaultRefreshPeriod
 	}

@@ -93,10 +93,11 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	if useCache {
 		desc = "Health of the whole cluster served from cache."
 		checkResults, _ = c.collectChecksFromCachesFor(matchingCategories)
-
 	} else {
 		checkResults, _ = c.runServiceChecksFor(matchingCategories)
 	}
+
+	c.disableStickyFailingCategories(matchingCategories, checkResults)
 
 	finalOk, finalSeverity := getFinalResult(checkResults, matchingCategories)
 
@@ -164,6 +165,10 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 	services := c.healthCheckService.getServicesMapByNames(serviceNames)
 	healthChecks := c.runServiceChecksByServiceNames(services, categories)
 
+	return healthChecks, categorisedResults
+}
+
+func (c *healthCheckController) disableStickyFailingCategories(categories map[string]category, healthChecks []fthealth.CheckResult) {
 	for catIndex, category := range categories {
 		if !isEnabledAndSticky(category) {
 			continue
@@ -184,8 +189,6 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 			}
 		}
 	}
-
-	return healthChecks, categorisedResults
 }
 
 func isEnabledAndSticky(category category) bool {
