@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"math"
 	"reflect"
 	"time"
@@ -74,10 +74,16 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 
 	// run check
 	serviceToBeChecked := mService.service
-	checkResult := fthealth.RunCheck(serviceToBeChecked.name,
+
+	var checks []fthealth.Check
+	checks = append(checks, newServiceHealthCheck(serviceToBeChecked, c.healthCheckService))
+
+	checkResult := fthealth.RunCheck(fthealth.HealthCheck{
+		serviceToBeChecked.name,
+		serviceToBeChecked.name,
 		fmt.Sprintf("Checks the health of %v", serviceToBeChecked.name),
-		true,
-		newServiceHealthCheck(serviceToBeChecked, c.healthCheckService)).Checks[0]
+		checks,
+	}).Checks[0]
 
 	checkResult.Ack = serviceToBeChecked.ack
 

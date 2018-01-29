@@ -1,7 +1,7 @@
 package main
 
 import (
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/stretchr/testify/assert"
 	"net"
 	"testing"

@@ -3,7 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"io/ioutil"
 	"net/http"
 	"sort"
@@ -52,7 +52,13 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 		checks = append(checks, check)
 	}
 
-	healthChecks := fthealth.RunCheck("Forced check run", "", true, checks...).Checks
+	healthChecks := fthealth.RunCheck(fthealth.HealthCheck{
+		"aggregate-healthcheck",
+		"Aggregate Healthcheck",
+		"Forced check run",
+		checks,
+	}).Checks
+
 	wg := sync.WaitGroup{}
 	for i := range healthChecks {
 		wg.Add(1)
