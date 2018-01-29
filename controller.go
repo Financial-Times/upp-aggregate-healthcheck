@@ -2,11 +2,10 @@ package main
 
 import (
 	"fmt"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"sort"
 	"sync"
 	"time"
-
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
 )
 
 type healthCheckController struct {
@@ -124,7 +123,12 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services map[stri
 		checks = append(checks, check)
 	}
 
-	healthChecks := fthealth.RunCheck("Forced check run", "", true, checks...).Checks
+	healthChecks := fthealth.RunCheck(fthealth.HealthCheck{
+		"aggregate-healthcheck",
+		"Aggregate Healthcheck",
+		"Forced check run",
+		checks,
+	}).Checks
 
 	wg := sync.WaitGroup{}
 	for i := range healthChecks {

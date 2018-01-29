@@ -3,13 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	"github.com/stretchr/testify/assert"
 	"net/http"
 	"os"
 	"testing"
 	"time"
-
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
-	"github.com/stretchr/testify/assert"
 )
 
 const (

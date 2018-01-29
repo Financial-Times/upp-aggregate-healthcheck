@@ -9,8 +9,10 @@ image:
   repository: coco/upp-aggregate-healthcheck
   pullPolicy: IfNotPresent
 resources:
+  requests:
+    memory: 128Mi
   limits:
-    memory: 256Mi
+    memory: 512Mi
 env:
   PATH_PREFIX: ""
 categories:

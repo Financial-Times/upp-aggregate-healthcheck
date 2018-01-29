@@ -3,7 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1a"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"html/template"
 	"net/http"
 	"net/url"
@@ -420,7 +420,7 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix s
 			AddOrRemoveAckPath:     addOrRemoveAckPath,
 			AddOrRemoveAckPathName: addOrRemoveAckPathName,
 			AckMessage:             individualCheck.Ack,
-			Output:                 individualCheck.Output,
+			Output:                 individualCheck.CheckOutput,
 		}
 
 		indiviualServiceChecks = append(indiviualServiceChecks, hc)
@@ -451,7 +451,7 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 			LastUpdated:  check.LastUpdated.Format(timeLayout),
 			MoreInfoPath: getIndividualPodHealthcheckURL("", pathPrefix, podName),
 			AckMessage:   check.Ack,
-			Output:       check.Output,
+			Output:       check.CheckOutput,
 		}
 
 		indiviualServiceChecks = append(indiviualServiceChecks, hc)
