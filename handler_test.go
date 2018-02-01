@@ -3,13 +3,14 @@ package main
 import (
 	"errors"
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	"github.com/stretchr/testify/assert"
 )
 
 type mockController struct {

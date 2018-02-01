@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"math"
 	"reflect"
 	"time"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 )
 
 const (

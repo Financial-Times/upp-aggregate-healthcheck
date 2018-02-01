@@ -11,7 +11,7 @@ import (
 )
 
 type healthcheckResponse struct {
-	Name string
+	Name   string
 	Checks []struct {
 		Name     string
 		OK       bool

@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"sort"
 	"sync"
 	"time"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 )
 
 type healthCheckController struct {
