@@ -21,8 +21,7 @@ type category struct {
 }
 
 type deployment struct {
-	numberOfAvailableReplicas   int32
-	numberOfUnavailableReplicas int32
+	numberOfDesiredReplicas int32
 }
 
 type service struct {

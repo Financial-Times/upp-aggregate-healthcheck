@@ -4,13 +4,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"io/ioutil"
 	"net/http"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 )
 
 type healthcheckResponse struct {
-	Name   string
+	Name string
 	Checks []struct {
 		Name     string
 		OK       bool
@@ -34,8 +35,14 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, er
 	}
 
 	totalNoOfPods := len(pods)
-	outputMsg := fmt.Sprintf("%v/%v pods available", totalNoOfPods - noOfUnavailablePods, totalNoOfPods)
-	if totalNoOfPods == 0 || noOfUnavailablePods != 0 {
+	outputMsg := fmt.Sprintf("%v/%v pods available", totalNoOfPods-noOfUnavailablePods, totalNoOfPods)
+
+	deployment, err := hs.getDeploymentForService(service.name)
+	if err != nil {
+		return "", err
+	}
+
+	if (totalNoOfPods == 0 && deployment.numberOfDesiredReplicas != 0) || noOfUnavailablePods != 0 {
 		return "", errors.New(outputMsg)
 	}
 

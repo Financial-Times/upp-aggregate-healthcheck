@@ -2,15 +2,16 @@ package main
 
 import (
 	"fmt"
-	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/watch"
-	"k8s.io/client-go/rest"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/watch"
+	"k8s.io/client-go/rest"
 )
 
 type k8sHealthcheckService struct {
@@ -23,6 +24,7 @@ type k8sHealthcheckService struct {
 type healthcheckService interface {
 	getCategories() (map[string]category, error)
 	updateCategory(string, bool) error
+	getDeploymentForService(string) (deployment, error)
 	getServiceByName(serviceName string) (service, error)
 	getServicesMapByNames([]string) map[string]service
 	isServicePresent(string) bool
@@ -43,6 +45,7 @@ const (
 	ackMessagesConfigMapName          = "healthcheck.ack.messages"
 	ackMessagesConfigMapLabelSelector = "healthcheck-acknowledgements-for=aggregate-healthcheck"
 	defaultAppPort                    = int32(8080)
+	namespace                         = "default"
 )
 
 func (hs *k8sHealthcheckService) updateAcksForServices(acksMap map[string]string) {
@@ -59,7 +62,7 @@ func (hs *k8sHealthcheckService) updateAcksForServices(acksMap map[string]string
 }
 
 func (hs *k8sHealthcheckService) watchAcks() {
-	watcher, err := hs.k8sClient.CoreV1().ConfigMaps("default").Watch(v1.ListOptions{LabelSelector: ackMessagesConfigMapLabelSelector})
+	watcher, err := hs.k8sClient.CoreV1().ConfigMaps(namespace).Watch(v1.ListOptions{LabelSelector: ackMessagesConfigMapLabelSelector})
 
 	if err != nil {
 		errorLogger.Printf("Error while starting to watch acks configMap with label selector: %s. Error was: %s", ackMessagesConfigMapLabelSelector, err.Error())
@@ -87,7 +90,7 @@ func (hs *k8sHealthcheckService) watchAcks() {
 }
 
 func (hs *k8sHealthcheckService) watchServices() {
-	watcher, err := hs.k8sClient.CoreV1().Services("default").Watch(v1.ListOptions{LabelSelector: "hasHealthcheck=true"})
+	watcher, err := hs.k8sClient.CoreV1().Services(namespace).Watch(v1.ListOptions{LabelSelector: "hasHealthcheck=true"})
 	if err != nil {
 		errorLogger.Printf("Error while starting to watch services: %s", err.Error())
 	}
@@ -158,14 +161,14 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 
 func (hs *k8sHealthcheckService) updateCategory(categoryName string, isEnabled bool) error {
 	categoryConfigMapName := fmt.Sprintf("category.%s", categoryName)
-	k8sCategory, err := hs.k8sClient.CoreV1().ConfigMaps("default").Get(categoryConfigMapName)
+	k8sCategory, err := hs.k8sClient.CoreV1().ConfigMaps(namespace).Get(categoryConfigMapName)
 
 	if err != nil {
 		return fmt.Errorf("Cannot retrieve configMap for category with name %s. Error was: %s", categoryName, err.Error())
 	}
 
 	k8sCategory.Data["category.enabled"] = strconv.FormatBool(isEnabled)
-	_, err = hs.k8sClient.CoreV1().ConfigMaps("default").Update(k8sCategory)
+	_, err = hs.k8sClient.CoreV1().ConfigMaps(namespace).Update(k8sCategory)
 
 	if err != nil {
 		return fmt.Errorf("Cannot update configMap for category with name %s. Error was: %s", categoryName, err.Error())
@@ -188,7 +191,7 @@ func (hs *k8sHealthcheckService) removeAck(serviceName string) error {
 		return fmt.Errorf("The ack for service %s has not been removed from configmap", serviceName)
 	}
 
-	k8sAcksConfigMap2, err := hs.k8sClient.CoreV1().ConfigMaps("default").Update(&k8sAcksConfigMap)
+	k8sAcksConfigMap2, err := hs.k8sClient.CoreV1().ConfigMaps(namespace).Update(&k8sAcksConfigMap)
 
 	if k8sAcksConfigMap2.Data[serviceName] != "" {
 		return fmt.Errorf("The ack for service %s has not been removed from configmap. This check has been performed on the retrieved service", serviceName)
@@ -214,7 +217,7 @@ func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) e
 
 	k8sAcksConfigMap.Data[serviceName] = ackMessage
 
-	_, err = hs.k8sClient.CoreV1().ConfigMaps("default").Update(&k8sAcksConfigMap)
+	_, err = hs.k8sClient.CoreV1().ConfigMaps(namespace).Update(&k8sAcksConfigMap)
 
 	if err != nil {
 		return fmt.Errorf("Failed to update the acks config map for service %s and ack message [%s]", serviceName, ackMessage)
@@ -223,8 +226,17 @@ func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) e
 	return nil
 }
 
+func (hs *k8sHealthcheckService) getDeploymentForService(serviceName string) (deployment, error) {
+	k8sDeployment, err := hs.k8sClient.ExtensionsV1beta1().Deployments(namespace).Get(serviceName)
+	if err != nil {
+		return deployment{}, fmt.Errorf("Failed to get deployment for service %s. Error was %v", serviceName, err.Error())
+	}
+
+	return deployment{numberOfDesiredReplicas: *k8sDeployment.Spec.Replicas}, nil
+}
+
 func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
-	k8sPod, err := hs.k8sClient.CoreV1().Pods("default").Get(podName)
+	k8sPod, err := hs.k8sClient.CoreV1().Pods(namespace).Get(podName)
 	if err != nil {
 		return pod{}, fmt.Errorf("Failed to get the pod with name %s from k8s cluster, error was %v", podName, err.Error())
 	}
@@ -273,7 +285,7 @@ func (hs *k8sHealthcheckService) getServicesMapByNames(serviceNames []string) ma
 }
 
 func (hs *k8sHealthcheckService) getPodsForService(serviceName string) ([]pod, error) {
-	k8sPods, err := hs.k8sClient.CoreV1().Pods("default").List(v1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", serviceName)})
+	k8sPods, err := hs.k8sClient.CoreV1().Pods(namespace).List(v1.ListOptions{LabelSelector: fmt.Sprintf("app=%s", serviceName)})
 	if err != nil {
 		return []pod{}, fmt.Errorf("Failed to get the list of pods from k8s cluster, error was %v", err.Error())
 	}
@@ -289,7 +301,7 @@ func (hs *k8sHealthcheckService) getPodsForService(serviceName string) ([]pod, e
 
 func (hs *k8sHealthcheckService) getCategories() (map[string]category, error) {
 	categories := make(map[string]category)
-	k8sCategories, err := hs.k8sClient.CoreV1().ConfigMaps("default").List(v1.ListOptions{LabelSelector: "healthcheck-categories-for=aggregate-healthcheck"})
+	k8sCategories, err := hs.k8sClient.CoreV1().ConfigMaps(namespace).List(v1.ListOptions{LabelSelector: "healthcheck-categories-for=aggregate-healthcheck"})
 	if err != nil {
 		return nil, fmt.Errorf("Failed to get the categories from kubernetes. Error was: %v", err)
 	}
@@ -385,7 +397,7 @@ func getAppPortForService(k8sService *v1.Service) int32 {
 }
 
 func getAcksConfigMap(k8sClient kubernetes.Interface) (v1.ConfigMap, error) {
-	k8sAckConfigMap, err := k8sClient.CoreV1().ConfigMaps("default").Get(ackMessagesConfigMapName)
+	k8sAckConfigMap, err := k8sClient.CoreV1().ConfigMaps(namespace).Get(ackMessagesConfigMapName)
 
 	if err != nil {
 		return v1.ConfigMap{}, fmt.Errorf("Cannot fin configMap with name: %s. Error was: %s", ackMessagesConfigMapName, err.Error())

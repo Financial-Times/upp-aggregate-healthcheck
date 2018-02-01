@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"os"
 	"testing"
 	"time"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -49,6 +50,14 @@ func (m *MockService) updateCategory(categoryName string, isEnabled bool) error 
 	}
 
 	return nil
+}
+
+func (m *MockService) getDeploymentForService(serviceName string) (deployment, error) {
+	if serviceName == invalidNameForService {
+		return deployment{}, errors.New("Invalid service name")
+	}
+
+	return deployment{numberOfDesiredReplicas: 2}, nil
 }
 
 func (m *MockService) isServicePresent(serviceName string) bool {
