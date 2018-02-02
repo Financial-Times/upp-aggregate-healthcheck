@@ -52,6 +52,18 @@ func (c *healthCheckController) updateCachedHealth(services map[string]service, 
 			newMService := newMeasuredService(service)
 			c.measuredServices[service.name] = newMService
 			refreshPeriod := findShortestPeriod(categories)
+			categories, err := c.healthCheckService.getCategories()
+			if err != nil {
+				warnLogger.Printf("Cannot read categories: [%v]\n Using minimum refresh period for service [%s]\n", err, service.name)
+			} else {
+				for _, category := range categories {
+					if isStringInSlice(service.name, category.services) {
+						refreshPeriod = category.refreshPeriod
+						break
+					}
+				}
+			}
+			infoLogger.Printf("Scheduling check for service [%s] with refresh period [%v].\n", service.name, refreshPeriod)
 			go c.scheduleCheck(newMService, refreshPeriod, time.NewTimer(0))
 		}
 	}

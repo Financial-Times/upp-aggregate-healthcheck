@@ -222,6 +222,7 @@ func TestRemoveAckServiceErr(t *testing.T) {
 }
 
 func TestRemoveAckHappyFlow(t *testing.T) {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	controller := initializeMockController("test", nil)
 	err := controller.removeAck(validService)
 	assert.Nil(t, err)
