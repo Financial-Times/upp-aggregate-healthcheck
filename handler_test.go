@@ -78,12 +78,12 @@ func (m *mockController) getMeasuredServices() map[string]measuredService {
 	return map[string]measuredService{}
 }
 
-func (m *mockController) runServiceChecksByServiceNames(map[string]service, map[string]category) []fthealth.CheckResult {
-	return []fthealth.CheckResult{}
+func (m *mockController) runServiceChecksByServiceNames(map[string]service, map[string]category) ([]fthealth.CheckResult, error) {
+	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
-	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}
+func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error) {
+	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}, nil
 }
 
 func (m *mockController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
@@ -118,8 +118,8 @@ func (m *mockController) runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController) collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
-	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}
+func (m *mockController) collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error) {
+	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}, nil
 }
 
 func (m *mockController) updateCachedHealth(map[string]service, map[string]category) {

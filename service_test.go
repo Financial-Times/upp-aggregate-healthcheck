@@ -192,13 +192,13 @@ func TestUpdateAcksForServicesEmptyAckList(t *testing.T) {
 	assert.Equal(t, hcService.services.m[validK8sServiceName].ack, ackMsg)
 }
 
-func TestGetDeploymentForServiceReturnsDeployment(t *testing.T) {
+func TestGetDeploymentsReturnsDeployments(t *testing.T) {
 	service := initializeMockService(nil)
 	var replicas int32 = 1
 	_, err := service.k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(
 		&v1beta1.Deployment{
 			ObjectMeta: v1.ObjectMeta{
-				Name:      validK8sServiceName,
+				Name:      "deployment1",
 				Namespace: namespace,
 			},
 			Spec: v1beta1.DeploymentSpec{
@@ -207,14 +207,20 @@ func TestGetDeploymentForServiceReturnsDeployment(t *testing.T) {
 		})
 	assert.Nil(t, err)
 
-	d, err := service.getDeploymentForService(validK8sServiceName)
+	_, err = service.k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(
+		&v1beta1.Deployment{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "deployment2",
+				Namespace: namespace,
+			},
+			Spec: v1beta1.DeploymentSpec{
+				Replicas: &replicas,
+			},
+		})
+	assert.Nil(t, err)
+
+	deployments, err := service.getDeployments()
 
 	assert.Nil(t, err)
-	assert.Equal(t, replicas, d.numberOfDesiredReplicas)
-}
-
-func TestGetDeploymentForServiceInvalidService(t *testing.T) {
-	service := initializeMockService(nil)
-	_, err := service.getDeploymentForService(validK8sServiceName)
-	assert.NotNil(t, err)
+	assert.Equal(t, 2, len(deployments))
 }

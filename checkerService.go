@@ -19,7 +19,7 @@ type healthcheckResponse struct {
 	}
 }
 
-func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, error) {
+func (hs *k8sHealthcheckService) checkServiceHealth(service service, deployments map[string]deployment) (string, error) {
 	var err error
 	pods, err := hs.getPodsForService(service.name)
 	if err != nil {
@@ -37,13 +37,20 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, er
 	totalNoOfPods := len(pods)
 	outputMsg := fmt.Sprintf("%v/%v pods available", totalNoOfPods-noOfUnavailablePods, totalNoOfPods)
 
-	deployment, err := hs.getDeploymentForService(service.name)
-	if err != nil {
-		return "", err
-	}
-
-	if (totalNoOfPods == 0 && deployment.numberOfDesiredReplicas != 0) || noOfUnavailablePods != 0 {
+	if noOfUnavailablePods != 0 {
 		return "", errors.New(outputMsg)
+	}
+	if service.isDaemon {
+		if totalNoOfPods == 0 {
+			return "", errors.New(outputMsg)
+		}
+	} else {
+		if _, exists := deployments[service.name]; !exists {
+			return "", fmt.Errorf("Cannot find deployment for service with name %s, error was: %s", service.name, err)
+		}
+		if totalNoOfPods == 0 && deployments[service.name].desiredReplicas != 0 {
+			return "", errors.New(outputMsg)
+		}
 	}
 
 	return outputMsg, nil
@@ -140,7 +147,7 @@ func newPodHealthCheck(pod pod, service service, healthcheckService healthcheckS
 	}
 }
 
-func newServiceHealthCheck(service service, healthcheckService healthcheckService) fthealth.Check {
+func newServiceHealthCheck(service service, deployments map[string]deployment, healthcheckService healthcheckService) fthealth.Check {
 	return fthealth.Check{
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		Name:             service.name,
@@ -148,7 +155,7 @@ func newServiceHealthCheck(service service, healthcheckService healthcheckServic
 		Severity:         defaultSeverity,
 		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
-			return healthcheckService.checkServiceHealth(service)
+			return healthcheckService.checkServiceHealth(service, deployments)
 		},
 	}
 }

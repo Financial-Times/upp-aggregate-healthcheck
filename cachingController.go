@@ -20,7 +20,7 @@ func newMeasuredService(service service) measuredService {
 	return measuredService{service, cachedHealth, bufferedHealths}
 }
 
-func (c *healthCheckController) collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult) {
+func (c *healthCheckController) collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error) {
 	var checkResults []fthealth.CheckResult
 	categorisedResults := make(map[string][]fthealth.CheckResult)
 	serviceNames := getServiceNamesFromCategories(categories)
@@ -36,11 +36,14 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 	}
 
 	if len(servicesThatAreNotInCache) != 0 {
-		notCachedChecks := c.runServiceChecksByServiceNames(servicesThatAreNotInCache, categories)
+		notCachedChecks, err := c.runServiceChecksByServiceNames(servicesThatAreNotInCache, categories)
+		if err != nil {
+			return nil, nil, err
+		}
 		checkResults = append(checkResults, notCachedChecks...)
 	}
 
-	return checkResults, categorisedResults
+	return checkResults, categorisedResults, nil
 }
 
 func (c *healthCheckController) updateCachedHealth(services map[string]service, categories map[string]category) {
@@ -74,10 +77,16 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 	}
 
 	// run check
+	deployments, err := c.healthCheckService.getDeployments()
+	if err != nil {
+		errorLogger.Printf("Cannot run scheduled health check: %s", err.Error())
+		return
+	}
+
 	serviceToBeChecked := mService.service
 
 	var checks []fthealth.Check
-	checks = append(checks, newServiceHealthCheck(serviceToBeChecked, c.healthCheckService))
+	checks = append(checks, newServiceHealthCheck(serviceToBeChecked, deployments, c.healthCheckService))
 
 	checkResult := fthealth.RunCheck(fthealth.HealthCheck{
 		serviceToBeChecked.name,
