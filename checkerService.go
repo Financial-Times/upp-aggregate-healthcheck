@@ -23,7 +23,7 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service, deployments
 	var err error
 	pods, err := hs.getPodsForService(service.name)
 	if err != nil {
-		return "", fmt.Errorf("Cannot retrieve pods for service with name %s to perform healthcheck, error was: %s", service.name, err)
+		return "", fmt.Errorf("cannot retrieve pods for service with name %s to perform healthcheck: %s", service.name, err)
 	}
 
 	noOfUnavailablePods := 0
@@ -46,7 +46,7 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service, deployments
 		}
 	} else {
 		if _, exists := deployments[service.name]; !exists {
-			return "", fmt.Errorf("Cannot find deployment for service with name %s, error was: %s", service.name, err)
+			return "", fmt.Errorf("cannot find deployment for service with name %s: %s", service.name, err)
 		}
 		if totalNoOfPods == 0 && deployments[service.name].desiredReplicas != 0 {
 			return "", errors.New(outputMsg)
@@ -59,13 +59,13 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service, deployments
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
 	health, err := hs.getHealthChecksForPod(pod, appPort)
 	if err != nil {
-		errorLogger.Printf("Cannot perform healthcheck for pod with name %s. Error was: %s", pod.name, err.Error())
-		return errors.New("Cannot perform healthcheck for pod")
+		errorLogger.Printf("Cannot perform healthcheck for pod with name %s: %s", pod.name, err.Error())
+		return errors.New("cannot perform healthcheck for pod")
 	}
 
 	for _, check := range health.Checks {
 		if !check.OK {
-			return fmt.Errorf("Failing check is: %s", check.Name)
+			return fmt.Errorf("failing check is: %s", check.Name)
 		}
 	}
 
@@ -76,7 +76,7 @@ func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod, appPort int32
 	health, err := hs.getHealthChecksForPod(pod, appPort)
 
 	if err != nil {
-		return defaultSeverity, fmt.Errorf("Cannot get severity for pod with name %s. Error was: %s", pod.name, err.Error())
+		return defaultSeverity, fmt.Errorf("cannot get severity for pod with name %s: %s", pod.name, err.Error())
 	}
 
 	finalSeverity := uint8(2)
@@ -111,7 +111,7 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 	}()
 
 	if resp.StatusCode != 200 {
-		return healthcheckResponse{}, fmt.Errorf("Healthcheck endpoint returned non-200 status (%v)", resp.StatusCode)
+		return healthcheckResponse{}, fmt.Errorf("healthcheck endpoint returned non-200 status (%v)", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
