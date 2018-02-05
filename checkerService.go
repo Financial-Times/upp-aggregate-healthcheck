@@ -23,7 +23,7 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service, deployments
 	var err error
 	pods, err := hs.getPodsForService(service.name)
 	if err != nil {
-		return "", fmt.Errorf("cannot retrieve pods for service with name %s to perform healthcheck: %s", service.name, err)
+		return "", fmt.Errorf("cannot retrieve pods for service with name %s to perform healthcheck: %s", service.name, err.Error())
 	}
 
 	noOfUnavailablePods := 0
@@ -46,7 +46,7 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service, deployments
 		}
 	} else {
 		if _, exists := deployments[service.name]; !exists {
-			return "", fmt.Errorf("cannot find deployment for service with name %s: %s", service.name, err.Error())
+			return "", fmt.Errorf("cannot find deployment for service with name %s", service.name)
 		}
 		if totalNoOfPods == 0 && deployments[service.name].desiredReplicas != 0 {
 			return "", errors.New(outputMsg)
