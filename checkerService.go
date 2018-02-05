@@ -46,7 +46,7 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service, deployments
 		}
 	} else {
 		if _, exists := deployments[service.name]; !exists {
-			return "", fmt.Errorf("cannot find deployment for service with name %s: %s", service.name, err)
+			return "", fmt.Errorf("cannot find deployment for service with name %s: %s", service.name, err.Error())
 		}
 		if totalNoOfPods == 0 && deployments[service.name].desiredReplicas != 0 {
 			return "", errors.New(outputMsg)
