@@ -54,7 +54,7 @@ func (c *healthCheckController) updateCachedHealth(services map[string]service, 
 			refreshPeriod := findShortestPeriod(categories)
 			categories, err := c.healthCheckService.getCategories()
 			if err != nil {
-				warnLogger.Printf("Cannot read categories: [%v]\n Using minimum refresh period for service [%s]\n", err, service.name)
+				warnLogger.Printf("Cannot read categories: [%v]\n Using minimum refresh period for service [%s]", err, service.name)
 			} else {
 				for _, category := range categories {
 					if isStringInSlice(service.name, category.services) {
