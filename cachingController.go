@@ -44,6 +44,11 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 
 func (c *healthCheckController) updateCachedHealth(services map[string]service, categories map[string]category) {
 	// adding new services, not touching existing
+	refreshPeriod := findShortestPeriod(categories)
+	categories, err := c.healthCheckService.getCategories()
+	if err != nil {
+		warnLogger.Printf("Cannot read categories: [%v]\n Using minimum refresh period for services", err)
+	}
 	for _, service := range services {
 		if mService, ok := c.measuredServices[service.name]; !ok || !reflect.DeepEqual(service, c.measuredServices[service.name].service) {
 			if ok {
@@ -51,11 +56,7 @@ func (c *healthCheckController) updateCachedHealth(services map[string]service, 
 			}
 			newMService := newMeasuredService(service)
 			c.measuredServices[service.name] = newMService
-			refreshPeriod := findShortestPeriod(categories)
-			categories, err := c.healthCheckService.getCategories()
-			if err != nil {
-				warnLogger.Printf("Cannot read categories: [%v]\n Using minimum refresh period for service [%s]", err, service.name)
-			} else {
+			if categories != nil {
 				for _, category := range categories {
 					if isStringInSlice(service.name, category.services) {
 						refreshPeriod = category.refreshPeriod
