@@ -4,9 +4,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"io/ioutil"
 	"net/http"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 )
 
 type healthcheckResponse struct {
@@ -18,11 +19,11 @@ type healthcheckResponse struct {
 	}
 }
 
-func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, error) {
+func (hs *k8sHealthcheckService) checkServiceHealth(service service, deployments map[string]deployment) (string, error) {
 	var err error
 	pods, err := hs.getPodsForService(service.name)
 	if err != nil {
-		return "", fmt.Errorf("Cannot retrieve pods for service with name %s to perform healthcheck, error was: %s", service.name, err)
+		return "", fmt.Errorf("cannot retrieve pods for service with name %s to perform healthcheck: %s", service.name, err.Error())
 	}
 
 	noOfUnavailablePods := 0
@@ -34,9 +35,22 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, er
 	}
 
 	totalNoOfPods := len(pods)
-	outputMsg := fmt.Sprintf("%v/%v pods available", totalNoOfPods - noOfUnavailablePods, totalNoOfPods)
-	if totalNoOfPods == 0 || noOfUnavailablePods != 0 {
+	outputMsg := fmt.Sprintf("%v/%v pods available", totalNoOfPods-noOfUnavailablePods, totalNoOfPods)
+
+	if noOfUnavailablePods != 0 {
 		return "", errors.New(outputMsg)
+	}
+	if service.isDaemon {
+		if totalNoOfPods == 0 {
+			return "", errors.New(outputMsg)
+		}
+	} else {
+		if _, exists := deployments[service.name]; !exists {
+			return "", fmt.Errorf("cannot find deployment for service with name %s", service.name)
+		}
+		if totalNoOfPods == 0 && deployments[service.name].desiredReplicas != 0 {
+			return "", errors.New(outputMsg)
+		}
 	}
 
 	return outputMsg, nil
@@ -45,13 +59,13 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service) (string, er
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
 	health, err := hs.getHealthChecksForPod(pod, appPort)
 	if err != nil {
-		errorLogger.Printf("Cannot perform healthcheck for pod with name %s. Error was: %s", pod.name, err.Error())
-		return errors.New("Cannot perform healthcheck for pod")
+		errorLogger.Printf("Cannot perform healthcheck for pod with name %s: %s", pod.name, err.Error())
+		return errors.New("cannot perform healthcheck for pod")
 	}
 
 	for _, check := range health.Checks {
 		if !check.OK {
-			return fmt.Errorf("Failing check is: %s", check.Name)
+			return fmt.Errorf("failing check is: %s", check.Name)
 		}
 	}
 
@@ -62,7 +76,7 @@ func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod, appPort int32
 	health, err := hs.getHealthChecksForPod(pod, appPort)
 
 	if err != nil {
-		return defaultSeverity, fmt.Errorf("Cannot get severity for pod with name %s. Error was: %s", pod.name, err.Error())
+		return defaultSeverity, fmt.Errorf("cannot get severity for pod with name %s: %s", pod.name, err.Error())
 	}
 
 	finalSeverity := uint8(2)
@@ -97,7 +111,7 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 	}()
 
 	if resp.StatusCode != 200 {
-		return healthcheckResponse{}, fmt.Errorf("Healthcheck endpoint returned non-200 status (%v)", resp.StatusCode)
+		return healthcheckResponse{}, fmt.Errorf("healthcheck endpoint returned non-200 status (%v)", resp.StatusCode)
 	}
 
 	body, err := ioutil.ReadAll(resp.Body)
@@ -133,7 +147,7 @@ func newPodHealthCheck(pod pod, service service, healthcheckService healthcheckS
 	}
 }
 
-func newServiceHealthCheck(service service, healthcheckService healthcheckService) fthealth.Check {
+func newServiceHealthCheck(service service, deployments map[string]deployment, healthcheckService healthcheckService) fthealth.Check {
 	return fthealth.Check{
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		Name:             service.name,
@@ -141,7 +155,7 @@ func newServiceHealthCheck(service service, healthcheckService healthcheckServic
 		Severity:         defaultSeverity,
 		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
-			return healthcheckService.checkServiceHealth(service)
+			return healthcheckService.checkServiceHealth(service, deployments)
 		},
 	}
 }

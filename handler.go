@@ -3,11 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"html/template"
 	"net/http"
 	"net/url"
 	"strings"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 )
 
 type httpHandler struct {

@@ -3,10 +3,11 @@ package main
 import (
 	"errors"
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"net"
 	"strings"
 	"time"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 )
 
 const (

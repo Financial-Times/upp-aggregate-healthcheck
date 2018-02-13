@@ -3,11 +3,12 @@ package main
 import (
 	"errors"
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"io/ioutil"
 	"net/http"
 	"sort"
 	"sync"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 )
 
 func (c *healthCheckController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {

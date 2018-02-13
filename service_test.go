@@ -1,16 +1,18 @@
 package main
 
 import (
-	"github.com/stretchr/testify/assert"
 	"io/ioutil"
-	"k8s.io/client-go/kubernetes/fake"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"k8s.io/client-go/kubernetes/fake"
+	"k8s.io/client-go/pkg/api/v1"
+	"k8s.io/client-go/pkg/apis/extensions/v1beta1"
 )
 
-type MockWebClient struct{}
 type mockTransport struct {
 	responseStatusCode int
 	responseBody       string
@@ -188,4 +190,37 @@ func TestUpdateAcksForServicesEmptyAckList(t *testing.T) {
 
 	assert.Equal(t, hcService.services.m[validK8sServiceNameWithAck].ack, "")
 	assert.Equal(t, hcService.services.m[validK8sServiceName].ack, ackMsg)
+}
+
+func TestGetDeploymentsReturnsDeployments(t *testing.T) {
+	service := initializeMockService(nil)
+	var replicas int32 = 1
+	_, err := service.k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(
+		&v1beta1.Deployment{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "deployment1",
+				Namespace: namespace,
+			},
+			Spec: v1beta1.DeploymentSpec{
+				Replicas: &replicas,
+			},
+		})
+	assert.Nil(t, err)
+
+	_, err = service.k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(
+		&v1beta1.Deployment{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "deployment2",
+				Namespace: namespace,
+			},
+			Spec: v1beta1.DeploymentSpec{
+				Replicas: &replicas,
+			},
+		})
+	assert.Nil(t, err)
+
+	deployments, err := service.getDeployments()
+
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(deployments))
 }

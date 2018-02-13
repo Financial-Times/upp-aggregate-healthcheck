@@ -3,12 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"os"
 	"testing"
 	"time"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -49,6 +50,17 @@ func (m *MockService) updateCategory(categoryName string, isEnabled bool) error 
 	}
 
 	return nil
+}
+
+func (m *MockService) getDeployments() (map[string]deployment, error) {
+	return map[string]deployment{
+		"test-service-name": {
+			desiredReplicas: 2,
+		},
+		"test-service-name-2": {
+			desiredReplicas: 2,
+		},
+	}, nil
 }
 
 func (m *MockService) isServicePresent(serviceName string) bool {
@@ -123,7 +135,7 @@ func (m *MockService) getPodByName(podName string) (pod, error) {
 	}, nil
 }
 
-func (m *MockService) checkServiceHealth(service service) (string, error) {
+func (m *MockService) checkServiceHealth(service service, deployments map[string]deployment) (string, error) {
 	return "", errors.New("Error reading healthcheck response: ")
 }
 
