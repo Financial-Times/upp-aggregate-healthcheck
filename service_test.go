@@ -133,14 +133,14 @@ func TestGetHealthChecksForPodHealthAvailable(t *testing.T) {
 
 func TestGetIndividualPodSeverityErrorWhilePodHealthCheck(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusInternalServerError, ""))
-	severity, err := service.getIndividualPodSeverity(pod{name: "test", ip: validIP}, 8080)
+	severity, _, err := service.getIndividualPodSeverity(pod{name: "test", ip: validIP}, 8080)
 	assert.NotNil(t, err)
 	assert.Equal(t, defaultSeverity, severity)
 }
 
 func TestGetIndividualPodSeverityValidPodHealth(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validFailingHealthCheckResponseBody))
-	severity, err := service.getIndividualPodSeverity(pod{name: "test", ip: validIP}, 8080)
+	severity, _, err := service.getIndividualPodSeverity(pod{name: "test", ip: validIP}, 8080)
 	assert.Nil(t, err)
 	assert.Equal(t, validSeverity, severity)
 }

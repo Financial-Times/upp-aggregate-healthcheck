@@ -32,7 +32,7 @@ type healthcheckService interface {
 	getPodByName(string) (pod, error)
 	checkServiceHealth(service, map[string]deployment) (string, error)
 	checkPodHealth(pod, int32) error
-	getIndividualPodSeverity(pod, int32) (uint8, error)
+	getIndividualPodSeverity(pod, int32) (uint8, bool, error)
 	getHealthChecksForPod(pod, int32) (healthcheckResponse, error)
 	addAck(string, string) error
 	removeAck(string) error

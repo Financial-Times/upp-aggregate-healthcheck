@@ -8,7 +8,22 @@ func (c *healthCheckController) getSeverityForService(serviceName string, appPor
 		return defaultSeverity
 	}
 
-	return c.computeSeverityByPods(pods, appPort)
+	finalSeverity := defaultSeverity
+	for _, pod := range pods {
+		individualPodSeverity, checkFailed, err := c.healthCheckService.getIndividualPodSeverity(pod, appPort)
+
+		if err != nil {
+			warnLogger.Printf("Cannot get individual pod severity, skipping pod. Problem was: %s", err.Error())
+			continue
+		}
+		if !checkFailed {
+			return defaultSeverity
+		}
+		if individualPodSeverity < finalSeverity {
+			finalSeverity = individualPodSeverity
+		}
+	}
+	return finalSeverity
 }
 
 func (c *healthCheckController) getSeverityForPod(podName string, appPort int32) uint8 {
@@ -25,7 +40,7 @@ func (c *healthCheckController) getSeverityForPod(podName string, appPort int32)
 func (c *healthCheckController) computeSeverityByPods(pods []pod, appPort int32) uint8 {
 	finalSeverity := defaultSeverity
 	for _, pod := range pods {
-		individualPodSeverity, err := c.healthCheckService.getIndividualPodSeverity(pod, appPort)
+		individualPodSeverity, _, err := c.healthCheckService.getIndividualPodSeverity(pod, appPort)
 
 		if err != nil {
 			warnLogger.Printf("Cannot get individual pod severity, skipping pod. Problem was: %s", err.Error())

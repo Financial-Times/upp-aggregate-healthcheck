@@ -100,39 +100,87 @@ func (m *MockService) getServicesMapByNames(serviceNames []string) map[string]se
 }
 
 func (m *MockService) getPodsForService(serviceName string) ([]pod, error) {
-	if serviceName == invalidNameForService {
+	switch serviceName {
+	case "invalidNameForService":
 		return []pod{}, errors.New("Invalid pod name")
+	case "resilient-notok-sev1":
+		return []pod{
+			{
+				name: "notok-pod-1",
+				ip:   "10.2.51.2",
+			},
+			{
+				name: "notok-pod-1",
+				ip:   "10.2.51.2",
+			},
+		}, nil
+	case "resilient-notok-sev2":
+		return []pod{
+			{
+				name: "notok-pod-2",
+				ip:   "10.2.51.2",
+			},
+			{
+				name: "notok-pod-2",
+				ip:   "10.2.51.2",
+			},
+		}, nil
+	case "resilient-halfok-sev1":
+		return []pod{
+			{
+				name: "notok-pod-1",
+				ip:   "10.2.51.2",
+			},
+			{
+				name: "ok-pod-2",
+				ip:   "10.2.51.2",
+			},
+		}, nil
+	case "resilient-halfok-sev2":
+		return []pod{
+			{
+				name: "notok-pod-2",
+				ip:   "10.2.51.2",
+			},
+			{
+				name: "ok-pod-2",
+				ip:   "10.2.51.2",
+			},
+		}, nil
+	default:
+		return []pod{
+			{
+				name: "test-pod-name2-8425234-9hdfg ",
+				ip:   "10.2.51.2",
+			},
+			{
+				name: "test-pod-name1-8425234-9hdfg ",
+				ip:   "10.2.51.2",
+			},
+		}, nil
 	}
-
-	return []pod{
-		{
-			name: "test-pod-name2-8425234-9hdfg ",
-			ip:   "10.2.51.2",
-		},
-		{
-			name: "test-pod-name1-8425234-9hdfg ",
-			ip:   "10.2.51.2",
-		},
-	}, nil
 }
 
 func (m *MockService) getPodByName(podName string) (pod, error) {
-	if podName == nonExistingPodName {
-		return pod{}, errors.New("Pod not found")
-	}
-
-	if podName == podWithBrokenService {
+	switch podName {
+	case nonExistingPodName:
+		{
+			return pod{}, errors.New("Pod not found")
+		}
+	case podWithBrokenService:
+		{
+			return pod{
+				name:        "test-pod-name-8425234-9hdfg ",
+				ip:          "10.2.51.2",
+				serviceName: nonExistingServiceName,
+			}, nil
+		}
+	default:
 		return pod{
-			name:        "test-pod-name-8425234-9hdfg ",
-			ip:          "10.2.51.2",
-			serviceName: nonExistingServiceName,
+			name: "test-pod-name-8425234-9hdfg ",
+			ip:   "10.2.51.2",
 		}, nil
 	}
-
-	return pod{
-		name: "test-pod-name-8425234-9hdfg ",
-		ip:   "10.2.51.2",
-	}, nil
 }
 
 func (m *MockService) checkServiceHealth(service service, deployments map[string]deployment) (string, error) {
@@ -143,16 +191,19 @@ func (m *MockService) checkPodHealth(pod, int32) error {
 	return errors.New("Error reading healthcheck response: ")
 }
 
-func (m *MockService) getIndividualPodSeverity(pod pod, port int32) (uint8, error) {
-	if pod.name == failingPod {
-		return 1, errors.New("Test")
+func (m *MockService) getIndividualPodSeverity(pod pod, port int32) (uint8, bool, error) {
+	switch pod.name {
+	case failingPod:
+		return 1, false, errors.New("Test")
+	case podWithCriticalSeverity:
+		return 1, true, nil
+	case "notok-pod-1":
+		return 1, true, nil
+	case "notok-pod-2":
+		return 2, true, nil
+	default:
+		return defaultSeverity, false, nil
 	}
-
-	if pod.name == podWithCriticalSeverity {
-		return 1, nil
-	}
-
-	return defaultSeverity, nil
 }
 
 func (m *MockService) getHealthChecksForPod(pod pod, port int32) (healthcheckResponse, error) {
@@ -310,7 +361,28 @@ func TestComputeSeverityForPodWithCriticalSeverity(t *testing.T) {
 	assert.Equal(t, uint8(1), severity)
 }
 
-func TestGetSeverityForService(t *testing.T) {
+func TestGetSeverityForServiceInvalidServiceName(t *testing.T) {
+	controller := initializeMockController("test", nil)
+	severity := controller.getSeverityForService(invalidNameForService, 8080)
+	assert.Equal(t, defaultSeverity, severity)
+}
+
+func TestGetSeverityForResilientService(t *testing.T) {
+	controller := initializeMockController("test", nil)
+	severity := controller.getSeverityForService("resilient-notok-sev1", 8080)
+	assert.Equal(t, uint8(1), severity)
+
+	severity = controller.getSeverityForService("resilient-notok-sev2", 8080)
+	assert.Equal(t, defaultSeverity, severity)
+
+	severity = controller.getSeverityForService("resilient-halfok-sev1", 8080)
+	assert.Equal(t, defaultSeverity, severity)
+
+	severity = controller.getSeverityForService("resilient-halfok-sev2", 8080)
+	assert.Equal(t, defaultSeverity, severity)
+}
+
+func TestGetSeverityForNonResilientService(t *testing.T) {
 	controller := initializeMockController("test", nil)
 	severity := controller.getSeverityForService(invalidNameForService, 8080)
 	assert.Equal(t, defaultSeverity, severity)
