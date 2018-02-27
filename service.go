@@ -42,6 +42,7 @@ type healthcheckService interface {
 const (
 	defaultRefreshRate                = 60
 	defaultSeverity                   = uint8(2)
+	defaultResiliency                 = true
 	ackMessagesConfigMapName          = "healthcheck.ack.messages"
 	ackMessagesConfigMapLabelSelector = "healthcheck-acknowledgements-for=aggregate-healthcheck"
 	defaultAppPort                    = int32(8080)

@@ -10,6 +10,8 @@ import (
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	"github.com/stretchr/testify/assert"
+	"strconv"
+	"strings"
 )
 
 const (
@@ -24,7 +26,20 @@ const (
 	validCat                = "validCat"
 	validService            = "validService"
 	validEnvName            = "valid-env-name"
+	ip                      = "10.2.51.2"
+	severity1               = uint8(1)
 )
+
+var defaultPods = []pod{
+	{
+		name: "test-pod-name2-8425234-9hdfg ",
+		ip:   "10.2.51.2",
+	},
+	{
+		name: "test-pod-name1-8425234-9hdfg ",
+		ip:   "10.2.51.2",
+	},
+}
 
 type MockService struct {
 	httpClient *http.Client
@@ -75,10 +90,14 @@ func (m *MockService) getServiceByName(serviceName string) (service, error) {
 	if serviceName == nonExistingServiceName {
 		return service{}, fmt.Errorf("Cannot find service with name %s", serviceName)
 	}
-
+	resiliency := false
+	if strings.HasPrefix(serviceName, "resilient") {
+		resiliency = true
+	}
 	return service{
-		name: "test-service-name",
-		ack:  "test ack",
+		name:        "test-service-name",
+		ack:         "test ack",
+		isResilient: resiliency,
 	}, nil
 }
 
@@ -99,65 +118,35 @@ func (m *MockService) getServicesMapByNames(serviceNames []string) map[string]se
 	return services
 }
 
+func createPod(goodCount int, notOkSeverities []int) []pod {
+	var pods []pod
+	for i := 0; i < goodCount; i++ {
+		pods = append(pods, pod{name: "ok-pod-" + strconv.Itoa(i), ip: ip})
+	}
+	for _, sev := range notOkSeverities {
+		pods = append(pods, pod{name: "notok-pod-" + strconv.Itoa(sev), ip: ip})
+	}
+	fmt.Println(pods)
+	return pods
+}
 func (m *MockService) getPodsForService(serviceName string) ([]pod, error) {
 	switch serviceName {
 	case "invalidNameForService":
-		return []pod{}, errors.New("Invalid pod name")
+		return []pod{}, errors.New("invalid pod name")
 	case "resilient-notok-sev1":
-		return []pod{
-			{
-				name: "notok-pod-1",
-				ip:   "10.2.51.2",
-			},
-			{
-				name: "notok-pod-1",
-				ip:   "10.2.51.2",
-			},
-		}, nil
+		return createPod(0, []int{1, 1}), nil
 	case "resilient-notok-sev2":
-		return []pod{
-			{
-				name: "notok-pod-2",
-				ip:   "10.2.51.2",
-			},
-			{
-				name: "notok-pod-2",
-				ip:   "10.2.51.2",
-			},
-		}, nil
+		return createPod(0, []int{2, 2}), nil
 	case "resilient-halfok-sev1":
-		return []pod{
-			{
-				name: "notok-pod-1",
-				ip:   "10.2.51.2",
-			},
-			{
-				name: "ok-pod-2",
-				ip:   "10.2.51.2",
-			},
-		}, nil
+		return createPod(1, []int{1}), nil
 	case "resilient-halfok-sev2":
-		return []pod{
-			{
-				name: "notok-pod-2",
-				ip:   "10.2.51.2",
-			},
-			{
-				name: "ok-pod-2",
-				ip:   "10.2.51.2",
-			},
-		}, nil
+		return createPod(1, []int{2}), nil
+	case "non-resilient-halfok-sev1":
+		return createPod(1, []int{1}), nil
+	case "non-resilient-halfok-sev2":
+		return createPod(1, []int{2}), nil
 	default:
-		return []pod{
-			{
-				name: "test-pod-name2-8425234-9hdfg ",
-				ip:   "10.2.51.2",
-			},
-			{
-				name: "test-pod-name1-8425234-9hdfg ",
-				ip:   "10.2.51.2",
-			},
-		}, nil
+		return defaultPods, nil
 	}
 }
 
@@ -370,7 +359,7 @@ func TestGetSeverityForServiceInvalidServiceName(t *testing.T) {
 func TestGetSeverityForResilientService(t *testing.T) {
 	controller := initializeMockController("test", nil)
 	severity := controller.getSeverityForService("resilient-notok-sev1", 8080)
-	assert.Equal(t, uint8(1), severity)
+	assert.Equal(t, severity1, severity)
 
 	severity = controller.getSeverityForService("resilient-notok-sev2", 8080)
 	assert.Equal(t, defaultSeverity, severity)
@@ -379,6 +368,12 @@ func TestGetSeverityForResilientService(t *testing.T) {
 	assert.Equal(t, defaultSeverity, severity)
 
 	severity = controller.getSeverityForService("resilient-halfok-sev2", 8080)
+	assert.Equal(t, defaultSeverity, severity)
+
+	severity = controller.getSeverityForService("non-resilient-halfok-sev1", 8080)
+	assert.Equal(t, severity1, severity)
+
+	severity = controller.getSeverityForService("non-resilient-halfok-sev2", 8080)
 	assert.Equal(t, defaultSeverity, severity)
 }
 
