@@ -16,25 +16,28 @@ func (c *healthCheckController) getSeverityForService(serviceName string, appPor
 		isResilient = service.isResilient
 	}
 
-	if isResilient {
-		finalSeverity := defaultSeverity
-		for _, pod := range pods {
-			individualPodSeverity, checkFailed, err := c.healthCheckService.getIndividualPodSeverity(pod, appPort)
+	if !isResilient {
+		return c.computeSeverityByPods(pods, appPort)
+	}
 
-			if err != nil {
-				warnLogger.Printf("Cannot get individual pod severity, skipping pod. Problem was: %s", err.Error())
-				continue
-			}
-			if !checkFailed {
-				return defaultSeverity
-			}
-			if individualPodSeverity < finalSeverity {
-				finalSeverity = individualPodSeverity
-			}
-			return finalSeverity
+	finalSeverity := defaultSeverity
+	for _, pod := range pods {
+		individualPodSeverity, checkFailed, err := c.healthCheckService.getIndividualPodSeverity(pod, appPort)
+
+		if err != nil {
+			warnLogger.Printf("Cannot get individual pod severity, skipping pod. Problem was: %s", err.Error())
+			continue
+		}
+		// if at least one pod of the resilient service is healthy, we return the default severity,
+		// regardless of the status of other pods
+		if !checkFailed {
+			return defaultSeverity
+		}
+		if individualPodSeverity < finalSeverity {
+			finalSeverity = individualPodSeverity
 		}
 	}
-	return c.computeSeverityByPods(pods, appPort)
+	return finalSeverity
 }
 
 func (c *healthCheckController) getSeverityForPod(podName string, appPort int32) uint8 {
