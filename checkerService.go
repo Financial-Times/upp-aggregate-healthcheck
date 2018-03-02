@@ -72,23 +72,25 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
 	return nil
 }
 
-func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod, appPort int32) (uint8, error) {
+func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod, appPort int32) (uint8, bool, error) {
 	health, err := hs.getHealthChecksForPod(pod, appPort)
 
 	if err != nil {
-		return defaultSeverity, fmt.Errorf("cannot get severity for pod with name %s: %s", pod.name, err.Error())
+		return defaultSeverity, false, fmt.Errorf("cannot get severity for pod with name %s: %s", pod.name, err.Error())
 	}
 
 	finalSeverity := uint8(2)
+	checkFailed := bool(false)
 	for _, check := range health.Checks {
 		if !check.OK {
+			checkFailed = true
 			if check.Severity < finalSeverity {
-				return check.Severity, nil
+				return check.Severity, checkFailed, nil
 			}
 		}
 	}
 
-	return finalSeverity, nil
+	return finalSeverity, checkFailed, nil
 }
 
 func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (healthcheckResponse, error) {

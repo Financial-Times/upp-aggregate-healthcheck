@@ -51,6 +51,23 @@ const (
     }
   ]
 }`
+	validFailingHealthCheckResponseBodyWithSeverity2 = `{
+  "schemaVersion": 1,
+  "name": "CMSNotifierApplication",
+  "description": "CMSNotifierApplication",
+  "checks": [
+    {
+      "checkOutput": "",
+      "panicGuide": "",
+      "lastUpdated": "",
+      "ok": false,
+      "severity": 2,
+      "businessImpact": "",
+      "technicalSummary": "",
+      "name": ""
+    }
+  ]
+}`
 	validPassingHealthCheckResponseBody = `{
   "schemaVersion": 1,
   "name": "CMSNotifierApplication",
@@ -133,16 +150,25 @@ func TestGetHealthChecksForPodHealthAvailable(t *testing.T) {
 
 func TestGetIndividualPodSeverityErrorWhilePodHealthCheck(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusInternalServerError, ""))
-	severity, err := service.getIndividualPodSeverity(pod{name: "test", ip: validIP}, 8080)
+	severity, _, err := service.getIndividualPodSeverity(pod{name: "test", ip: validIP}, 8080)
 	assert.NotNil(t, err)
 	assert.Equal(t, defaultSeverity, severity)
 }
 
 func TestGetIndividualPodSeverityValidPodHealth(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validFailingHealthCheckResponseBody))
-	severity, err := service.getIndividualPodSeverity(pod{name: "test", ip: validIP}, 8080)
+	severity, checkFailed, err := service.getIndividualPodSeverity(pod{name: "test", ip: validIP}, 8080)
 	assert.Nil(t, err)
+	assert.True(t, checkFailed)
 	assert.Equal(t, validSeverity, severity)
+}
+
+func TestGetIndividualPodSeverityValidPodHealth_Severity2(t *testing.T) {
+	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validFailingHealthCheckResponseBodyWithSeverity2))
+	severity, checkFailed, err := service.getIndividualPodSeverity(pod{name: "test", ip: validIP}, 8080)
+	assert.Nil(t, err)
+	assert.True(t, checkFailed)
+	assert.Equal(t, uint8(2), severity)
 }
 
 func TestCheckPodHealthFailingChecks(t *testing.T) {
