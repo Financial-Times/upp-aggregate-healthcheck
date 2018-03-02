@@ -124,7 +124,7 @@ func (m *MockService) getPodsForService(serviceName string) ([]pod, error) {
 	case "invalidNameForService":
 		return []pod{}, errors.New("invalid pod name")
 	case "resilient-notok-sev1":
-		return createPods(0, []int{1, 1}), nil
+		return createPods(0, []int{2, 1}), nil
 	case "resilient-notok-sev2":
 		return createPods(0, []int{2, 2}), nil
 	case "resilient-halfok-sev1":
