@@ -22,7 +22,7 @@ categories:
         healthcheck-categories-for: aggregate-healthcheck
     data:
       category.name: publish
-      category.services: cms-notifier, native-ingester-cms, nativerw
+      category.services: cms-notifier, native-ingester-cms, cms-metadata-notifier, native-ingester-metadata, nativerw
       category.refreshrate: "60"
       category.issticky: "true"
   - kind: ConfigMap
