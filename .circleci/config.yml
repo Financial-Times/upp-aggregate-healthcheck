@@ -3,39 +3,37 @@ jobs:
   build:
     working_directory: /go/src/github.com/Financial-Times/upp-aggregate-healthcheck
     docker:
-      - image: golang:1.8.3
-        environment:
-          GOPATH: /go
-          CIRCLE_TEST_REPORTS: /tmp/test-results
-          CIRCLE_COVERAGE_REPORT: /tmp/coverage-results
+      - image: circleci/golang:1.9
+    environment:
+      CIRCLE_TEST_REPORTS: /tmp/test-results
+      CIRCLE_COVERAGE_REPORT: /tmp/coverage-results
     steps:
       - checkout
       - run:
+          name: Make go get work
+          command: sudo chown -R circleci:circleci /go/src
+      - run:
           name: External Dependencies
           command: |
+            go get -u github.com/golang/dep/cmd/dep
             go get -u github.com/mattn/goveralls
             go get -u github.com/jstemmer/go-junit-report
-            go get -u github.com/kardianos/govendor
-            go get -u github.com/haya14busa/goverage
       - run:
-          name: Test Results
-          command: |
-            mkdir -p ${CIRCLE_TEST_REPORTS}
-            mkdir -p ${CIRCLE_COVERAGE_REPORT}
-      - run:
-          name: Govendor Sync
-          command: govendor sync -v
+          name: Import libraries
+          command: dep ensure
       - run:
           name: Go Build
           command: go build -v
       - run:
           name: Run Tests
           command: |
-            govendor test -race -v +local | /go/bin/go-junit-report > ${CIRCLE_TEST_REPORTS}/main.xml
-            goverage -covermode=atomic -race -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out ./...
+            mkdir -p ${CIRCLE_TEST_REPORTS}/golang
+            mkdir -p ${CIRCLE_COVERAGE_REPORT}
+            go test -race -v | go-junit-report > $CIRCLE_TEST_REPORTS/golang/junit.xml
+            go test -race -cover -coverprofile=$CIRCLE_ARTIFACTS/coverage.out
       - run:
           name: Upload Coverage
-          command: /go/bin/goveralls -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
+          command: goveralls -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
       - store_test_results:
           path: /tmp/test-results
   dockerfile:

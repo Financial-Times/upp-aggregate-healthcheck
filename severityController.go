@@ -10,7 +10,7 @@ func (c *healthCheckController) getSeverityForService(serviceName string, appPor
 	var isResilient bool
 	service, err := c.healthCheckService.getServiceByName(serviceName)
 	if err != nil {
-		warnLogger.Printf("Cannot get service with name %s in order to get resiliency, using default resiliency: %d. Problem was: %s", serviceName, defaultResiliency, err.Error())
+		warnLogger.Printf("Cannot get service with name %s in order to get resiliency, using default resiliency: %t. Problem was: %s", serviceName, defaultResiliency, err.Error())
 		isResilient = defaultResiliency
 	} else {
 		isResilient = service.isResilient
