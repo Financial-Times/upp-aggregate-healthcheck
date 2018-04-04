@@ -22,11 +22,13 @@ RUN apk --no-cache --virtual .build-dependencies add git \
   && go get -u github.com/golang/dep/cmd/dep \
   && $GOPATH/bin/dep ensure \
   && go build -ldflags="${LDFLAGS}" \
-  && mv /${PROJECT}-sources/resources / \
-  && mv /${PROJECT}-sources/html-templates / \
+  && mv ${PROJECT} /${PROJECT} \
+  && mv /${PROJECT}-sources/resources /resources \
+  && mv /${PROJECT}-sources/html-templates /html-templates \
+  && rm -r /${PROJECT}-sources \
   && apk del .build-dependencies \
   && rm -rf $GOPATH /var/cache/apk/*
 
-WORKDIR /${PROJECT}-sources
+WORKDIR /
 
 CMD [ "/upp-aggregate-healthcheck" ]
