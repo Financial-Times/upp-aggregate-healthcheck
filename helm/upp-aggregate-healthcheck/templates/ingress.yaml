@@ -1,4 +1,4 @@
-{{- if eq .Values.ingress.enabled "true" }}
+{{ if eq .Values.ingress.enabled "true" }}
 apiVersion: extensions/v1beta1
 kind: Ingress
 metadata:
@@ -22,4 +22,4 @@ spec:
           backend:
             serviceName: {{.Values.service.name}}
             servicePort: 8080
-{{- end }}
+{{ end }}
