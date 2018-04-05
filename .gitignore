@@ -1,5 +1,5 @@
 /upp-aggregate-healthcheck
-vendor/*/
+vendor/
 *.idea
 *.exe
 /.project

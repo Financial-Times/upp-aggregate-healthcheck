@@ -1,0 +1,25 @@
+{{ if eq .Values.ingress.enabled "true" }}
+apiVersion: extensions/v1beta1
+kind: Ingress
+metadata:
+  name: {{.Values.service.name}}-ingress
+  annotations:
+    kubernetes.io/ingress.class: "nginx"
+    ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  rules:
+    - host: "*.ft.com"
+      http:
+        paths:
+        - path: /__health
+          backend:
+            serviceName: {{.Values.service.name}}
+            servicePort: 8080
+    - host: "*.ft.com"
+      http:
+        paths:
+        - path: /__gtg
+          backend:
+            serviceName: {{.Values.service.name}}
+            servicePort: 8080
+{{ end }}

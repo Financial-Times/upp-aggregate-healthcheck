@@ -1,23 +1,34 @@
-FROM golang:1.7-alpine3.5
+FROM golang:1.9-alpine
 
-RUN mkdir -p /upp-aggregate-healthcheck
-
-ADD . "$GOPATH/src/upp-aggregate-healthcheck"
+ENV PROJECT=upp-aggregate-healthcheck
+COPY . /${PROJECT}-sources/
 
 RUN apk --no-cache --virtual .build-dependencies add git \
-  && cd $GOPATH/src/upp-aggregate-healthcheck \
-  && go get -u github.com/kardianos/govendor \
-  && $GOPATH/bin/govendor sync \
-  && go-wrapper download \
-  && go-wrapper install \
-  && ls -la $GOPATH \
-  && cp -R resources /upp-aggregate-healthcheck/ \
-  && cp -R html-templates /upp-aggregate-healthcheck/ \
+  && ORG_PATH="github.com/Financial-Times" \
+  && REPO_PATH="Financial-Times/${PROJECT}" \
+  && mkdir -p $GOPATH/src/Financial-Times \
+  # Linking the project sources in the GOPATH folder
+  && ln -s /${PROJECT}-sources $GOPATH/src/${REPO_PATH} \
+  && cd $GOPATH/src/${REPO_PATH} \
+  && BUILDINFO_PACKAGE="Financial-Times/${PROJECT}/vendor/Financial-Times/service-status-go/buildinfo." \
+  && VERSION="version=$(git describe --tag --always 2> /dev/null)" \
+  && DATETIME="dateTime=$(date -u +%Y%m%d%H%M%S)" \
+  && REPOSITORY="repository=$(git config --get remote.origin.url)" \
+  && REVISION="revision=$(git rev-parse HEAD)" \
+  && BUILDER="builder=$(go version)" \
+  && LDFLAGS="-X '"${BUILDINFO_PACKAGE}$VERSION"' -X '"${BUILDINFO_PACKAGE}$DATETIME"' -X '"${BUILDINFO_PACKAGE}$REPOSITORY"' -X '"${BUILDINFO_PACKAGE}$REVISION"' -X '"${BUILDINFO_PACKAGE}$BUILDER"'" \
+  && echo "Build flags: $LDFLAGS" \
+  && echo "Fetching dependencies..." \
+  && go get -u github.com/golang/dep/cmd/dep \
+  && $GOPATH/bin/dep ensure \
+  && go build -ldflags="${LDFLAGS}" \
+  && mv ${PROJECT} /${PROJECT} \
+  && mv /${PROJECT}-sources/resources /resources \
+  && mv /${PROJECT}-sources/html-templates /html-templates \
+  && rm -r /${PROJECT}-sources \
   && apk del .build-dependencies \
-  && rm -rf $GOPATH/src $GOPATH/pkg
+  && rm -rf $GOPATH /var/cache/apk/*
 
-WORKDIR /upp-aggregate-healthcheck
+WORKDIR /
 
-EXPOSE 8080
-
-CMD ["go-wrapper", "run"]
+CMD [ "/upp-aggregate-healthcheck" ]
