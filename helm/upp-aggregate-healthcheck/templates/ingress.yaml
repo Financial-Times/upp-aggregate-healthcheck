@@ -11,7 +11,7 @@ spec:
     - host: "*.ft.com"
       http:
         paths:
-        - path: /__health
+        - path: {{ .Values.env.PATH_PREFIX }}
           backend:
             serviceName: {{.Values.service.name}}
             servicePort: 8080
