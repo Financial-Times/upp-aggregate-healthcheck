@@ -15,7 +15,7 @@ categories:
          healthcheck-categories-for: aggregate-healthcheck
     data:
       category.name: default
-      category.refreshrate: "5"
+      category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
     apiVersion: v1
