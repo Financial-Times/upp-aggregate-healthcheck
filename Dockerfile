@@ -1,9 +1,9 @@
-FROM golang:1.9-alpine
+FROM golang:1.10-alpine
 
 ENV PROJECT=upp-aggregate-healthcheck
 COPY . /${PROJECT}-sources/
 
-RUN apk --no-cache --virtual .build-dependencies add git \
+RUN apk --no-cache --virtual .build-dependencies add git curl \
   && ORG_PATH="github.com/Financial-Times" \
   && REPO_PATH="Financial-Times/${PROJECT}" \
   && mkdir -p $GOPATH/src/Financial-Times \
@@ -19,8 +19,8 @@ RUN apk --no-cache --virtual .build-dependencies add git \
   && LDFLAGS="-X '"${BUILDINFO_PACKAGE}$VERSION"' -X '"${BUILDINFO_PACKAGE}$DATETIME"' -X '"${BUILDINFO_PACKAGE}$REPOSITORY"' -X '"${BUILDINFO_PACKAGE}$REVISION"' -X '"${BUILDINFO_PACKAGE}$BUILDER"'" \
   && echo "Build flags: $LDFLAGS" \
   && echo "Fetching dependencies..." \
-  && go get -u github.com/golang/dep/cmd/dep \
-  && $GOPATH/bin/dep ensure \
+  && curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh \
+  && $GOPATH/bin/dep ensure -vendor-only \
   && go build -ldflags="${LDFLAGS}" \
   && mv ${PROJECT} /${PROJECT} \
   && mv /${PROJECT}-sources/resources /resources \

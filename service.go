@@ -331,6 +331,13 @@ func populateCategory(k8sCatData map[string]string) category {
 	if err != nil {
 		isSticky = false
 	}
+	stickyThreshold := 0
+	if isSticky {
+		stickyThreshold, err = strconv.Atoi(k8sCatData["category.stickythreshold"])
+		if err != nil {
+			stickyThreshold = 1
+		}
+	}
 
 	isEnabled, err := strconv.ParseBool(k8sCatData["category.enabled"])
 	if err != nil {
@@ -350,6 +357,7 @@ func populateCategory(k8sCatData map[string]string) category {
 		services:      strings.Split(categories, ","),
 		refreshPeriod: refreshRatePeriod,
 		isSticky:      isSticky,
+		stickyThreshold: stickyThreshold,
 		isEnabled:     isEnabled,
 	}
 }

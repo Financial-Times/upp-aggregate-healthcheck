@@ -406,7 +406,7 @@ func TestUpdateStickyCategoryHappyFlow(t *testing.T) {
 	assert.Nil(t, err)
 }
 
-func TestFundShortestPeriodWithValidCategories(t *testing.T) {
+func TestFindShortestPeriodWithValidCategories(t *testing.T) {
 	minRefreshPeriod := 15 * time.Second
 	categories := make(map[string]category)
 	categories["default"] = category{
@@ -455,6 +455,48 @@ func TestRunServiceChecksForStickyCategory(t *testing.T) {
 	hc, categories, _, _ := controller.buildServicesHealthResult([]string{"test", "publishing"}, false)
 
 	assert.NotNil(t, hc)
+	assert.False(t, categories["test"].isEnabled)
+}
+
+func TestRunServiceChecksForStickyCategorySingleFailureWithHigherThreshold(t *testing.T) {
+	categories := make(map[string]category)
+	categories["publishing"] = category{
+		services: []string{"test-service-name"},
+	}
+	categories["test"] = category{
+		services:  []string{"test-service-name"},
+		isSticky:  true,
+		stickyThreshold: 2,
+		isEnabled: true,
+	}
+
+	controller := initializeMockController("test", nil)
+	hc, categories, _, _ := controller.buildServicesHealthResult([]string{"test", "publishing"}, false)
+
+	assert.NotNil(t, hc)
+	assert.True(t, categories["test"].isEnabled)
+}
+
+func TestRunServiceChecksForStickyCategoryConsecutiveFailuresWithThreshold(t *testing.T) {
+	categories := make(map[string]category)
+	categories["publishing"] = category{
+		services: []string{"test-service-name"},
+	}
+	categories["test"] = category{
+		services:  []string{"test-service-name"},
+		isSticky:  true,
+		stickyThreshold: 2,
+		isEnabled: true,
+	}
+
+	controller := initializeMockController("test", nil)
+	hc, categories, _, _ := controller.buildServicesHealthResult([]string{"test", "publishing"}, false)
+
+	assert.NotNil(t, hc)
+	assert.True(t, categories["test"].isEnabled)
+
+	_, categories, _, _ = controller.buildServicesHealthResult([]string{"test", "publishing"}, false)
+
 	assert.False(t, categories["test"].isEnabled)
 }
 

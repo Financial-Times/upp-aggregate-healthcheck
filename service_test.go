@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"k8s.io/client-go/kubernetes/fake"
@@ -249,4 +250,47 @@ func TestGetDeploymentsReturnsDeployments(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(deployments))
+}
+
+func TestPopulateStickyCategoryWithThreshold(t *testing.T) {
+	name := "testcat"
+
+	k8sCatData := map[string]string{
+		"category.name": name,
+		"category.issticky": "true",
+		"category.stickythreshold": "2",
+		"category.enabled": "true",
+		"category.refreshrate": "60",
+		"category.services": "test1,test2",
+	}
+
+	actual := populateCategory(k8sCatData)
+	assert.Equal(t, name, actual.name)
+	assert.True(t, actual.isSticky, "category should be sticky")
+	assert.Equal(t, 2, actual.stickyThreshold)
+	assert.Equal(t, 0, actual.failureCount)
+	assert.True(t, actual.isEnabled, "category should be enabled")
+	assert.Equal(t, time.Duration(60 * time.Second), actual.refreshPeriod)
+	assert.ElementsMatch(t, []string{"test1","test2"}, actual.services)
+}
+
+func TestPopulateStickyCategoryWithoutThreshold(t *testing.T) {
+	name := "testcat"
+
+	k8sCatData := map[string]string{
+		"category.name": name,
+		"category.issticky": "true",
+		"category.enabled": "true",
+		"category.refreshrate": "60",
+		"category.services": "test1,test2",
+	}
+
+	actual := populateCategory(k8sCatData)
+	assert.Equal(t, name, actual.name)
+	assert.True(t, actual.isSticky, "category should be sticky")
+	assert.Equal(t, 1, actual.stickyThreshold)
+	assert.Equal(t, 0, actual.failureCount)
+	assert.True(t, actual.isEnabled, "category should be enabled")
+	assert.Equal(t, time.Duration(60 * time.Second), actual.refreshPeriod)
+	assert.ElementsMatch(t, []string{"test1","test2"}, actual.services)
 }

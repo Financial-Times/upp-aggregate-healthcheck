@@ -188,14 +188,23 @@ func (c *healthCheckController) disableStickyFailingCategories(categories map[st
 
 		for _, serviceName := range category.services {
 			for _, healthCheck := range healthChecks {
-				if healthCheck.Name == serviceName && !healthCheck.Ok {
-					infoLogger.Printf("Sticky category [%s] is unhealthy, disabling it.", category.name)
-					category.isEnabled = false
-					categories[catIndex] = category
+				if healthCheck.Name == serviceName {
+					if !healthCheck.Ok {
+						category.failureCount++
+						if category.failureCount >= category.stickyThreshold {
+							infoLogger.Printf("Sticky category [%s] is unhealthy for %d consecutive checks, disabling it.", category.name, category.failureCount)
+							category.isEnabled = false
+							categories[catIndex] = category
 
-					err := c.healthCheckService.updateCategory(category.name, false)
-					if err != nil {
-						errorLogger.Printf("Cannot disable sticky category with name %s. Error was: %s", category.name, err.Error())
+							err := c.healthCheckService.updateCategory(category.name, false)
+							if err != nil {
+								errorLogger.Printf("Cannot disable sticky category with name %s. Error was: %s", category.name, err.Error())
+							}
+						} else {
+							infoLogger.Printf("Sticky category [%s] is unhealthy for %d consecutive checks, will be disabled if it reaches %d.", category.name, category.failureCount, category.stickyThreshold)
+						}
+					} else {
+						category.failureCount = 0
 					}
 				}
 			}

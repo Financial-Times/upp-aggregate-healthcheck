@@ -25,6 +25,7 @@ categories:
       category.services: cms-notifier, native-ingester-cms, cms-metadata-notifier, native-ingester-metadata, nativerw
       category.refreshrate: "60"
       category.issticky: "true"
+      category.stickythreshold: 2
   - kind: ConfigMap
     apiVersion: v1
     metadata:
