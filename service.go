@@ -8,9 +8,10 @@ import (
 	"strings"
 	"time"
 
+	core "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
-	"k8s.io/client-go/pkg/api/v1"
-	"k8s.io/client-go/pkg/watch"
 	"k8s.io/client-go/rest"
 )
 
@@ -74,7 +75,7 @@ func (hs *k8sHealthcheckService) watchAcks() {
 	for msg := range resultChannel {
 		switch msg.Type {
 		case watch.Added, watch.Modified:
-			k8sConfigMap := msg.Object.(*v1.ConfigMap)
+			k8sConfigMap := msg.Object.(*core.ConfigMap)
 			hs.updateAcksForServices(k8sConfigMap.Data)
 			hs.acks = k8sConfigMap.Data
 			infoLogger.Printf("Acks configMap has been updated: %s", k8sConfigMap.Data)
@@ -101,7 +102,7 @@ func (hs *k8sHealthcheckService) watchServices() {
 	for msg := range resultChannel {
 		switch msg.Type {
 		case watch.Added, watch.Modified:
-			k8sService := msg.Object.(*v1.Service)
+			k8sService := msg.Object.(*core.Service)
 			service := populateService(k8sService, hs.acks)
 
 			hs.services.Lock()
@@ -110,7 +111,7 @@ func (hs *k8sHealthcheckService) watchServices() {
 
 			infoLogger.Printf("Service with name %s added or updated.", service.name)
 		case watch.Deleted:
-			k8sService := msg.Object.(*v1.Service)
+			k8sService := msg.Object.(*core.Service)
 			hs.services.Lock()
 			delete(hs.services.m, k8sService.Name)
 			hs.services.Unlock()
@@ -162,7 +163,7 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 
 func (hs *k8sHealthcheckService) updateCategory(categoryName string, isEnabled bool) error {
 	categoryConfigMapName := fmt.Sprintf("category.%s", categoryName)
-	k8sCategory, err := hs.k8sClient.CoreV1().ConfigMaps(namespace).Get(categoryConfigMapName)
+	k8sCategory, err := hs.k8sClient.CoreV1().ConfigMaps(namespace).Get(categoryConfigMapName, v1.GetOptions{})
 
 	if err != nil {
 		return fmt.Errorf("cannot retrieve configMap for category with name %s: %s", categoryName, err.Error())
@@ -243,7 +244,7 @@ func (hs *k8sHealthcheckService) getDeployments() (map[string]deployment, error)
 }
 
 func (hs *k8sHealthcheckService) getPodByName(podName string) (pod, error) {
-	k8sPod, err := hs.k8sClient.CoreV1().Pods(namespace).Get(podName)
+	k8sPod, err := hs.k8sClient.CoreV1().Pods(namespace).Get(podName, v1.GetOptions{})
 	if err != nil {
 		return pod{}, fmt.Errorf("failed to get the pod with name %s from k8s cluster: %v", podName, err.Error())
 	}
@@ -354,7 +355,7 @@ func populateCategory(k8sCatData map[string]string) category {
 	}
 }
 
-func populatePod(k8sPod v1.Pod) pod {
+func populatePod(k8sPod core.Pod) pod {
 	return pod{
 		name:        k8sPod.Name,
 		node:        k8sPod.Spec.NodeName,
@@ -363,7 +364,7 @@ func populatePod(k8sPod v1.Pod) pod {
 	}
 }
 
-func populateService(k8sService *v1.Service, acks map[string]string) service {
+func populateService(k8sService *core.Service, acks map[string]string) service {
 	//services are resilient by default.
 	isResilient := true
 	isDaemon := false
@@ -392,7 +393,7 @@ func populateService(k8sService *v1.Service, acks map[string]string) service {
 	}
 }
 
-func getAppPortForService(k8sService *v1.Service) int32 {
+func getAppPortForService(k8sService *core.Service) int32 {
 	servicePorts := k8sService.Spec.Ports
 	for _, port := range servicePorts {
 		if port.Name == "app" {
@@ -403,11 +404,11 @@ func getAppPortForService(k8sService *v1.Service) int32 {
 	return defaultAppPort
 }
 
-func getAcksConfigMap(k8sClient kubernetes.Interface) (v1.ConfigMap, error) {
-	k8sAckConfigMap, err := k8sClient.CoreV1().ConfigMaps(namespace).Get(ackMessagesConfigMapName)
+func getAcksConfigMap(k8sClient kubernetes.Interface) (core.ConfigMap, error) {
+	k8sAckConfigMap, err := k8sClient.CoreV1().ConfigMaps(namespace).Get(ackMessagesConfigMapName, v1.GetOptions{})
 
 	if err != nil {
-		return v1.ConfigMap{}, fmt.Errorf("cannot find configMap with name %s: %s", ackMessagesConfigMapName, err.Error())
+		return core.ConfigMap{}, fmt.Errorf("cannot find configMap with name %s: %s", ackMessagesConfigMapName, err.Error())
 	}
 
 	return *k8sAckConfigMap, nil
