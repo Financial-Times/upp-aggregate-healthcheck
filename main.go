@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const logPattern = log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile | log.LUTC
@@ -75,6 +76,7 @@ func listen(httpHandler *httpHandler, pathPrefix string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/__gtg", httpHandler.handleGoodToGo)
 	s := r.PathPrefix(pathPrefix).Subrouter()
+	r.Handle("/metrics", promhttp.Handler())
 	s.HandleFunc("/add-ack", httpHandler.handleAddAck).Methods("POST")
 	s.HandleFunc("/enable-category", httpHandler.handleEnableCategory)
 	s.HandleFunc("/disable-category", httpHandler.handleDisableCategory)
