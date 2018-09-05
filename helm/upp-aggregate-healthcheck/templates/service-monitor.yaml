@@ -1,13 +1,15 @@
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
+  labels:
+    component: {{ .Values.service.name }}
+    prometheus: {{ .Values.metrics.prometheusInstance }}
   name: {{ .Values.service.name }}
-  label:
-    prometheus: monitoring-metrics
 spec:
   endpoints:
-    - port: "8080"
-    - path: "/metrics"
+  - interval: {{ .Values.metrics.interval }}
+    path: {{ .Values.metrics.path }}
+  jobLabel: component
   selector:
     matchLabels:
       app: {{ .Values.service.name }}
