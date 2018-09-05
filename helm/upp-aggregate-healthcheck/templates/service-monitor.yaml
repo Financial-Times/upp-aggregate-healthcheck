@@ -4,8 +4,8 @@ metadata:
   name: {{ .Values.service.name }}
 spec:
   endpoints:
-    port: 8080
-    path: "/metrics"
+    - port: 8080
+    - path: "/metrics"
   selector:
     matchLabels:
       app: {{ .Values.service.name }}
