@@ -2,6 +2,8 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ .Values.service.name }}
+  label:
+    prometheus: monitoring-metrics
 spec:
   endpoints:
     - port: "8080"
