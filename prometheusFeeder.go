@@ -1,6 +1,7 @@
 package main
 
 import (
+	"strconv"
 	"strings"
 	"time"
 
@@ -34,6 +35,7 @@ func (g prometheusFeeder) feed() {
 		[]string{
 			"environment",
 			"service",
+			"lastUpdate",
 		})
 	prometheus.MustRegister(serviceStatus)
 	for range g.ticker.C {
@@ -42,7 +44,13 @@ func (g prometheusFeeder) feed() {
 			case checkResult := <-mService.bufferedHealths.buffer:
 				name := strings.Replace(checkResult.Name, ".", "-", -1)
 				checkStatus := inverseBoolToInt(checkResult.Ok)
-				serviceStatus.With(prometheus.Labels{"environment": g.environment, "service": name}).Set(float64(checkStatus))
+				lastUpdate := strconv.FormatInt(checkResult.LastUpdated.Unix(), 10)
+				serviceStatus.With(
+					prometheus.Labels{
+						"environment": g.environment,
+						"service":     name,
+						"lastUpdate":  lastUpdate,
+					}).Set(float64(checkStatus))
 			default:
 				continue
 			}
