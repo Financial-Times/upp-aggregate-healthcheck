@@ -64,14 +64,18 @@ func main() {
 		graphiteFeeder := newGraphiteFeeder(*graphiteURL, *environment, controller)
 		go graphiteFeeder.feed()
 
-		pilotLight := prometheus.NewGauge(prometheus.GaugeOpts{
-			Namespace: "upp",
-			Subsystem: "health",
-			Name:      "pilotlight",
-			Help:      "Pilot light for the service monitoring UPP service health",
-		})
+		pilotLight := prometheus.NewGaugeVec(
+			prometheus.GaugeOpts{
+				Namespace: "upp",
+				Subsystem: "health",
+				Name:      "pilotlight",
+				Help:      "Pilot light for the service monitoring UPP service health",
+			},
+			[]string{
+				"environment",
+			})
 		prometheus.MustRegister(pilotLight)
-		pilotLight.Set(1)
+		pilotLight.With(prometheus.Labels{"environment": *environment}).Set(1)
 		listen(handler, *pathPrefix)
 	}
 
