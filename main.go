@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -63,6 +64,14 @@ func main() {
 		graphiteFeeder := newGraphiteFeeder(*graphiteURL, *environment, controller)
 		go graphiteFeeder.feed()
 
+		pilotLight := prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "upp",
+			Subsystem: "health",
+			Name:      "pilot-light",
+			Help:      "Pilot light for the service monitoring UPP service health",
+		})
+		prometheus.MustRegister(pilotLight)
+		pilotLight.Set(1)
 		listen(handler, *pathPrefix)
 	}
 
