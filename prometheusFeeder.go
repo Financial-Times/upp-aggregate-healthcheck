@@ -38,13 +38,13 @@ func (g prometheusFeeder) feed() {
 	prometheus.MustRegister(serviceStatus)
 	for range g.ticker.C {
 		for _, mService := range g.controller.getMeasuredServices() {
-			for {
-				select {
-				case checkResult := <-mService.bufferedHealths.buffer:
-					name := strings.Replace(checkResult.Name, ".", "-", -1)
-					checkStatus := inverseBoolToInt(checkResult.Ok)
-					serviceStatus.With(prometheus.Labels{"environment": g.environment, "service": name}).Set(float64(checkStatus))
-				}
+			select {
+			case checkResult := <-mService.bufferedHealths.buffer:
+				name := strings.Replace(checkResult.Name, ".", "-", -1)
+				checkStatus := inverseBoolToInt(checkResult.Ok)
+				serviceStatus.With(prometheus.Labels{"environment": g.environment, "service": name}).Set(float64(checkStatus))
+			default:
+				continue
 			}
 		}
 	}
