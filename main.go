@@ -67,7 +67,7 @@ func main() {
 		pilotLight := prometheus.NewGauge(prometheus.GaugeOpts{
 			Namespace: "upp",
 			Subsystem: "health",
-			Name:      "pilot-light",
+			Name:      "pilotlight",
 			Help:      "Pilot light for the service monitoring UPP service health",
 		})
 		prometheus.MustRegister(pilotLight)
