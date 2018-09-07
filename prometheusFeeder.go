@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
+	prom "github.com/prometheus/client_golang/prometheus"
 )
 
 type prometheusFeeder struct {
@@ -22,10 +22,33 @@ func newPrometheusFeeder(environment string, controller controller) *prometheusF
 	}
 }
 
-func (g prometheusFeeder) feed() {
-	setPilotLight(g.environment)
-	serviceStatus := prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
+func (p prometheusFeeder) feed() {
+	ignitePilotLight(p.environment)
+	serviceStatus := initServiceStatusMetrics()
+
+	for range p.ticker.C {
+		p.recordMetrics(serviceStatus)
+	}
+}
+
+func (p prometheusFeeder) recordMetrics(serviceStatus *prom.GaugeVec) {
+	for _, service := range p.controller.getMeasuredServices() {
+		select {
+		case checkResult := <-service.bufferedHealths.buffer:
+			name := strings.Replace(checkResult.Name, ".", "-", -1)
+			checkStatus := inverseBoolToFloat64(checkResult.Ok)
+			serviceStatus.
+				With(prom.Labels{"environment": p.environment, "service": name}).
+				Set(checkStatus)
+		default:
+			continue
+		}
+	}
+}
+
+func initServiceStatusMetrics() *prom.GaugeVec {
+	serviceStatus := prom.NewGaugeVec(
+		prom.GaugeOpts{
 			Namespace: "upp",
 			Subsystem: "health",
 			Name:      "servicestatus",
@@ -35,24 +58,13 @@ func (g prometheusFeeder) feed() {
 			"environment",
 			"service",
 		})
-	prometheus.MustRegister(serviceStatus)
-	for range g.ticker.C {
-		for _, mService := range g.controller.getMeasuredServices() {
-			select {
-			case checkResult := <-mService.bufferedHealths.buffer:
-				name := strings.Replace(checkResult.Name, ".", "-", -1)
-				checkStatus := inverseBoolToInt(checkResult.Ok)
-				serviceStatus.With(prometheus.Labels{"environment": g.environment, "service": name}).Set(float64(checkStatus))
-			default:
-				continue
-			}
-		}
-	}
+	prom.MustRegister(serviceStatus)
+	return serviceStatus
 }
 
-func setPilotLight(environment string) {
-	pilotLight := prometheus.NewGaugeVec(
-		prometheus.GaugeOpts{
+func ignitePilotLight(environment string) {
+	pilotLight := prom.NewGaugeVec(
+		prom.GaugeOpts{
 			Namespace: "upp",
 			Subsystem: "health",
 			Name:      "pilotlight",
@@ -61,6 +73,13 @@ func setPilotLight(environment string) {
 		[]string{
 			"environment",
 		})
-	prometheus.MustRegister(pilotLight)
-	pilotLight.With(prometheus.Labels{"environment": environment}).Set(1)
+	prom.MustRegister(pilotLight)
+	pilotLight.With(prom.Labels{"environment": environment}).Set(1)
+}
+
+func inverseBoolToFloat64(b bool) float64 {
+	if b {
+		return 0
+	}
+	return 1
 }
