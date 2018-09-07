@@ -41,4 +41,5 @@ type measuredService struct {
 	service         service
 	cachedHealth    *cachedHealth
 	bufferedHealths *bufferedHealths
+	bufferedMetrics *bufferedHealths
 }

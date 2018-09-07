@@ -16,8 +16,9 @@ const (
 func newMeasuredService(service service) measuredService {
 	cachedHealth := newCachedHealth()
 	bufferedHealths := newBufferedHealths()
+	bufferedMetrics := newBufferedHealths()
 	go cachedHealth.maintainLatest()
-	return measuredService{service, cachedHealth, bufferedHealths}
+	return measuredService{service, cachedHealth, bufferedHealths, bufferedMetrics}
 }
 
 func (c *healthCheckController) collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error) {
@@ -118,6 +119,11 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 	mService.cachedHealth.toWriteToCache <- checkResult
 	select {
 	case mService.bufferedHealths.buffer <- checkResult:
+	default:
+	}
+
+	select {
+	case mService.bufferedMetrics.buffer <- checkResult:
 	default:
 	}
 
