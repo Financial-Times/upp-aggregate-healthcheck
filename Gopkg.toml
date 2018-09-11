@@ -59,7 +59,7 @@
 
 [[constraint]]
   name = "github.com/prometheus/client_golang"
-  version = "=0.8.0"
+  revision = "7858729281ec582767b20e0d696b6041d995d5e0"
 
 [prune]
   go-tests = true
