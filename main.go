@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 const logPattern = log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile | log.LUTC
@@ -62,6 +63,9 @@ func main() {
 		graphiteFeeder := newGraphiteFeeder(*graphiteURL, *environment, controller)
 		go graphiteFeeder.feed()
 
+		prometheusFeeder := newPrometheusFeeder(*environment, controller)
+		go prometheusFeeder.feed()
+
 		listen(handler, *pathPrefix)
 	}
 
@@ -74,6 +78,7 @@ func main() {
 func listen(httpHandler *httpHandler, pathPrefix string) {
 	r := mux.NewRouter()
 	r.HandleFunc("/__gtg", httpHandler.handleGoodToGo)
+	r.Handle("/metrics", promhttp.Handler())
 	s := r.PathPrefix(pathPrefix).Subrouter()
 	s.HandleFunc("/add-ack", httpHandler.handleAddAck).Methods("POST")
 	s.HandleFunc("/enable-category", httpHandler.handleEnableCategory)

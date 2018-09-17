@@ -57,6 +57,10 @@
   name = "k8s.io/kube-openapi"
   revision = "91cfa479c814065e420cee7ed227db0f63a5854e"
 
+[[constraint]]
+  name = "github.com/prometheus/client_golang"
+  revision = "7858729281ec582767b20e0d696b6041d995d5e0"
+
 [prune]
   go-tests = true
   unused-packages = true
