@@ -14,11 +14,15 @@ const (
 )
 
 func newMeasuredService(service service) measuredService {
-	go newCachedHealth().maintainLatest()
+	cachedHealth := newCachedHealth()
+	go cachedHealth.maintainLatest()
+
+	cachedHealthMetric := newCachedHealth()
+	go cachedHealthMetric.maintainLatest()
 	return measuredService{
 		service:            service,
-		cachedHealth:       newCachedHealth(),
-		cachedHealthMetric: newCachedHealth(),
+		cachedHealth:       cachedHealth,
+		cachedHealthMetric: cachedHealthMetric,
 	}
 }
 
