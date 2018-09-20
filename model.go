@@ -3,8 +3,6 @@ package main
 import (
 	"sync"
 	"time"
-
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 )
 
 type pod struct {
@@ -39,12 +37,8 @@ type servicesMap struct {
 	m map[string]service
 }
 
-type bufferedHealths struct {
-	buffer chan fthealth.CheckResult
-}
-
 type measuredService struct {
-	service         service
-	cachedHealth    *cachedHealth
-	bufferedMetrics *bufferedHealths
+	service            service
+	cachedHealth       *cachedHealth
+	cachedHealthMetric *cachedHealth
 }
