@@ -31,7 +31,7 @@ metrics:
   # where we expose the metrics for prometheus
   path: /metrics
   # how often prometheus will call the metrics path
-  interval: 60s
+  interval: 30s
   # the name of the prometheus instance, as defined in
   # content-k8s-prometheus\helm\content-k8s-prometheus\app-configs\monitoring-metrics_{env}.yaml
   prometheusInstance: monitoring-metrics

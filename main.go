@@ -35,13 +35,6 @@ func main() {
 		EnvVar: "PATH_PREFIX",
 	})
 
-	graphiteURL := app.String(cli.StringOpt{
-		Name:   "graphite-host",
-		Value:  "graphite.ft.com:2003",
-		Desc:   "Graphite url",
-		EnvVar: "GRAPHITE_URL",
-	})
-
 	clusterURL := app.String(cli.StringOpt{
 		Name:   "cluster-url",
 		Value:  "",
@@ -51,7 +44,7 @@ func main() {
 
 	app.Action = func() {
 		initLogs(os.Stdout, os.Stdout, os.Stderr)
-		infoLogger.Printf("Starting app with params: [environment: %s], [pathPrefix: %s], [graphiteURL: %s]", *environment, *pathPrefix, *graphiteURL)
+		infoLogger.Printf("Starting app with params: [environment: %s], [pathPrefix: %s]", *environment, *pathPrefix)
 
 		controller := initializeController(*environment)
 		handler := &httpHandler{
@@ -59,9 +52,6 @@ func main() {
 			pathPrefix: *pathPrefix,
 			clusterURL: *clusterURL,
 		}
-
-		graphiteFeeder := newGraphiteFeeder(*graphiteURL, *environment, controller)
-		go graphiteFeeder.feed()
 
 		prometheusFeeder := newPrometheusFeeder(*environment, controller)
 		go prometheusFeeder.feed()

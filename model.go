@@ -38,8 +38,7 @@ type servicesMap struct {
 }
 
 type measuredService struct {
-	service         service
-	cachedHealth    *cachedHealth
-	bufferedHealths *bufferedHealths
-	bufferedMetrics *bufferedHealths
+	service            service
+	cachedHealth       *cachedHealth
+	cachedHealthMetric *cachedHealth
 }
