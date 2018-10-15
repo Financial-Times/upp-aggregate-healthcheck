@@ -10,9 +10,10 @@ import (
 )
 
 type healthCheckController struct {
-	healthCheckService healthcheckService
-	environment        string
-	measuredServices   map[string]measuredService
+	healthCheckService             healthcheckService
+	environment                    string
+	measuredServices               map[string]measuredService
+	stickyCategoriesFailedServices map[string]int
 }
 
 type controller interface {
@@ -37,11 +38,13 @@ type controller interface {
 func initializeController(environment string) *healthCheckController {
 	service := initializeHealthCheckService()
 	measuredServices := make(map[string]measuredService)
+	stickyCategoriesFailedServices := make(map[string]int)
 
 	return &healthCheckController{
-		healthCheckService: service,
-		environment:        environment,
-		measuredServices:   measuredServices,
+		healthCheckService:             service,
+		environment:                    environment,
+		measuredServices:               measuredServices,
+		stickyCategoriesFailedServices: stickyCategoriesFailedServices,
 	}
 }
 
@@ -190,17 +193,28 @@ func (c *healthCheckController) disableStickyFailingCategories(categories map[st
 			for _, healthCheck := range healthChecks {
 				if healthCheck.Name == serviceName && !healthCheck.Ok {
 					infoLogger.Printf("Sticky category [%s] is unhealthy, disabling it.", category.name)
-					category.isEnabled = false
-					categories[catIndex] = category
 
-					err := c.healthCheckService.updateCategory(category.name, false)
-					if err != nil {
-						errorLogger.Printf("Cannot disable sticky category with name %s. Error was: %s", category.name, err.Error())
+					c.stickyCategoriesFailedServices[serviceName]++
+					if c.isCategoryThresholdExceeded(serviceName, category.failureThreshold) {
+						category.isEnabled = false
+						categories[catIndex] = category
+
+						err := c.healthCheckService.updateCategory(category.name, false)
+						if err != nil {
+							errorLogger.Printf("Cannot disable sticky category with name %s. Error was: %s", category.name, err.Error())
+						}
+						c.stickyCategoriesFailedServices[serviceName] = 0
 					}
+				} else if healthCheck.Ok {
+					c.stickyCategoriesFailedServices[serviceName] = 0
 				}
 			}
 		}
 	}
+}
+
+func (c *healthCheckController) isCategoryThresholdExceeded(serviceName string, failureThreshold int) bool {
+	return c.stickyCategoriesFailedServices[serviceName] < failureThreshold
 }
 
 func isEnabledAndSticky(category category) bool {

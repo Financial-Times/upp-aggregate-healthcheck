@@ -13,11 +13,12 @@ type pod struct {
 }
 
 type category struct {
-	name          string
-	services      []string
-	refreshPeriod time.Duration
-	isSticky      bool
-	isEnabled     bool
+	name             string
+	services         []string
+	refreshPeriod    time.Duration
+	isSticky         bool
+	isEnabled        bool
+	failureThreshold int
 }
 
 type deployment struct {
