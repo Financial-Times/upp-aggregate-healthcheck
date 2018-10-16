@@ -347,7 +347,6 @@ func populateCategory(k8sCatData map[string]string) category {
 
 	failureThreshold, err := strconv.Atoi(k8sCatData["category.failureThreshold"])
 	if err != nil {
-		infoLogger.Printf("failureThreshold is not set for category with name [%s]. Using default failure threshold.", categoryName)
 		failureThreshold = defaultFailureThreshold
 	}
 
