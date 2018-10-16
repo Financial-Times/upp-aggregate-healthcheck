@@ -216,7 +216,7 @@ func (c *healthCheckController) disableStickyFailingCategories(categories map[st
 }
 
 func (c *healthCheckController) isCategoryThresholdExceeded(serviceName string, failureThreshold int) bool {
-	return c.stickyCategoriesFailedServices[serviceName] < failureThreshold
+	return c.stickyCategoriesFailedServices[serviceName] >= failureThreshold
 }
 
 func isEnabledAndSticky(category category) bool {
