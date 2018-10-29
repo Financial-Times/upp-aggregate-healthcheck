@@ -203,8 +203,10 @@ func (c *healthCheckController) disableStickyFailingCategories(categories map[st
 						err := c.healthCheckService.updateCategory(category.name, false)
 						if err != nil {
 							errorLogger.Printf("Cannot disable sticky category with name %s. Error was: %s", category.name, err.Error())
+						} else {
+							infoLogger.Printf("Category [%s] disabled", category.name)
+							c.stickyCategoriesFailedServices[serviceName] = 0
 						}
-						c.stickyCategoriesFailedServices[serviceName] = 0
 					}
 				}
 			}
