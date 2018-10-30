@@ -42,6 +42,7 @@ type healthcheckService interface {
 
 const (
 	defaultRefreshRate                = 60
+	defaultFailureThreshold           = 3
 	defaultSeverity                   = uint8(2)
 	defaultResiliency                 = true
 	ackMessagesConfigMapName          = "healthcheck.ack.messages"
@@ -344,14 +345,20 @@ func populateCategory(k8sCatData map[string]string) category {
 		refreshRateSeconds = defaultRefreshRate
 	}
 
+	failureThreshold, err := strconv.Atoi(k8sCatData["category.failureThreshold"])
+	if err != nil {
+		failureThreshold = defaultFailureThreshold
+	}
+
 	refreshRatePeriod := time.Duration(refreshRateSeconds * int64(time.Second))
 	categories := strings.Replace(k8sCatData["category.services"], " ", "", -1)
 	return category{
-		name:          categoryName,
-		services:      strings.Split(categories, ","),
-		refreshPeriod: refreshRatePeriod,
-		isSticky:      isSticky,
-		isEnabled:     isEnabled,
+		name:             categoryName,
+		services:         strings.Split(categories, ","),
+		refreshPeriod:    refreshRatePeriod,
+		isSticky:         isSticky,
+		isEnabled:        isEnabled,
+		failureThreshold: failureThreshold,
 	}
 }
 

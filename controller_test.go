@@ -218,14 +218,17 @@ func initializeMockedHTTPClient(responseStatusCode int, responseBody string) *ht
 }
 
 func initializeMockController(env string, httpClient *http.Client) *healthCheckController {
+	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	measuredServices := make(map[string]measuredService)
 	service := new(MockService)
 	service.httpClient = httpClient
+	stickyCategoriesFailedServices := make(map[string]int)
 
 	return &healthCheckController{
-		healthCheckService: service,
-		environment:        env,
-		measuredServices:   measuredServices,
+		healthCheckService:             service,
+		environment:                    env,
+		measuredServices:               measuredServices,
+		stickyCategoriesFailedServices: stickyCategoriesFailedServices,
 	}
 }
 
@@ -480,6 +483,76 @@ func TestRunServiceChecksForStickyCategoryUpdateError(t *testing.T) {
 
 	assert.NotNil(t, hc)
 	assert.False(t, hc.Ok)
+	assert.False(t, categories["test"].isEnabled)
+}
+
+func TestDisableStickyFailingCategoriesThresholdNotReached(t *testing.T) {
+	categories := make(map[string]category)
+	categories["publishing"] = category{
+		services: []string{"service1", "service2"},
+	}
+	categories["test"] = category{
+		services:  []string{"test-service-name"},
+		isSticky:  true,
+		isEnabled: true,
+	}
+	healthchecks := []fthealth.CheckResult{
+		{
+			ID: "service1",
+			Ok: true,
+		},
+		{
+			ID: "service2",
+			Ok: true,
+		},
+		{
+			ID: "test-service-name",
+			Ok: false,
+		},
+	}
+
+	controller := initializeMockController("test", nil)
+	controller.disableStickyFailingCategories(categories, healthchecks)
+	assert.True(t, categories["test"].isEnabled)
+}
+
+func TestDisableStickyFailingCategoriesThresholdReached(t *testing.T) {
+	categories := make(map[string]category)
+	categories["publishing"] = category{
+		services:         []string{"service1", "service2"},
+		name:             "service",
+		isEnabled:        true,
+		failureThreshold: 2,
+	}
+	categories["test"] = category{
+		services:         []string{"test-service-name"},
+		name:             "test-service-name",
+		isSticky:         true,
+		isEnabled:        true,
+		failureThreshold: 2,
+	}
+	healthchecks := []fthealth.CheckResult{
+		{
+			ID:   "service1",
+			Name: "service1",
+			Ok:   true,
+		},
+		{
+			ID:   "service2",
+			Name: "service2",
+			Ok:   true,
+		},
+		{
+			ID:   "test-service-name",
+			Name: "test-service-name",
+			Ok:   false,
+		},
+	}
+
+	controller := initializeMockController("test", nil)
+	controller.disableStickyFailingCategories(categories, healthchecks)
+	controller.disableStickyFailingCategories(categories, healthchecks)
+	controller.disableStickyFailingCategories(categories, healthchecks)
 	assert.False(t, categories["test"].isEnabled)
 }
 
