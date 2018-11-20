@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: /go/src/github.com/Financial-Times/upp-aggregate-healthcheck
     docker:
-      - image: circleci/golang:1.9
+      - image: circleci/golang:1.11
     environment:
       CIRCLE_TEST_REPORTS: /tmp/test-results
       CIRCLE_COVERAGE_REPORT: /tmp/coverage-results
