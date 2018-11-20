@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/Financial-Times/go-logger"
 	"net/http"
-	"os"
 	"testing"
 	"time"
 
@@ -29,6 +29,10 @@ const (
 	ip                      = "10.2.51.2"
 	severity1               = uint8(1)
 )
+
+func init() {
+	logger.InitLogger("upp-aggregate-healthcheck", "debug")
+}
 
 var defaultPods = []pod{
 	{
@@ -218,7 +222,6 @@ func initializeMockedHTTPClient(responseStatusCode int, responseBody string) *ht
 }
 
 func initializeMockController(env string, httpClient *http.Client) *healthCheckController {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	measuredServices := make(map[string]measuredService)
 	service := new(MockService)
 	service.httpClient = httpClient
@@ -263,7 +266,6 @@ func TestRemoveAckServiceErr(t *testing.T) {
 }
 
 func TestRemoveAckHappyFlow(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	controller := initializeMockController("test", nil)
 	err := controller.removeAck(validService)
 	assert.Nil(t, err)
@@ -295,7 +297,6 @@ func TestGetIndividualPodHealthNonExistingPod(t *testing.T) {
 }
 
 func TestGetIndividualPodHealthFailingService(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	httpClient := initializeMockedHTTPClient(http.StatusOK, "")
 	controller := initializeMockController("test", httpClient)
 	_, _, err := controller.getIndividualPodHealth(podWithBrokenService)
@@ -321,7 +322,6 @@ func TestBuildPodsHealthResultInvalidServiceName(t *testing.T) {
 }
 
 func TestGetSeverityForPodInvalidPodName(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	controller := initializeMockController("test", nil)
 	severity := controller.getSeverityForPod(nonExistingPodName, 8080)
 	assert.Equal(t, defaultSeverity, severity)

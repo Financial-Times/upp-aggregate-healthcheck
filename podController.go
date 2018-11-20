@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	log "github.com/Financial-Times/go-logger"
 )
 
 func (c *healthCheckController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
@@ -91,7 +92,7 @@ func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, 
 
 	appPort := defaultAppPort
 	if err != nil {
-		warnLogger.Printf("Cannot get service with name %s. Using default app port [%d]", podToBeChecked.serviceName, defaultAppPort)
+		log.Warnf("Cannot get service with name %s. Using default app port [%d]", podToBeChecked.serviceName, defaultAppPort)
 	} else {
 		appPort = service.appPort
 	}
@@ -114,7 +115,7 @@ func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, 
 	defer func() {
 		err := resp.Body.Close()
 		if err != nil {
-			errorLogger.Printf("Cannot close response body reader. Error was: %v", err.Error())
+			log.WithError(err).Error("Cannot close response body reader.")
 		}
 	}()
 

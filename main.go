@@ -2,24 +2,32 @@ package main
 
 import (
 	"fmt"
-	"io"
-	"log"
+	log "github.com/Financial-Times/go-logger"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-const logPattern = log.Ldate | log.Ltime | log.Lmicroseconds | log.Lshortfile | log.LUTC
-
-var infoLogger *log.Logger
-var warnLogger *log.Logger
-var errorLogger *log.Logger
-
 func main() {
-	app := cli.App("aggregate-healthcheck", "Monitoring health of multiple services in cluster.")
+	app := cli.App("upp-aggregate-healthcheck", "Monitoring health of multiple services in cluster.")
+
+	appName := app.String(cli.StringOpt{
+		Name:   "app-name",
+		Value:  "upp-aggregate-healthcheck",
+		Desc:   "Application name",
+		EnvVar: "APP_NAME",
+	})
+
+	port := app.Int(cli.IntOpt{
+		Name:   "port",
+		Value:  8080,
+		Desc:   "Port to listen on",
+		EnvVar: "APP_PORT",
+	})
 
 	environment := app.String(cli.StringOpt{
 		Name:   "environment",
@@ -42,9 +50,17 @@ func main() {
 		EnvVar: "CLUSTER_URL",
 	})
 
+	logLevel := app.String(cli.StringOpt{
+		Name:   "log-level",
+		Value:  "INFO",
+		Desc:   "App log level",
+		EnvVar: "LOG_LEVEL",
+	})
+
+	log.InitLogger(*appName, *logLevel)
+
 	app.Action = func() {
-		initLogs(os.Stdout, os.Stdout, os.Stderr)
-		infoLogger.Printf("Starting app with params: [environment: %s], [pathPrefix: %s]", *environment, *pathPrefix)
+		log.Infof("Starting app with params: [environment: %s], [pathPrefix: %s]", *environment, *pathPrefix)
 
 		controller := initializeController(*environment)
 		handler := &httpHandler{
@@ -56,7 +72,7 @@ func main() {
 		prometheusFeeder := newPrometheusFeeder(*environment, controller)
 		go prometheusFeeder.feed()
 
-		listen(handler, *pathPrefix)
+		listen(handler, *pathPrefix, *port)
 	}
 
 	err := app.Run(os.Args)
@@ -65,7 +81,7 @@ func main() {
 	}
 }
 
-func listen(httpHandler *httpHandler, pathPrefix string) {
+func listen(httpHandler *httpHandler, pathPrefix string, port int) {
 	r := mux.NewRouter()
 	r.HandleFunc("/__gtg", httpHandler.handleGoodToGo)
 	r.Handle("/metrics", promhttp.Handler())
@@ -80,14 +96,17 @@ func listen(httpHandler *httpHandler, pathPrefix string) {
 	s.HandleFunc("/__pods-health", httpHandler.handlePodsHealthCheck)
 	s.HandleFunc("/__pod-individual-health", httpHandler.handleIndividualPodHealthCheck)
 	s.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("resources/"))))
-	err := http.ListenAndServe(":8080", r)
+
+	srv := &http.Server{
+		Addr: fmt.Sprintf(":%d", port),
+		WriteTimeout: time.Second * 90,
+		ReadTimeout:  time.Second * 90,
+		IdleTimeout:  time.Second * 90,
+		Handler:      r,
+	}
+
+	err := srv.ListenAndServe()
 	if err != nil {
 		panic(fmt.Sprintf("Cannot set up HTTP listener. Error was: %v", err))
 	}
-}
-
-func initLogs(infoHandle io.Writer, warnHandle io.Writer, errorHandle io.Writer) {
-	infoLogger = log.New(infoHandle, "INFO  - ", logPattern)
-	warnLogger = log.New(warnHandle, "WARN  - ", logPattern)
-	errorLogger = log.New(errorHandle, "ERROR - ", logPattern)
 }

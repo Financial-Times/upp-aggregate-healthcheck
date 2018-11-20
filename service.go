@@ -9,10 +9,12 @@ import (
 	"time"
 
 	core "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
+
+	log "github.com/Financial-Times/go-logger"
 )
 
 type k8sHealthcheckService struct {
@@ -68,10 +70,10 @@ func (hs *k8sHealthcheckService) watchAcks() {
 	watcher, err := hs.k8sClient.CoreV1().ConfigMaps(namespace).Watch(v1.ListOptions{LabelSelector: ackMessagesConfigMapLabelSelector})
 
 	if err != nil {
-		errorLogger.Printf("Error while starting to watch acks configMap with label selector %s: %s", ackMessagesConfigMapLabelSelector, err.Error())
+		log.WithError(err).Errorf("Error while starting to watch acks configMap with label selector %s", ackMessagesConfigMapLabelSelector)
 	}
 
-	infoLogger.Print("Started watching acks configMap")
+	log.Info("Started watching acks configMap")
 	resultChannel := watcher.ResultChan()
 	for msg := range resultChannel {
 		switch msg.Type {
@@ -79,26 +81,26 @@ func (hs *k8sHealthcheckService) watchAcks() {
 			k8sConfigMap := msg.Object.(*core.ConfigMap)
 			hs.updateAcksForServices(k8sConfigMap.Data)
 			hs.acks = k8sConfigMap.Data
-			infoLogger.Printf("Acks configMap has been updated: %s", k8sConfigMap.Data)
+			log.Infof("Acks configMap has been updated: %s", k8sConfigMap.Data)
 		case watch.Deleted:
 			hs.acks = make(map[string]string)
-			errorLogger.Print("Acks configMap has been deleted. From now on the acks will no longer be available.")
+			log.Error("Acks configMap has been deleted. From now on the acks will no longer be available.")
 		default:
-			errorLogger.Print("Error received on watch acks configMap. Channel may be full")
+			log.Error("Error received on watch acks configMap. Channel may be full")
 		}
 	}
 
-	infoLogger.Print("Acks configMap watching terminated. Reconnecting...")
+	log.Info("Acks configMap watching terminated. Reconnecting...")
 	hs.watchAcks()
 }
 
 func (hs *k8sHealthcheckService) watchServices() {
 	watcher, err := hs.k8sClient.CoreV1().Services(namespace).Watch(v1.ListOptions{LabelSelector: "hasHealthcheck=true"})
 	if err != nil {
-		errorLogger.Printf("Error while starting to watch services: %s", err.Error())
+		log.WithError(err).Error("Error while starting to watch services")
 	}
 
-	infoLogger.Print("Started watching services")
+	log.Info("Started watching services")
 	resultChannel := watcher.ResultChan()
 	for msg := range resultChannel {
 		switch msg.Type {
@@ -110,19 +112,19 @@ func (hs *k8sHealthcheckService) watchServices() {
 			hs.services.m[service.name] = service
 			hs.services.Unlock()
 
-			infoLogger.Printf("Service with name %s added or updated.", service.name)
+			log.Infof("Service with name %s added or updated.", service.name)
 		case watch.Deleted:
 			k8sService := msg.Object.(*core.Service)
 			hs.services.Lock()
 			delete(hs.services.m, k8sService.Name)
 			hs.services.Unlock()
-			infoLogger.Printf("Service with name %s has been removed", k8sService.Name)
+			log.Infof("Service with name %s has been removed", k8sService.Name)
 		default:
-			errorLogger.Print("Error received on watch services. Channel may be full")
+			log.Error("Error received on watch services. Channel may be full")
 		}
 	}
 
-	infoLogger.Print("Services watching terminated. Reconnecting...")
+	log.Info("Services watching terminated. Reconnecting...")
 	hs.watchServices()
 }
 
@@ -186,7 +188,7 @@ func (hs *k8sHealthcheckService) updateCategory(categoryName string, isEnabled b
 }
 
 func (hs *k8sHealthcheckService) removeAck(serviceName string) error {
-	infoLogger.Printf("Removing ack for service with name %s ", serviceName)
+	log.Infof("Removing ack for service with name %s ", serviceName)
 	k8sAcksConfigMap, err := getAcksConfigMap(hs.k8sClient)
 
 	if err != nil {
@@ -290,7 +292,7 @@ func (hs *k8sHealthcheckService) getServicesMapByNames(serviceNames []string) ma
 		if service, ok := hs.services.m[serviceName]; ok {
 			services[serviceName] = service
 		} else {
-			errorLogger.Printf("Service with name [%s] not found.", serviceName)
+			log.Errorf("Service with name [%s] not found.", serviceName)
 		}
 	}
 
@@ -346,7 +348,7 @@ func populateCategory(k8sCatData map[string]string) category {
 
 	refreshRateSeconds, err := strconv.ParseInt(k8sCatData["category.refreshrate"], 10, 64)
 	if err != nil {
-		infoLogger.Printf("refreshRate is not set for category with name [%s]. Using default refresh rate.", categoryName)
+		log.Infof("refreshRate is not set for category with name [%s]. Using default refresh rate.", categoryName)
 		refreshRateSeconds = defaultRefreshRate
 	}
 
@@ -385,14 +387,14 @@ func populateService(k8sService *core.Service, acks map[string]string) service {
 	if isResilientLabelValue, ok := k8sService.Labels["isResilient"]; ok {
 		isResilient, err = strconv.ParseBool(isResilientLabelValue)
 		if err != nil {
-			warnLogger.Printf("Cannot parse isResilient label value for service with name %s. Problem was: %s", serviceName, err.Error())
+			log.WithError(err).Warnf("Cannot parse isResilient label value for service with name %s.", serviceName)
 		}
 	}
 
 	if isDaemonLabelValue, ok := k8sService.Labels["isDaemon"]; ok {
 		isDaemon, err = strconv.ParseBool(isDaemonLabelValue)
 		if err != nil {
-			warnLogger.Printf("Cannot parse isDaemon label value for service with name %s. Problem was: %s", serviceName, err.Error())
+			log.WithError(err).Warnf("Cannot parse isDaemon label value for service with name %s.", serviceName)
 		}
 	}
 

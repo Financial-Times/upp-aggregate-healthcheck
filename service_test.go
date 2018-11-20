@@ -1,9 +1,9 @@
 package main
 
 import (
+	"github.com/Financial-Times/go-logger"
 	"io/ioutil"
 	"net/http"
-	"os"
 	"strings"
 	"testing"
 
@@ -12,6 +12,10 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
 )
+
+func init() {
+	logger.InitLogger("upp-aggregate-healthcheck", "debug")
+}
 
 type mockTransport struct {
 	responseStatusCode int
@@ -178,7 +182,6 @@ func TestCheckPodHealthFailingChecks(t *testing.T) {
 }
 
 func TestCheckPodHealthWithInvalidUrl(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	service := initializeMockService(nil)
 	err := service.checkPodHealth(pod{name: "test", ip: "%s"}, 8080)
 	assert.NotNil(t, err)

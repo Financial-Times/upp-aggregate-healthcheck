@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	log "github.com/Financial-Times/go-logger"
 )
 
 type httpHandler struct {
@@ -57,7 +58,7 @@ const (
 
 func handleResponseWriterErr(err error) {
 	if err != nil {
-		errorLogger.Printf("Cannot write the http response body. Error was: %s", err.Error())
+		log.WithError(err).Error("Cannot write the http response body.")
 	}
 }
 
@@ -70,11 +71,11 @@ func (h *httpHandler) updateStickyCategory(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	infoLogger.Printf("Updating category [%s] with isEnabled flag value of [%t]", categoryName, isEnabled)
+	log.Infof("Updating category [%s] with isEnabled flag value of [%t]", categoryName, isEnabled)
 	err := h.controller.updateStickyCategory(categoryName, isEnabled)
 
 	if err != nil {
-		errorLogger.Printf("Failed to update category with name %s. Error was: %s", categoryName, err.Error())
+		log.WithError(err).Errorf("Failed to update category with name %s.", categoryName)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err := w.Write([]byte("Failed to enable category."))
 		handleResponseWriterErr(err)
@@ -102,12 +103,12 @@ func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	infoLogger.Printf("Removing ack for service with name %s", serviceName)
+	log.Infof("Removing ack for service with name %s", serviceName)
 	err := h.controller.removeAck(serviceName)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot remove ack for service with name %s. Error was: %s", serviceName, err.Error())
+		log.WithError(err).Errorf("Cannot remove ack for service with name %s.", serviceName)
 		return
 	}
 
@@ -124,12 +125,12 @@ func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	infoLogger.Printf("Acking service with name %s", serviceName)
+	log.Infof("Acking service with name %s", serviceName)
 	err := h.controller.addAck(serviceName, ackMessage)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot add acknowledge for service with name %s. Error was: %s", serviceName, err.Error())
+		log.WithError(err).Errorf("Cannot add acknowledge for service with name %s.", serviceName)
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("%s?cache=false", h.pathPrefix), http.StatusMovedPermanently)
@@ -158,7 +159,7 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 
 	if err := htmlTemplate.Execute(w, addAckForm); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot apply params to html template, error was: %v", err.Error())
+		log.WithError(err).Error("Cannot apply params to html template")
 		_, err := w.Write([]byte("Couldn't render template file for html response"))
 		handleResponseWriterErr(err)
 		return
@@ -180,10 +181,10 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	infoLogger.Printf("Checking services health for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
+	log.Infof("Checking services health for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
 
 	if err != nil {
-		errorLogger.Printf("Cannot build services health result, error was: %v", err.Error())
+		log.WithError(err).Error("Cannot build services health result")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -216,10 +217,10 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 
 	healthResult, err := h.controller.buildPodsHealthResult(serviceName)
 
-	infoLogger.Printf("Checking pods health for service [%s]", serviceName)
+	log.Infof("Checking pods health for service [%s]", serviceName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot perform checks for service with name %s, error was: %v", serviceName, err.Error())
+		log.WithError(err).Errorf("Cannot perform checks for service with name %s", serviceName)
 		_, err := w.Write([]byte(fmt.Sprintf("Cannot perform checks for service with name %s", serviceName)))
 		handleResponseWriterErr(err)
 		return
@@ -248,12 +249,13 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 		return
 	}
 
-	infoLogger.Printf("Retrieving individual pod health check for pod with name %s", podName)
+	log.Infof("Retrieving individual pod health check for pod with name %s", podName)
 	podHealth, contentTypeHeader, err := h.controller.getIndividualPodHealth(podName)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot get individual healthcheck for pod %s, error was: %v", podName, err.Error())
+
+		log.WithError(err).Errorf("Cannot get individual healthcheck for pod %s", podName)
 		_, err := w.Write([]byte(fmt.Sprintf("Cannot get individual healthcheck for pod %s", podName)))
 		handleResponseWriterErr(err)
 		return
@@ -274,7 +276,7 @@ func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	infoLogger.Printf("Handling gtg for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
+	log.Infof("Handling gtg for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
@@ -335,7 +337,7 @@ func buildServicesCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth
 
 	if err := htmlTemplate.Execute(w, aggregateHealthcheckParams); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot apply params to html template, error was: %v", err.Error())
+		log.WithError(err).Error("Cannot apply params to html template")
 		_, err := w.Write([]byte("Couldn't render template file for html response"))
 		handleResponseWriterErr(err)
 		return
@@ -353,7 +355,7 @@ func buildPodsCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth.Hea
 
 	if err := htmlTemplate.Execute(w, aggregateHealthcheckParams); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot apply params to html template, error was: %v", err.Error())
+		log.WithError(err).Error("Cannot apply params to html template")
 		_, err := w.Write([]byte("Couldn't render template file for html response"))
 		handleResponseWriterErr(err)
 		return
@@ -363,7 +365,7 @@ func buildPodsCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth.Hea
 func parseHTMLTemplate(w http.ResponseWriter, templateName string) *template.Template {
 	htmlTemplate, err := template.ParseFiles(templateName)
 	if err != nil {
-		errorLogger.Printf("Could not parse html template with name %s, error was: %v", templateName, err.Error())
+		log.WithError(err).Errorf("Could not parse html template with name %s", templateName)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err := w.Write([]byte("Couldn't open template file for html response"))
 		handleResponseWriterErr(err)

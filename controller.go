@@ -7,6 +7,7 @@ import (
 	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	log "github.com/Financial-Times/go-logger"
 )
 
 type healthCheckController struct {
@@ -151,7 +152,7 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services map[stri
 					severity := c.getSeverityForService(healthCheck.Name, unhealthyService.appPort)
 					healthChecks[i].Severity = severity
 				} else {
-					warnLogger.Printf("Cannot compute severity for service with name %s because it was not found. Using default value.", healthCheck.Name)
+					log.Warnf("Cannot compute severity for service with name %s because it was not found. Using default value.", healthCheck.Name)
 				}
 			}
 			wg.Done()
@@ -192,18 +193,18 @@ func (c *healthCheckController) disableStickyFailingCategories(categories map[st
 			for _, healthCheck := range healthChecks {
 				if healthCheck.Name == serviceName && !healthCheck.Ok {
 					c.stickyCategoriesFailedServices[serviceName]++
-					infoLogger.Printf("Sticky category [%s] is unhealthy -- check %v/%v.", category.name, c.stickyCategoriesFailedServices[serviceName], category.failureThreshold)
+					log.Infof("Sticky category [%s] is unhealthy -- check %v/%v.", category.name, c.stickyCategoriesFailedServices[serviceName], category.failureThreshold)
 
 					if c.isCategoryThresholdExceeded(serviceName, category.failureThreshold) {
-						infoLogger.Printf("Sticky category [%s] is unhealthy, disabling it.", category.name)
+						log.Infof("Sticky category [%s] is unhealthy, disabling it.", category.name)
 						category.isEnabled = false
 						categories[catIndex] = category
 
 						err := c.healthCheckService.updateCategory(category.name, false)
 						if err != nil {
-							errorLogger.Printf("Cannot disable sticky category with name %s. Error was: %s", category.name, err.Error())
+							log.WithError(err).Errorf("Cannot disable sticky category with name %s.", category.name)
 						} else {
-							infoLogger.Printf("Category [%s] disabled", category.name)
+							log.Infof("Category [%s] disabled", category.name)
 							c.stickyCategoriesFailedServices[serviceName] = 0
 						}
 					}

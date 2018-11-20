@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	log "github.com/Financial-Times/go-logger"
 )
 
 type healthcheckResponse struct {
@@ -59,7 +60,7 @@ func (hs *k8sHealthcheckService) checkServiceHealth(service service, deployments
 func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
 	health, err := hs.getHealthChecksForPod(pod, appPort)
 	if err != nil {
-		errorLogger.Printf("Cannot perform healthcheck for pod with name %s: %s", pod.name, err.Error())
+		log.WithError(err).Errorf("Cannot perform healthcheck for pod with name %s", pod.name)
 		return errors.New("cannot perform healthcheck for pod")
 	}
 
@@ -108,7 +109,7 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 	defer func() {
 		err := resp.Body.Close()
 		if err != nil {
-			errorLogger.Printf("Cannot close response body reader. Error was: %v", err.Error())
+			log.WithError(err).Errorf("Cannot close response body reader.")
 		}
 	}()
 
