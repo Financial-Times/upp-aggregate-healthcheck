@@ -174,8 +174,8 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusBadRequest)
 
 		if r.Header.Get("Accept") != "application/json" {
-			_, error := w.Write([]byte("Provided categories are not valid."))
-			handleResponseWriterErr(error)
+			_, err := w.Write([]byte("Provided categories are not valid."))
+			handleResponseWriterErr(err)
 		}
 		return
 	}
@@ -260,8 +260,8 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 	}
 
 	w.Header().Add("Content-Type", contentTypeHeader)
-	_, error := w.Write(podHealth)
-	handleResponseWriterErr(error)
+	_, err = w.Write(podHealth)
+	handleResponseWriterErr(err)
 }
 
 func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
@@ -405,9 +405,9 @@ func buildRefreshWithoutCachePath(categories string, pathPrefix string) string {
 }
 
 func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix string) ([]IndividualHealthcheckParams, int) {
-	var indiviualServiceChecks []IndividualHealthcheckParams
+	indiviualServiceChecks := make([]IndividualHealthcheckParams, len(checks))
 	ackCount := 0
-	for _, individualCheck := range checks {
+	for i, individualCheck := range checks {
 		if individualCheck.Ack != "" {
 			ackCount++
 		}
@@ -424,7 +424,7 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix s
 			Output:                 individualCheck.CheckOutput,
 		}
 
-		indiviualServiceChecks = append(indiviualServiceChecks, hc)
+		indiviualServiceChecks[i] = hc
 	}
 
 	return indiviualServiceChecks, ackCount
@@ -439,9 +439,9 @@ func buildAddOrRemoveAckPath(serviceName string, pathPrefix string, ackMessage s
 }
 
 func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix string) ([]IndividualHealthcheckParams, int) {
-	var indiviualServiceChecks []IndividualHealthcheckParams
+	indiviualServiceChecks := make([]IndividualHealthcheckParams, len(checks))
 	ackCount := 0
-	for _, check := range checks {
+	for i, check := range checks {
 		if check.Ack != "" {
 			ackCount++
 		}
@@ -455,7 +455,7 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 			Output:       check.CheckOutput,
 		}
 
-		indiviualServiceChecks = append(indiviualServiceChecks, hc)
+		indiviualServiceChecks[i] = hc
 	}
 
 	return indiviualServiceChecks, ackCount
@@ -536,9 +536,9 @@ func getCategoriesString(categories map[string]category) string {
 		formattedCategoryNames += categoryName + ","
 	}
 
-	len := len(formattedCategoryNames)
-	if len > 0 {
-		formattedCategoryNames = formattedCategoryNames[:len-1]
+	l := len(formattedCategoryNames)
+	if l > 0 {
+		formattedCategoryNames = formattedCategoryNames[:l-1]
 	}
 
 	return formattedCategoryNames

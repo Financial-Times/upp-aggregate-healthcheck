@@ -123,23 +123,22 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 }
 
 func (c *healthCheckController) runServiceChecksByServiceNames(services map[string]service, categories map[string]category) ([]fthealth.CheckResult, error) {
-	var checks []fthealth.Check
-
 	deployments, err := c.healthCheckService.getDeployments()
 	if err != nil {
 		return nil, err
 	}
 
+	checks := make([]fthealth.Check, 0, len(services))
 	for _, service := range services {
 		check := newServiceHealthCheck(service, deployments, c.healthCheckService)
 		checks = append(checks, check)
 	}
 
 	healthChecks := fthealth.RunCheck(fthealth.HealthCheck{
-		"aggregate-healthcheck",
-		"Aggregate Healthcheck",
-		"Forced check run",
-		checks,
+		SystemCode:  "aggregate-healthcheck",
+		Name:        "Aggregate Healthcheck",
+		Description: "Forced check run",
+		Checks:      checks,
 	}).Checks
 
 	wg := sync.WaitGroup{}

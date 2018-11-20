@@ -47,23 +47,24 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 		return []fthealth.CheckResult{}, fmt.Errorf("Cannot get pods for service %s, error was: %s", serviceName, err.Error())
 	}
 
-	var checks []fthealth.Check
-	for _, pod := range pods {
+	checks := make([]fthealth.Check, len(pods))
+	for i, pod := range pods {
 		check := newPodHealthCheck(pod, serviceToBeChecked, c.healthCheckService)
-		checks = append(checks, check)
+		checks[i] = check
 	}
 
 	healthChecks := fthealth.RunCheck(fthealth.HealthCheck{
-		"aggregate-healthcheck",
-		"Aggregate Healthcheck",
-		"Forced check run",
-		checks,
+		SystemCode:  "aggregate-healthcheck",
+		Name:        "Aggregate Healthcheck",
+		Description: "Forced check run",
+		Checks:      checks,
 	}).Checks
 
 	wg := sync.WaitGroup{}
+	wg.Add(len(healthChecks))
 	for i := range healthChecks {
-		wg.Add(1)
 		go func(i int, serviceToBeChecked service) {
+			defer wg.Done()
 			healthCheck := healthChecks[i]
 			if !healthCheck.Ok {
 				severity := c.getSeverityForPod(healthCheck.Name, serviceToBeChecked.appPort)
@@ -73,7 +74,6 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 			if serviceToBeChecked.ack != "" {
 				healthChecks[i].Ack = serviceToBeChecked.ack
 			}
-			wg.Done()
 		}(i, serviceToBeChecked)
 	}
 	wg.Wait()
@@ -112,9 +112,9 @@ func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, 
 
 	body, err := ioutil.ReadAll(resp.Body)
 	defer func() {
-		error := resp.Body.Close()
-		if error != nil {
-			errorLogger.Printf("Cannot close response body reader. Error was: %v", error.Error())
+		err := resp.Body.Close()
+		if err != nil {
+			errorLogger.Printf("Cannot close response body reader. Error was: %v", err.Error())
 		}
 	}()
 

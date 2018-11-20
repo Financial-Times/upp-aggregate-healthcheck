@@ -80,7 +80,7 @@ func (hs *k8sHealthcheckService) getIndividualPodSeverity(pod pod, appPort int32
 	}
 
 	finalSeverity := uint8(2)
-	checkFailed := bool(false)
+	checkFailed := false
 	for _, check := range health.Checks {
 		if !check.OK {
 			checkFailed = true
@@ -106,9 +106,9 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 	}
 
 	defer func() {
-		error := resp.Body.Close()
-		if error != nil {
-			errorLogger.Printf("Cannot close response body reader. Error was: %v", error.Error())
+		err := resp.Body.Close()
+		if err != nil {
+			errorLogger.Printf("Cannot close response body reader. Error was: %v", err.Error())
 		}
 	}()
 

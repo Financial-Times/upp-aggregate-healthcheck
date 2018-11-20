@@ -128,12 +128,17 @@ func (hs *k8sHealthcheckService) watchServices() {
 
 func initializeHealthCheckService() *k8sHealthcheckService {
 	httpClient := &http.Client{
-		Timeout: 12 * time.Second,
 		Transport: &http.Transport{
-			MaxIdleConnsPerHost: 100,
-			Dial: (&net.Dialer{
+			DialContext: (&net.Dialer{
+				Timeout:   30 * time.Second,
 				KeepAlive: 30 * time.Second,
-			}).Dial,
+				DualStack: true,
+			}).DialContext,
+			MaxIdleConns:          256,
+			MaxIdleConnsPerHost:   16,               // Each service will have their own host
+			IdleConnTimeout:       90 * time.Second, // from DefaultTransport
+			TLSHandshakeTimeout:   10 * time.Second, // from DefaultTransport
+			ExpectContinueTimeout: 1 * time.Second,  // from DefaultTransport
 		},
 	}
 
@@ -299,10 +304,10 @@ func (hs *k8sHealthcheckService) getPodsForService(serviceName string) ([]pod, e
 		return []pod{}, fmt.Errorf("failed to get the list of pods from k8s cluster: %v", err.Error())
 	}
 
-	pods := []pod{}
-	for _, k8sPod := range k8sPods.Items {
+	pods := make([]pod, len(k8sPods.Items))
+	for i, k8sPod := range k8sPods.Items {
 		p := populatePod(k8sPod)
-		pods = append(pods, p)
+		pods[i] = p
 	}
 
 	return pods, nil

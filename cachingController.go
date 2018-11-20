@@ -104,14 +104,13 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 
 	serviceToBeChecked := mService.service
 
-	var checks []fthealth.Check
-	checks = append(checks, newServiceHealthCheck(serviceToBeChecked, deployments, c.healthCheckService))
+	checks := []fthealth.Check{newServiceHealthCheck(serviceToBeChecked, deployments, c.healthCheckService)}
 
 	checkResult := fthealth.RunCheck(fthealth.HealthCheck{
-		serviceToBeChecked.name,
-		serviceToBeChecked.name,
-		fmt.Sprintf("Checks the health of %v", serviceToBeChecked.name),
-		checks,
+		SystemCode:  serviceToBeChecked.name,
+		Name:        serviceToBeChecked.name,
+		Description: fmt.Sprintf("Checks the health of %v", serviceToBeChecked.name),
+		Checks:      checks,
 	}).Checks[0]
 
 	checkResult.Ack = serviceToBeChecked.ack
