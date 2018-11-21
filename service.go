@@ -236,15 +236,27 @@ func (hs *k8sHealthcheckService) addAck(serviceName string, ackMessage string) e
 	return nil
 }
 
-func (hs *k8sHealthcheckService) getDeployments() (map[string]deployment, error) {
+func (hs *k8sHealthcheckService) getDeployments() (deployments map[string]deployment, err error) {
 	deploymentList, err := hs.k8sClient.ExtensionsV1beta1().Deployments(namespace).List(v1.ListOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve deployments: %v", err.Error())
 	}
 
-	deployments := make(map[string]deployment)
+	deployments = make(map[string]deployment)
 	for _, d := range deploymentList.Items {
-		deployments[d.Name] = deployment{
+		deployments[d.GetName()] = deployment{
+			desiredReplicas: *d.Spec.Replicas,
+		}
+	}
+
+	dl, err := hs.k8sClient.AppsV1beta1().StatefulSets(namespace).List(v1.ListOptions{})
+	if err != nil {
+		log.WithError(err).Warn("error getting StatefulSet list")
+		return deployments, nil
+	}
+
+	for _, d := range dl.Items {
+		deployments[d.Spec.ServiceName] = deployment{
 			desiredReplicas: *d.Spec.Replicas,
 		}
 	}

@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	v1beta1app "k8s.io/api/apps/v1beta1"
 	"k8s.io/api/extensions/v1beta1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
@@ -252,4 +253,60 @@ func TestGetDeploymentsReturnsDeployments(t *testing.T) {
 
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(deployments))
+	assertDeploymentsHas(t, deployments, "deployment1")
+	assertDeploymentsHas(t, deployments, "deployment2")
+}
+
+func TestGetDeploymentsReturnsDeploymentsAndStatefulSets(t *testing.T) {
+	service := initializeMockService(nil)
+	var replicas int32 = 1
+	_, err := service.k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(
+		&v1beta1.Deployment{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "deployment1",
+				Namespace: namespace,
+			},
+			Spec: v1beta1.DeploymentSpec{
+				Replicas: &replicas,
+			},
+		})
+	assert.Nil(t, err)
+
+	_, err = service.k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(
+		&v1beta1.Deployment{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "deployment2",
+				Namespace: namespace,
+			},
+			Spec: v1beta1.DeploymentSpec{
+				Replicas: &replicas,
+			},
+		})
+	assert.Nil(t, err)
+
+	_, err = service.k8sClient.AppsV1beta1().StatefulSets(namespace).Create(
+		&v1beta1app.StatefulSet{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "deployment3",
+				Namespace: namespace,
+			},
+			Spec: v1beta1app.StatefulSetSpec{
+				ServiceName: "special-stateful-service",
+				Replicas:    &replicas,
+			},
+		})
+	assert.Nil(t, err)
+
+	deployments, err := service.getDeployments()
+
+	assert.Nil(t, err)
+	assert.Equal(t, 3, len(deployments))
+	assertDeploymentsHas(t, deployments, "deployment1")
+	assertDeploymentsHas(t, deployments, "deployment2")
+	assertDeploymentsHas(t, deployments, "special-stateful-service")
+}
+
+func assertDeploymentsHas(t *testing.T, deployments map[string]deployment, key string) {
+	_, present := deployments[key]
+	assert.True(t, present, "Expected deployments to have %s", key)
 }

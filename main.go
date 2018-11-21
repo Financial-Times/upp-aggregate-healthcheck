@@ -98,7 +98,7 @@ func listen(httpHandler *httpHandler, pathPrefix string, port int) {
 	s.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir("resources/"))))
 
 	srv := &http.Server{
-		Addr: fmt.Sprintf(":%d", port),
+		Addr:         fmt.Sprintf(":%d", port),
 		WriteTimeout: time.Second * 90,
 		ReadTimeout:  time.Second * 90,
 		IdleTimeout:  time.Second * 90,
