@@ -3,16 +3,19 @@ package main
 import (
 	"github.com/Financial-Times/go-logger"
 	"io/ioutil"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/runtime"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	v1beta1app "k8s.io/api/apps/v1beta1"
-	"k8s.io/api/extensions/v1beta1"
+	appsv1 "k8s.io/api/apps/v1"
+	apiv1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/fake"
+	core "k8s.io/client-go/testing"
 )
 
 func init() {
@@ -226,25 +229,25 @@ func TestUpdateAcksForServicesEmptyAckList(t *testing.T) {
 func TestGetDeploymentsReturnsDeployments(t *testing.T) {
 	service := initializeMockService(nil)
 	var replicas int32 = 1
-	_, err := service.k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(
-		&v1beta1.Deployment{
+	_, err := service.k8sClient.AppsV1().Deployments(apiv1.NamespaceDefault).Create(
+		&appsv1.Deployment{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      "deployment1",
-				Namespace: namespace,
+				Namespace: apiv1.NamespaceDefault,
 			},
-			Spec: v1beta1.DeploymentSpec{
+			Spec: appsv1.DeploymentSpec{
 				Replicas: &replicas,
 			},
 		})
 	assert.Nil(t, err)
 
-	_, err = service.k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(
-		&v1beta1.Deployment{
+	_, err = service.k8sClient.AppsV1().Deployments(apiv1.NamespaceDefault).Create(
+		&appsv1.Deployment{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      "deployment2",
-				Namespace: namespace,
+				Namespace: apiv1.NamespaceDefault,
 			},
-			Spec: v1beta1.DeploymentSpec{
+			Spec: appsv1.DeploymentSpec{
 				Replicas: &replicas,
 			},
 		})
@@ -261,37 +264,37 @@ func TestGetDeploymentsReturnsDeployments(t *testing.T) {
 func TestGetDeploymentsReturnsDeploymentsAndStatefulSets(t *testing.T) {
 	service := initializeMockService(nil)
 	var replicas int32 = 1
-	_, err := service.k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(
-		&v1beta1.Deployment{
+	_, err := service.k8sClient.AppsV1().Deployments(apiv1.NamespaceDefault).Create(
+		&appsv1.Deployment{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      "deployment1",
-				Namespace: namespace,
+				Namespace: apiv1.NamespaceDefault,
 			},
-			Spec: v1beta1.DeploymentSpec{
+			Spec: appsv1.DeploymentSpec{
 				Replicas: &replicas,
 			},
 		})
 	assert.Nil(t, err)
 
-	_, err = service.k8sClient.ExtensionsV1beta1().Deployments(namespace).Create(
-		&v1beta1.Deployment{
+	_, err = service.k8sClient.AppsV1().Deployments(apiv1.NamespaceDefault).Create(
+		&appsv1.Deployment{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      "deployment2",
-				Namespace: namespace,
+				Namespace: apiv1.NamespaceDefault,
 			},
-			Spec: v1beta1.DeploymentSpec{
+			Spec: appsv1.DeploymentSpec{
 				Replicas: &replicas,
 			},
 		})
 	assert.Nil(t, err)
 
-	_, err = service.k8sClient.AppsV1beta1().StatefulSets(namespace).Create(
-		&v1beta1app.StatefulSet{
+	_, err = service.k8sClient.AppsV1().StatefulSets(apiv1.NamespaceDefault).Create(
+		&appsv1.StatefulSet{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      "deployment3",
-				Namespace: namespace,
+				Namespace: apiv1.NamespaceDefault,
 			},
-			Spec: v1beta1app.StatefulSetSpec{
+			Spec: appsv1.StatefulSetSpec{
 				ServiceName: "special-stateful-service",
 				Replicas:    &replicas,
 			},
@@ -310,6 +313,33 @@ func TestGetDeploymentsReturnsDeploymentsAndStatefulSets(t *testing.T) {
 func assertDeploymentsHas(t *testing.T, deployments map[string]deployment, key string) {
 	_, present := deployments[key]
 	assert.True(t, present, "Expected deployments to have %s", key)
+}
+
+func TestGetDeploymentsReturnsErrorForDeployments(t *testing.T) {
+	service := initializeMockService(nil)
+	mock := &fake.Clientset{}
+	service.k8sClient = mock
+	mock.AddReactor("list", "deployments", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewNotFound(action.GetResource().GroupResource(), action.GetResource().Resource)
+	})
+	deployments, err := service.getDeployments()
+	assert.Error(t, err)
+	assert.Nil(t, deployments)
+}
+
+func TestGetDeploymentsReturnsErrorForStatefulSets(t *testing.T) {
+	service := initializeMockService(nil)
+	mock := &fake.Clientset{}
+	service.k8sClient = mock
+	mock.AddReactor("list", "deployments", func(action core.Action) (bool, runtime.Object, error) {
+		return true, &appsv1.DeploymentList{}, nil
+	})
+	mock.AddReactor("list", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewNotFound(action.GetResource().GroupResource(), action.GetResource().Resource)
+	})
+	deployments, err := service.getDeployments()
+	assert.Error(t, err)
+	assert.Nil(t, deployments)
 }
 
 func TestGetDefaultClient(t *testing.T) {
