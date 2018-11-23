@@ -169,7 +169,7 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.Request) {
 	categories := parseCategories(r.URL)
 	useCache := useCache(r.URL)
-	healthResult, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache)
+	healthResult, validCategories, err := h.controller.buildServicesHealthResult(categories, useCache)
 
 	if len(validCategories) == 0 && err == nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -269,7 +269,7 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
 	categories := parseCategories(r.URL)
 	useCache := useCache(r.URL)
-	healthResults, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache)
+	healthResults, validCategories, err := h.controller.buildServicesHealthResult(categories, useCache)
 
 	if len(validCategories) == 0 && err == nil {
 		w.WriteHeader(http.StatusBadRequest)

@@ -31,9 +31,9 @@ func init() {
 	logger.InitLogger("upp-aggregate-healthcheck", "debug")
 }
 
-func (m *mockController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, map[string]category, error) {
+func (m *mockController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, error) {
 	if len(providedCategories) == 1 && providedCategories[0] == brokenCategoryName {
-		return fthealth.HealthResult{}, map[string]category{}, map[string]category{}, errors.New("Broken category")
+		return fthealth.HealthResult{}, map[string]category{}, errors.New("Broken category")
 	}
 
 	matchingCategories := map[string]category{}
@@ -75,7 +75,7 @@ func (m *mockController) buildServicesHealthResult(providedCategories []string, 
 		Severity:      1,
 	}
 
-	return health, matchingCategories, map[string]category{}, nil
+	return health, matchingCategories, nil
 }
 
 func (m *mockController) getMeasuredServices() map[string]measuredService {
@@ -86,8 +86,8 @@ func (m *mockController) runServiceChecksByServiceNames(map[string]service, map[
 	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error) {
-	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}, nil
+func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, error) {
+	return []fthealth.CheckResult{}, nil
 }
 
 func (m *mockController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
@@ -122,8 +122,8 @@ func (m *mockController) runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController) collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error) {
-	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}, nil
+func (m *mockController) collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, error) {
+	return []fthealth.CheckResult{}, nil
 }
 
 func (m *mockController) updateCachedHealth(map[string]service, map[string]category) {

@@ -18,12 +18,12 @@ type healthCheckController struct {
 }
 
 type controller interface {
-	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, map[string]category, error)
+	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, error)
 	runServiceChecksByServiceNames(map[string]service, map[string]category) ([]fthealth.CheckResult, error)
-	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error)
+	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, error)
 	buildPodsHealthResult(string) (fthealth.HealthResult, error)
 	runPodChecksFor(string) ([]fthealth.CheckResult, error)
-	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error)
+	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, error)
 	updateCachedHealth(map[string]service, map[string]category)
 	scheduleCheck(measuredService, time.Duration, *time.Timer)
 	getIndividualPodHealth(string) ([]byte, string, error)
@@ -85,24 +85,24 @@ func (c *healthCheckController) addAck(serviceName string, ackMessage string) er
 	return nil
 }
 
-func (c *healthCheckController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, map[string]category, error) {
+func (c *healthCheckController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, error) {
 	var checkResults []fthealth.CheckResult
 	desc := "Health of the whole cluster of the moment served without cache."
 	availableCategories, err := c.healthCheckService.getCategories()
 	if err != nil {
-		return fthealth.HealthResult{}, nil, nil, fmt.Errorf("cannot build health check result for services: %v", err.Error())
+		return fthealth.HealthResult{}, nil, fmt.Errorf("cannot build health check result for services: %v", err.Error())
 	}
 
 	matchingCategories := getMatchingCategories(providedCategories, availableCategories)
 
 	if useCache {
 		desc = "Health of the whole cluster served from cache."
-		checkResults, _, err = c.collectChecksFromCachesFor(matchingCategories)
+		checkResults, err = c.collectChecksFromCachesFor(matchingCategories)
 	} else {
-		checkResults, _, err = c.runServiceChecksFor(matchingCategories)
+		checkResults, err = c.runServiceChecksFor(matchingCategories)
 	}
 	if err != nil {
-		return fthealth.HealthResult{}, nil, nil, fmt.Errorf("cannot build health check result for services: %v", err.Error())
+		return fthealth.HealthResult{}, nil, fmt.Errorf("cannot build health check result for services: %v", err.Error())
 	}
 
 	c.disableStickyFailingCategories(matchingCategories, checkResults)
@@ -120,7 +120,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 
 	sort.Sort(byNameComparator(health.Checks))
 
-	return health, matchingCategories, nil, nil
+	return health, matchingCategories, nil
 }
 
 func (c *healthCheckController) runServiceChecksByServiceNames(services map[string]service, categories map[string]category) ([]fthealth.CheckResult, error) {
@@ -171,16 +171,15 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services map[stri
 	return healthChecks, nil
 }
 
-func (c *healthCheckController) runServiceChecksFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error) {
-	categorisedResults := make(map[string][]fthealth.CheckResult)
+func (c *healthCheckController) runServiceChecksFor(categories map[string]category) (healthChecks []fthealth.CheckResult, err error) {
 	serviceNames := getServiceNamesFromCategories(categories)
 	services := c.healthCheckService.getServicesMapByNames(serviceNames)
-	healthChecks, err := c.runServiceChecksByServiceNames(services, categories)
+	healthChecks, err = c.runServiceChecksByServiceNames(services, categories)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
-	return healthChecks, categorisedResults, nil
+	return healthChecks, err
 }
 
 func (c *healthCheckController) disableStickyFailingCategories(categories map[string]category, healthChecks []fthealth.CheckResult) {

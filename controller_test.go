@@ -22,6 +22,7 @@ const (
 	podWithCriticalSeverity = "podWithCriticalSeverity"
 	failingPod              = "failingPod"
 	podWithBrokenService    = "podWithBrokenService"
+	podWithBadAddress       = "podWithBadAddress"
 	nonExistingCategoryName = "nonExistingCategoryName"
 	validCat                = "validCat"
 	validService            = "validService"
@@ -46,7 +47,9 @@ var defaultPods = []pod{
 }
 
 type MockService struct {
-	httpClient *http.Client
+	httpClient          *http.Client
+	getServiceByNameErr error
+	getDeploymentsErr   error
 }
 
 func (m *MockService) getCategories() (map[string]category, error) {
@@ -79,7 +82,7 @@ func (m *MockService) getDeployments() (map[string]deployment, error) {
 		"test-service-name-2": {
 			desiredReplicas: 2,
 		},
-	}, nil
+	}, m.getDeploymentsErr
 }
 
 func (m *MockService) isServicePresent(serviceName string) bool {
@@ -94,7 +97,7 @@ func (m *MockService) getServiceByName(serviceName string) (service, error) {
 		name:        "test-service-name",
 		ack:         "test ack",
 		isResilient: strings.HasPrefix(serviceName, "resilient"),
-	}, nil
+	}, m.getServiceByNameErr
 }
 
 func (m *MockService) getServicesMapByNames(serviceNames []string) map[string]service {
@@ -158,6 +161,13 @@ func (m *MockService) getPodByName(podName string) (pod, error) {
 				serviceName: nonExistingServiceName,
 			}, nil
 		}
+	case podWithBadAddress:
+		{
+			return pod{
+				name: "test-pod-name-8425234-9hdfg ",
+				ip:   "[fe80::1%en0]",
+			}, nil
+		}
 	default:
 		return pod{
 			name: "test-pod-name-8425234-9hdfg ",
@@ -212,9 +222,9 @@ func (m *MockService) getHTTPClient() *http.Client {
 	return m.httpClient
 }
 
-func initializeMockController(env string, httpClient *http.Client) *healthCheckController {
+func initializeMockController(env string, httpClient *http.Client) (hcc *healthCheckController, service *MockService) {
 	measuredServices := make(map[string]measuredService)
-	service := new(MockService)
+	service = new(MockService)
 	service.httpClient = httpClient
 	stickyCategoriesFailedServices := make(map[string]int)
 
@@ -223,121 +233,142 @@ func initializeMockController(env string, httpClient *http.Client) *healthCheckC
 		environment:                    env,
 		measuredServices:               measuredServices,
 		stickyCategoriesFailedServices: stickyCategoriesFailedServices,
-	}
+	}, service
 }
 
 func TestAddAckNilError(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	err := controller.addAck("abc", "abc")
 	assert.Nil(t, err)
 }
 
 func TestAddAckInvalidServiceName(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	err := controller.addAck(nonExistingServiceName, "abc")
 	assert.NotNil(t, err)
 }
 
 func TestAddAckInvalidServiceNameWillAckingError(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	err := controller.addAck(serviceNameForAckErr, "abc")
 	assert.NotNil(t, err)
 }
 
 func TestRemoveAckNonExistingServiceErr(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	err := controller.removeAck(nonExistingServiceName)
 	assert.NotNil(t, err)
 }
 
 func TestRemoveAckServiceErr(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	err := controller.removeAck(serviceNameForAckErr)
 	assert.NotNil(t, err)
 }
 
 func TestRemoveAckHappyFlow(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	err := controller.removeAck(validService)
 	assert.Nil(t, err)
 }
 
 func TestBuildServicesHealthResult(t *testing.T) {
-	controller := initializeMockController("test", nil)
-	_, _, _, err := controller.buildServicesHealthResult([]string{"abc"}, false)
+	controller, _ := initializeMockController("test", nil)
+	_, _, err := controller.buildServicesHealthResult([]string{"abc"}, false)
 	assert.Nil(t, err)
 }
 
+func TestBuildServicesHealthResult_RunServiceChecksForFails(t *testing.T) {
+	controller, m := initializeMockController("test", nil)
+	m.getDeploymentsErr = errors.New("someerror")
+	_, _, err := controller.buildServicesHealthResult([]string{"abc"}, false)
+	assert.Error(t, err)
+}
+
 func TestBuildServicesHealthResultFromCache(t *testing.T) {
-	controller := initializeMockController("test", nil)
-	_, _, _, err := controller.buildServicesHealthResult([]string{"abc"}, true)
+	controller, _ := initializeMockController("test", nil)
+	_, _, err := controller.buildServicesHealthResult([]string{"abc"}, true)
 	assert.Nil(t, err)
+}
+
+func TestGetIndividualPodHealthHappyFlowWithGetServiceByNameErr(t *testing.T) {
+	httpClient := initializeMockHTTPClient(http.StatusOK, "")
+	controller, m := initializeMockController("test", httpClient)
+	m.getServiceByNameErr = errors.New("error is ignored")
+	_, _, err := controller.getIndividualPodHealth("testPod")
+	assert.NoError(t, err)
 }
 
 func TestGetIndividualPodHealthHappyFlow(t *testing.T) {
 	httpClient := initializeMockHTTPClient(http.StatusOK, "")
-	controller := initializeMockController("test", httpClient)
+	controller, _ := initializeMockController("test", httpClient)
 	_, _, err := controller.getIndividualPodHealth("testPod")
 	assert.Nil(t, err)
 }
 
 func TestGetIndividualPodHealthNonExistingPod(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	_, _, err := controller.getIndividualPodHealth(nonExistingPodName)
+	assert.NotNil(t, err)
+}
+
+func TestGetIndividualPodHealthBadUrl(t *testing.T) {
+	controller, _ := initializeMockController("test", nil)
+	_, _, err := controller.getIndividualPodHealth(podWithBadAddress)
 	assert.NotNil(t, err)
 }
 
 func TestGetIndividualPodHealthFailingService(t *testing.T) {
 	httpClient := initializeMockHTTPClient(http.StatusOK, "")
-	controller := initializeMockController("test", httpClient)
+	controller, _ := initializeMockController("test", httpClient)
 	_, _, err := controller.getIndividualPodHealth(podWithBrokenService)
 	assert.Nil(t, err)
 }
 
 func TestBuildPodsHealthResultHappyFlow(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	_, err := controller.buildPodsHealthResult("testPod")
 	assert.Nil(t, err)
 }
 
 func TestBuildPodsHealthResultInvalidPodName(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	_, err := controller.buildPodsHealthResult(invalidNameForService)
 	assert.NotNil(t, err)
 }
 
 func TestBuildPodsHealthResultInvalidServiceName(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	_, err := controller.buildPodsHealthResult(nonExistingServiceName)
 	assert.NotNil(t, err)
 }
 
 func TestGetSeverityForPodInvalidPodName(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	severity := controller.getSeverityForPod(nonExistingPodName, 8080)
 	assert.Equal(t, defaultSeverity, severity)
 }
 
 func TestComputeSeverityByPods(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	severity := controller.computeSeverityByPods([]pod{{name: nonExistingPodName}}, 8080)
 	assert.Equal(t, defaultSeverity, severity)
 }
 
 func TestComputeSeverityForPodWithCriticalSeverity(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	severity := controller.computeSeverityByPods([]pod{{name: failingPod}, {name: podWithCriticalSeverity}}, 8080)
 	assert.Equal(t, uint8(1), severity)
 }
 
 func TestGetSeverityForServiceInvalidServiceName(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	severity := controller.getSeverityForService(invalidNameForService, 8080)
 	assert.Equal(t, defaultSeverity, severity)
 }
 
 func TestGetSeverityForResilientService(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 
 	var testCases = []struct {
 		serviceName      string
@@ -383,19 +414,19 @@ func TestGetSeverityForResilientService(t *testing.T) {
 }
 
 func TestGetSeverityForNonResilientService(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	severity := controller.getSeverityForService(invalidNameForService, 8080)
 	assert.Equal(t, defaultSeverity, severity)
 }
 
 func TestUpdateStickyCategoryInvalidCategoryName(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	err := controller.updateStickyCategory(nonExistingCategoryName, false)
 	assert.NotNil(t, err)
 }
 
 func TestUpdateStickyCategoryHappyFlow(t *testing.T) {
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	err := controller.updateStickyCategory(validCat, false)
 	assert.Nil(t, err)
 }
@@ -445,8 +476,8 @@ func TestRunServiceChecksForStickyCategory(t *testing.T) {
 		isEnabled: true,
 	}
 
-	controller := initializeMockController("test", nil)
-	hc, categories, _, _ := controller.buildServicesHealthResult([]string{"test", "publishing"}, false)
+	controller, _ := initializeMockController("test", nil)
+	hc, categories, _ := controller.buildServicesHealthResult([]string{"test", "publishing"}, false)
 
 	assert.NotNil(t, hc)
 	assert.False(t, categories["test"].isEnabled)
@@ -469,8 +500,8 @@ func TestRunServiceChecksForStickyCategoryUpdateError(t *testing.T) {
 		isEnabled: true,
 	}
 
-	controller := initializeMockController("test", nil)
-	hc, categories, _, _ := controller.buildServicesHealthResult([]string{"test", "publishing", nonExistingCategoryName}, true)
+	controller, _ := initializeMockController("test", nil)
+	hc, categories, _ := controller.buildServicesHealthResult([]string{"test", "publishing", nonExistingCategoryName}, true)
 
 	assert.NotNil(t, hc)
 	assert.False(t, hc.Ok)
@@ -502,7 +533,7 @@ func TestDisableStickyFailingCategoriesThresholdNotReached(t *testing.T) {
 		},
 	}
 
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	controller.disableStickyFailingCategories(categories, healthchecks)
 	assert.True(t, categories["test"].isEnabled)
 }
@@ -540,7 +571,7 @@ func TestDisableStickyFailingCategoriesThresholdReached(t *testing.T) {
 		},
 	}
 
-	controller := initializeMockController("test", nil)
+	controller, _ := initializeMockController("test", nil)
 	controller.disableStickyFailingCategories(categories, healthchecks)
 	controller.disableStickyFailingCategories(categories, healthchecks)
 	controller.disableStickyFailingCategories(categories, healthchecks)

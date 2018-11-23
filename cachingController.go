@@ -27,9 +27,8 @@ func newMeasuredService(service service) measuredService {
 	}
 }
 
-func (c *healthCheckController) collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error) {
+func (c *healthCheckController) collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, error) {
 	var checkResults []fthealth.CheckResult
-	categorisedResults := make(map[string][]fthealth.CheckResult)
 	serviceNames := getServiceNamesFromCategories(categories)
 	services := c.healthCheckService.getServicesMapByNames(serviceNames)
 	servicesThatAreNotInCache := make(map[string]service)
@@ -45,12 +44,12 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 	if len(servicesThatAreNotInCache) != 0 {
 		notCachedChecks, err := c.runServiceChecksByServiceNames(servicesThatAreNotInCache, categories)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		checkResults = append(checkResults, notCachedChecks...)
 	}
 
-	return checkResults, categorisedResults, nil
+	return checkResults, nil
 }
 
 func (c *healthCheckController) updateCachedHealth(services map[string]service, categories map[string]category) {

@@ -125,5 +125,5 @@ func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, 
 
 	contentTypeResponseHeader := resp.Header.Get("Content-Type")
 
-	return body, contentTypeResponseHeader, nil
+	return body, contentTypeResponseHeader, err
 }
