@@ -12,7 +12,11 @@ func newCachedHealth() *cachedHealth {
 	a := make(chan fthealth.CheckResult)
 	b := make(chan fthealth.CheckResult)
 	terminate := make(chan bool)
-	return &cachedHealth{a, b, terminate}
+	return &cachedHealth{
+		toWriteToCache:  a,
+		toReadFromCache: b,
+		terminate:       terminate,
+	}
 }
 
 func (c *cachedHealth) maintainLatest() {

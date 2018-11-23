@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	log "github.com/Financial-Times/go-logger"
 )
 
 type httpHandler struct {
@@ -57,7 +58,7 @@ const (
 
 func handleResponseWriterErr(err error) {
 	if err != nil {
-		errorLogger.Printf("Cannot write the http response body. Error was: %s", err.Error())
+		log.WithError(err).Error("Cannot write the http response body.")
 	}
 }
 
@@ -70,11 +71,11 @@ func (h *httpHandler) updateStickyCategory(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	infoLogger.Printf("Updating category [%s] with isEnabled flag value of [%t]", categoryName, isEnabled)
+	log.Infof("Updating category [%s] with isEnabled flag value of [%t]", categoryName, isEnabled)
 	err := h.controller.updateStickyCategory(categoryName, isEnabled)
 
 	if err != nil {
-		errorLogger.Printf("Failed to update category with name %s. Error was: %s", categoryName, err.Error())
+		log.WithError(err).Errorf("Failed to update category with name %s.", categoryName)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err := w.Write([]byte("Failed to enable category."))
 		handleResponseWriterErr(err)
@@ -102,12 +103,12 @@ func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	infoLogger.Printf("Removing ack for service with name %s", serviceName)
+	log.Infof("Removing ack for service with name %s", serviceName)
 	err := h.controller.removeAck(serviceName)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot remove ack for service with name %s. Error was: %s", serviceName, err.Error())
+		log.WithError(err).Errorf("Cannot remove ack for service with name %s.", serviceName)
 		return
 	}
 
@@ -124,12 +125,12 @@ func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	infoLogger.Printf("Acking service with name %s", serviceName)
+	log.Infof("Acking service with name %s", serviceName)
 	err := h.controller.addAck(serviceName, ackMessage)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot add acknowledge for service with name %s. Error was: %s", serviceName, err.Error())
+		log.WithError(err).Errorf("Cannot add acknowledge for service with name %s.", serviceName)
 	}
 
 	http.Redirect(w, r, fmt.Sprintf("%s?cache=false", h.pathPrefix), http.StatusMovedPermanently)
@@ -158,7 +159,7 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 
 	if err := htmlTemplate.Execute(w, addAckForm); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot apply params to html template, error was: %v", err.Error())
+		log.WithError(err).Error("Cannot apply params to html template")
 		_, err := w.Write([]byte("Couldn't render template file for html response"))
 		handleResponseWriterErr(err)
 		return
@@ -168,22 +169,22 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.Request) {
 	categories := parseCategories(r.URL)
 	useCache := useCache(r.URL)
-	healthResult, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache)
+	healthResult, validCategories, err := h.controller.buildServicesHealthResult(categories, useCache)
 
 	if len(validCategories) == 0 && err == nil {
 		w.WriteHeader(http.StatusBadRequest)
 
 		if r.Header.Get("Accept") != "application/json" {
-			_, error := w.Write([]byte("Provided categories are not valid."))
-			handleResponseWriterErr(error)
+			_, err := w.Write([]byte("Provided categories are not valid."))
+			handleResponseWriterErr(err)
 		}
 		return
 	}
 
-	infoLogger.Printf("Checking services health for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
+	log.Infof("Checking services health for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
 
 	if err != nil {
-		errorLogger.Printf("Cannot build services health result, error was: %v", err.Error())
+		log.WithError(err).Error("Cannot build services health result")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
@@ -216,10 +217,10 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 
 	healthResult, err := h.controller.buildPodsHealthResult(serviceName)
 
-	infoLogger.Printf("Checking pods health for service [%s]", serviceName)
+	log.Infof("Checking pods health for service [%s]", serviceName)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot perform checks for service with name %s, error was: %v", serviceName, err.Error())
+		log.WithError(err).Errorf("Cannot perform checks for service with name %s", serviceName)
 		_, err := w.Write([]byte(fmt.Sprintf("Cannot perform checks for service with name %s", serviceName)))
 		handleResponseWriterErr(err)
 		return
@@ -248,33 +249,34 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 		return
 	}
 
-	infoLogger.Printf("Retrieving individual pod health check for pod with name %s", podName)
+	log.Infof("Retrieving individual pod health check for pod with name %s", podName)
 	podHealth, contentTypeHeader, err := h.controller.getIndividualPodHealth(podName)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot get individual healthcheck for pod %s, error was: %v", podName, err.Error())
+
+		log.WithError(err).Errorf("Cannot get individual healthcheck for pod %s", podName)
 		_, err := w.Write([]byte(fmt.Sprintf("Cannot get individual healthcheck for pod %s", podName)))
 		handleResponseWriterErr(err)
 		return
 	}
 
 	w.Header().Add("Content-Type", contentTypeHeader)
-	_, error := w.Write(podHealth)
-	handleResponseWriterErr(error)
+	_, err = w.Write(podHealth)
+	handleResponseWriterErr(err)
 }
 
 func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
 	categories := parseCategories(r.URL)
 	useCache := useCache(r.URL)
-	healthResults, validCategories, _, err := h.controller.buildServicesHealthResult(categories, useCache)
+	healthResults, validCategories, err := h.controller.buildServicesHealthResult(categories, useCache)
 
 	if len(validCategories) == 0 && err == nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
 
-	infoLogger.Printf("Handling gtg for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
+	log.Infof("Handling gtg for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
@@ -335,7 +337,7 @@ func buildServicesCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth
 
 	if err := htmlTemplate.Execute(w, aggregateHealthcheckParams); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot apply params to html template, error was: %v", err.Error())
+		log.WithError(err).Error("Cannot apply params to html template")
 		_, err := w.Write([]byte("Couldn't render template file for html response"))
 		handleResponseWriterErr(err)
 		return
@@ -353,7 +355,7 @@ func buildPodsCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth.Hea
 
 	if err := htmlTemplate.Execute(w, aggregateHealthcheckParams); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		errorLogger.Printf("Cannot apply params to html template, error was: %v", err.Error())
+		log.WithError(err).Error("Cannot apply params to html template")
 		_, err := w.Write([]byte("Couldn't render template file for html response"))
 		handleResponseWriterErr(err)
 		return
@@ -363,7 +365,7 @@ func buildPodsCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth.Hea
 func parseHTMLTemplate(w http.ResponseWriter, templateName string) *template.Template {
 	htmlTemplate, err := template.ParseFiles(templateName)
 	if err != nil {
-		errorLogger.Printf("Could not parse html template with name %s, error was: %v", templateName, err.Error())
+		log.WithError(err).Errorf("Could not parse html template with name %s", templateName)
 		w.WriteHeader(http.StatusInternalServerError)
 		_, err := w.Write([]byte("Couldn't open template file for html response"))
 		handleResponseWriterErr(err)
@@ -405,9 +407,9 @@ func buildRefreshWithoutCachePath(categories string, pathPrefix string) string {
 }
 
 func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix string) ([]IndividualHealthcheckParams, int) {
-	var indiviualServiceChecks []IndividualHealthcheckParams
+	indiviualServiceChecks := make([]IndividualHealthcheckParams, len(checks))
 	ackCount := 0
-	for _, individualCheck := range checks {
+	for i, individualCheck := range checks {
 		if individualCheck.Ack != "" {
 			ackCount++
 		}
@@ -424,7 +426,7 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix s
 			Output:                 individualCheck.CheckOutput,
 		}
 
-		indiviualServiceChecks = append(indiviualServiceChecks, hc)
+		indiviualServiceChecks[i] = hc
 	}
 
 	return indiviualServiceChecks, ackCount
@@ -439,9 +441,9 @@ func buildAddOrRemoveAckPath(serviceName string, pathPrefix string, ackMessage s
 }
 
 func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix string) ([]IndividualHealthcheckParams, int) {
-	var indiviualServiceChecks []IndividualHealthcheckParams
+	indiviualServiceChecks := make([]IndividualHealthcheckParams, len(checks))
 	ackCount := 0
-	for _, check := range checks {
+	for i, check := range checks {
 		if check.Ack != "" {
 			ackCount++
 		}
@@ -455,7 +457,7 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 			Output:       check.CheckOutput,
 		}
 
-		indiviualServiceChecks = append(indiviualServiceChecks, hc)
+		indiviualServiceChecks[i] = hc
 	}
 
 	return indiviualServiceChecks, ackCount
@@ -536,9 +538,9 @@ func getCategoriesString(categories map[string]category) string {
 		formattedCategoryNames += categoryName + ","
 	}
 
-	len := len(formattedCategoryNames)
-	if len > 0 {
-		formattedCategoryNames = formattedCategoryNames[:len-1]
+	l := len(formattedCategoryNames)
+	if l > 0 {
+		formattedCategoryNames = formattedCategoryNames[:l-1]
 	}
 
 	return formattedCategoryNames

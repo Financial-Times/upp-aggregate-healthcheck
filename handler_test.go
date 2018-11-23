@@ -3,9 +3,9 @@ package main
 import (
 	"errors"
 	"fmt"
+	"github.com/Financial-Times/go-logger"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 	"time"
 
@@ -27,9 +27,13 @@ const (
 	brokenPodName        = "brokenPod"
 )
 
-func (m *mockController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, map[string]category, error) {
+func init() {
+	logger.InitLogger("upp-aggregate-healthcheck", "debug")
+}
+
+func (m *mockController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, error) {
 	if len(providedCategories) == 1 && providedCategories[0] == brokenCategoryName {
-		return fthealth.HealthResult{}, map[string]category{}, map[string]category{}, errors.New("Broken category")
+		return fthealth.HealthResult{}, map[string]category{}, errors.New("Broken category")
 	}
 
 	matchingCategories := map[string]category{}
@@ -71,7 +75,7 @@ func (m *mockController) buildServicesHealthResult(providedCategories []string, 
 		Severity:      1,
 	}
 
-	return health, matchingCategories, map[string]category{}, nil
+	return health, matchingCategories, nil
 }
 
 func (m *mockController) getMeasuredServices() map[string]measuredService {
@@ -82,8 +86,8 @@ func (m *mockController) runServiceChecksByServiceNames(map[string]service, map[
 	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error) {
-	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}, nil
+func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, error) {
+	return []fthealth.CheckResult{}, nil
 }
 
 func (m *mockController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
@@ -118,8 +122,8 @@ func (m *mockController) runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController) collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error) {
-	return []fthealth.CheckResult{}, map[string][]fthealth.CheckResult{}, nil
+func (m *mockController) collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, error) {
+	return []fthealth.CheckResult{}, nil
 }
 
 func (m *mockController) updateCachedHealth(map[string]service, map[string]category) {
@@ -194,7 +198,6 @@ func TestRemoveAckWithEmptyServiceName(t *testing.T) {
 }
 
 func TestRemoveAckWithNonEmptyServiceName(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "/rem-ack?service-name=testservice", nil)
 	if err != nil {
@@ -207,7 +210,6 @@ func TestRemoveAckWithNonEmptyServiceName(t *testing.T) {
 }
 
 func TestRemoveAckWithInternalError(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("/rem-ack?service-name=%s", brokenServiceName), nil)
 	if err != nil {
@@ -220,7 +222,6 @@ func TestRemoveAckWithInternalError(t *testing.T) {
 }
 
 func TestAddAckWithEmptyServiceName(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "", nil)
 	if err != nil {
@@ -233,7 +234,6 @@ func TestAddAckWithEmptyServiceName(t *testing.T) {
 }
 
 func TestAddAckWithNonEmptyServiceName(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "/add-ack?service-name=testservice", nil)
 	if err != nil {
@@ -246,7 +246,6 @@ func TestAddAckWithNonEmptyServiceName(t *testing.T) {
 }
 
 func TestAddAckWithBrokenService(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("/add-ack?service-name=%s", brokenServiceName), nil)
 	if err != nil {
@@ -259,7 +258,6 @@ func TestAddAckWithBrokenService(t *testing.T) {
 }
 
 func TestAddAckFromWithNonEmptyServiceName(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "/add-ack?service-name=testservice", nil)
 	if err != nil {
@@ -272,7 +270,6 @@ func TestAddAckFromWithNonEmptyServiceName(t *testing.T) {
 }
 
 func TestAddAckFromWithEmptyServiceName(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "", nil)
 	if err != nil {
@@ -309,7 +306,6 @@ func TestDisableCategoryWithIntrnalError(t *testing.T) {
 }
 
 func TestDisableCategoryWithValidCategoryName(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "disable-category?category-name=testcat", nil)
 	if err != nil {
@@ -322,7 +318,6 @@ func TestDisableCategoryWithValidCategoryName(t *testing.T) {
 }
 
 func TestEnableCategoryWithValidCategoryName(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "enable-category?category-name=testcat", nil)
 	if err != nil {
@@ -335,7 +330,6 @@ func TestEnableCategoryWithValidCategoryName(t *testing.T) {
 }
 
 func TestGoodToGoInvalidCategory(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("health?categories=%s", invalidCategoryName), nil)
 	if err != nil {
@@ -348,7 +342,6 @@ func TestGoodToGoInvalidCategory(t *testing.T) {
 }
 
 func TestGoodToGoDefaultCategory(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "health", nil)
 	if err != nil {
@@ -361,7 +354,6 @@ func TestGoodToGoDefaultCategory(t *testing.T) {
 }
 
 func TestGoodToGoDisabledCategory(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("health?categories=%s", disabledCategoryName), nil)
 	if err != nil {
@@ -374,7 +366,6 @@ func TestGoodToGoDisabledCategory(t *testing.T) {
 }
 
 func TestGoodToGoBrokenCategory(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("health?categories=%s", brokenCategoryName), nil)
 	if err != nil {
@@ -387,7 +378,6 @@ func TestGoodToGoBrokenCategory(t *testing.T) {
 }
 
 func TestGoodToGoWithFailingCheck(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("health?categories=%s", categoryWithChecks), nil)
 	if err != nil {
@@ -400,7 +390,6 @@ func TestGoodToGoWithFailingCheck(t *testing.T) {
 }
 
 func TestIndividualPodCheckEmptyPodName(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "", nil)
 	if err != nil {
@@ -413,7 +402,6 @@ func TestIndividualPodCheckEmptyPodName(t *testing.T) {
 }
 
 func TestIndividualPodCheckValidPodName(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("pod?pod-name=%s", validPodName), nil)
 	if err != nil {
@@ -426,7 +414,6 @@ func TestIndividualPodCheckValidPodName(t *testing.T) {
 }
 
 func TestIndividualPodCheckBrokenPod(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("pod?pod-name=%s", brokenPodName), nil)
 	if err != nil {
@@ -439,7 +426,6 @@ func TestIndividualPodCheckBrokenPod(t *testing.T) {
 }
 
 func TestServiceHealthCheckInvalidCategory(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("health?categories=%s", invalidCategoryName), nil)
 	if err != nil {
@@ -452,7 +438,6 @@ func TestServiceHealthCheckInvalidCategory(t *testing.T) {
 }
 
 func TestServiceHealthCheckInternalError(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("health?categories=%s", brokenCategoryName), nil)
 	if err != nil {
@@ -465,7 +450,6 @@ func TestServiceHealthCheckInternalError(t *testing.T) {
 }
 
 func TestServiceHealthCheckDefaultCategory(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "", nil)
 	req.Header.Add("Accept", "application/json")
@@ -479,7 +463,6 @@ func TestServiceHealthCheckDefaultCategory(t *testing.T) {
 }
 
 func TestServiceHealthCheckDefaultCategoryHtmlResponse(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "", nil)
 	if err != nil {
@@ -492,7 +475,6 @@ func TestServiceHealthCheckDefaultCategoryHtmlResponse(t *testing.T) {
 }
 
 func TestPodsHealthCheckEmptyServiceName(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", "", nil)
 	if err != nil {
@@ -505,7 +487,6 @@ func TestPodsHealthCheckEmptyServiceName(t *testing.T) {
 }
 
 func TestPodsHealthCheckBrokenService(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("pods-health?service-name=%s", brokenServiceName), nil)
 	if err != nil {
@@ -518,7 +499,6 @@ func TestPodsHealthCheckBrokenService(t *testing.T) {
 }
 
 func TestPodsHealthCheckHappyFlow(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("pods-health?service-name=%s", validServiceName), nil)
 	if err != nil {
@@ -531,7 +511,6 @@ func TestPodsHealthCheckHappyFlow(t *testing.T) {
 }
 
 func TestPodsHealthCheckHappyFlowJson(t *testing.T) {
-	initLogs(os.Stdout, os.Stdout, os.Stderr)
 	aggHealthCheckcHandler := initializeTestHandler()
 	req, err := http.NewRequest("GET", fmt.Sprintf("pods-health?service-name=%s", validServiceName), nil)
 	req.Header.Add("Accept", "application/json")

@@ -1,0 +1,10 @@
+vendor/
+*.md
+!README*.md
+*.tpl
+*.yaml
+*.yml
+*.json
+.DS_Store
+.envrc
+Dockerfile

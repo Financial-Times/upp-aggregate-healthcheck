@@ -7,6 +7,7 @@ import (
 	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	log "github.com/Financial-Times/go-logger"
 )
 
 const (
@@ -26,9 +27,8 @@ func newMeasuredService(service service) measuredService {
 	}
 }
 
-func (c *healthCheckController) collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, map[string][]fthealth.CheckResult, error) {
+func (c *healthCheckController) collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, error) {
 	var checkResults []fthealth.CheckResult
-	categorisedResults := make(map[string][]fthealth.CheckResult)
 	serviceNames := getServiceNamesFromCategories(categories)
 	services := c.healthCheckService.getServicesMapByNames(serviceNames)
 	servicesThatAreNotInCache := make(map[string]service)
@@ -44,12 +44,12 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 	if len(servicesThatAreNotInCache) != 0 {
 		notCachedChecks, err := c.runServiceChecksByServiceNames(servicesThatAreNotInCache, categories)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
 		checkResults = append(checkResults, notCachedChecks...)
 	}
 
-	return checkResults, categorisedResults, nil
+	return checkResults, nil
 }
 
 func (c *healthCheckController) updateCachedHealth(services map[string]service, categories map[string]category) {
@@ -57,7 +57,7 @@ func (c *healthCheckController) updateCachedHealth(services map[string]service, 
 	refreshPeriod := findShortestPeriod(categories)
 	categories, err := c.healthCheckService.getCategories()
 	if err != nil {
-		warnLogger.Printf("Cannot read categories: [%v]\n Using minimum refresh period for services", err)
+		log.WithError(err).Warn("Cannot read categories. Using minimum refresh period for services")
 	}
 	for _, service := range services {
 		if mService, ok := c.measuredServices[service.name]; !ok || !reflect.DeepEqual(service, c.measuredServices[service.name].service) {
@@ -74,7 +74,7 @@ func (c *healthCheckController) updateCachedHealth(services map[string]service, 
 					}
 				}
 			}
-			infoLogger.Printf("Scheduling check for service [%s] with refresh period [%v].\n", service.name, refreshPeriod)
+			log.Infof("Scheduling check for service [%s] with refresh period [%v].\n", service.name, refreshPeriod)
 			go c.scheduleCheck(newMService, refreshPeriod, time.NewTimer(0))
 		}
 	}
@@ -89,7 +89,7 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 	}
 
 	if !c.healthCheckService.isServicePresent(mService.service.name) {
-		infoLogger.Printf("Service with name %s doesn't exist anymore, removing it from cache", mService.service.name)
+		log.Infof("Service with name %s doesn't exist anymore, removing it from cache", mService.service.name)
 		delete(c.measuredServices, mService.service.name)
 		mService.cachedHealth.terminate <- true
 		return
@@ -98,20 +98,19 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 	// run check
 	deployments, err := c.healthCheckService.getDeployments()
 	if err != nil {
-		errorLogger.Printf("Cannot run scheduled health check: %s", err.Error())
+		log.WithError(err).Error("Cannot run scheduled health check")
 		return
 	}
 
 	serviceToBeChecked := mService.service
 
-	var checks []fthealth.Check
-	checks = append(checks, newServiceHealthCheck(serviceToBeChecked, deployments, c.healthCheckService))
+	checks := []fthealth.Check{newServiceHealthCheck(serviceToBeChecked, deployments, c.healthCheckService)}
 
 	checkResult := fthealth.RunCheck(fthealth.HealthCheck{
-		serviceToBeChecked.name,
-		serviceToBeChecked.name,
-		fmt.Sprintf("Checks the health of %v", serviceToBeChecked.name),
-		checks,
+		SystemCode:  serviceToBeChecked.name,
+		Name:        serviceToBeChecked.name,
+		Description: fmt.Sprintf("Checks the health of %v", serviceToBeChecked.name),
+		Checks:      checks,
 	}).Checks[0]
 
 	checkResult.Ack = serviceToBeChecked.ack
