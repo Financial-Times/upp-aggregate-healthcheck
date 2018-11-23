@@ -128,21 +128,26 @@ func (hs *k8sHealthcheckService) watchServices() {
 	hs.watchServices()
 }
 
-func initializeHealthCheckService() *k8sHealthcheckService {
-	httpClient := &http.Client{
+func getDefaultClient() *http.Client {
+	return &http.Client{
+		Timeout: 12 * time.Second, // services should respond within 10s
 		Transport: &http.Transport{
 			DialContext: (&net.Dialer{
-				Timeout:   30 * time.Second,
-				KeepAlive: 30 * time.Second,
+				Timeout:   12 * time.Second,
+				KeepAlive: 90 * time.Second, // health check runs every 60s so good to reuse connection
 				DualStack: true,
 			}).DialContext,
 			MaxIdleConns:          256,
-			MaxIdleConnsPerHost:   16,               // Each service will have their own host
-			IdleConnTimeout:       90 * time.Second, // from DefaultTransport
+			MaxIdleConnsPerHost:   8, // Each service will have their own host
+			IdleConnTimeout:       90 * time.Second,
 			TLSHandshakeTimeout:   10 * time.Second, // from DefaultTransport
 			ExpectContinueTimeout: 1 * time.Second,  // from DefaultTransport
 		},
 	}
+}
+
+func initializeHealthCheckService() *k8sHealthcheckService {
+	httpClient := getDefaultClient()
 
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()

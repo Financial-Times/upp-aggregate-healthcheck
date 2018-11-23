@@ -212,15 +212,6 @@ func (m *MockService) getHTTPClient() *http.Client {
 	return m.httpClient
 }
 
-func initializeMockedHTTPClient(responseStatusCode int, responseBody string) *http.Client {
-	client := http.DefaultClient
-	client.Transport = &mockTransport{
-		responseStatusCode: responseStatusCode,
-		responseBody:       responseBody,
-	}
-	return client
-}
-
 func initializeMockController(env string, httpClient *http.Client) *healthCheckController {
 	measuredServices := make(map[string]measuredService)
 	service := new(MockService)
@@ -284,7 +275,7 @@ func TestBuildServicesHealthResultFromCache(t *testing.T) {
 }
 
 func TestGetIndividualPodHealthHappyFlow(t *testing.T) {
-	httpClient := initializeMockedHTTPClient(http.StatusOK, "")
+	httpClient := initializeMockHTTPClient(http.StatusOK, "")
 	controller := initializeMockController("test", httpClient)
 	_, _, err := controller.getIndividualPodHealth("testPod")
 	assert.Nil(t, err)
@@ -297,7 +288,7 @@ func TestGetIndividualPodHealthNonExistingPod(t *testing.T) {
 }
 
 func TestGetIndividualPodHealthFailingService(t *testing.T) {
-	httpClient := initializeMockedHTTPClient(http.StatusOK, "")
+	httpClient := initializeMockHTTPClient(http.StatusOK, "")
 	controller := initializeMockController("test", httpClient)
 	_, _, err := controller.getIndividualPodHealth(podWithBrokenService)
 	assert.Nil(t, err)

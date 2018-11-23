@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	v1beta1app "k8s.io/api/apps/v1beta1"
@@ -118,7 +119,7 @@ func initializeMockService(httpClient *http.Client) *k8sHealthcheckService {
 }
 
 func initializeMockHTTPClient(responseStatusCode int, responseBody string) *http.Client {
-	client := http.DefaultClient
+	client := getDefaultClient()
 	client.Transport = &mockTransport{
 		responseStatusCode: responseStatusCode,
 		responseBody:       responseBody,
@@ -309,4 +310,9 @@ func TestGetDeploymentsReturnsDeploymentsAndStatefulSets(t *testing.T) {
 func assertDeploymentsHas(t *testing.T, deployments map[string]deployment, key string) {
 	_, present := deployments[key]
 	assert.True(t, present, "Expected deployments to have %s", key)
+}
+
+func TestGetDefaultClient(t *testing.T) {
+	hc := getDefaultClient()
+	assert.Equal(t, hc.Timeout, 12*time.Second, "Expected time out to be 12 seconds")
 }
