@@ -322,8 +322,9 @@ func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult fthealth.H
 	enc := json.NewEncoder(w)
 	err := enc.Encode(healthResult)
 	if err != nil {
-		log.WithError(err).Error("Couldn't encode health results to ResponseWriter.")
-		panic("Couldn't encode health results to ResponseWriter.")
+		log.WithError(err).Error("KUR")
+		fmt.Println("tva e obekta:..")
+		fmt.Println(healthResult)
 	}
 }
 
