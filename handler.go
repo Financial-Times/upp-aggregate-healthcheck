@@ -318,12 +318,17 @@ func useCache(theURL *url.URL) bool {
 }
 
 func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult fthealth.HealthResult) {
-	w.Header().Set("Content-Type", "application/json")
-	enc := json.NewEncoder(w)
-	err := enc.Encode(healthResult)
+	jData, err := json.Marshal(healthResult)
 	if err != nil {
-		fmt.Println("obj after err:..")
-		fmt.Printf("%+v",healthResult)
+		log.WithError(err).Error("json failed")
+
+	}
+	w.Header().Set("Content-Type", "application/json")
+	code, err := w.Write(jData)
+	if err != nil {
+		log.WithError(err).Error("http failed")
+		fmt.Println("code")
+		fmt.Println(code)
 	}
 }
 
