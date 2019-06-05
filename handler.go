@@ -322,9 +322,8 @@ func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult fthealth.H
 	enc := json.NewEncoder(w)
 	err := enc.Encode(healthResult)
 	if err != nil {
-		log.WithError(err).Error("KUR")
-		fmt.Println("tva e obekta:..")
-		fmt.Println(healthResult)
+		fmt.Println("obj after err:..")
+		fmt.Printf("%+v",healthResult)
 	}
 }
 
