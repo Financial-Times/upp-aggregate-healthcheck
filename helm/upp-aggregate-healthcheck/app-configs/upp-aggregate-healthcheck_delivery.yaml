@@ -67,7 +67,7 @@ categories:
         healthcheck-categories-for: aggregate-healthcheck
     data:
       category.name: read
-      category.services: api-policy-component,concept-rw-elasticsearch,content-preview,content-public-read,content-public-read-preview,document-store-api,enriched-content-read-api,internal-components-preview,internal-content-api,internal-content-preview-api,list-notifications-rw,notifications-rw,public-brands-api,public-concordances-api,public-content-by-concept-api,public-organisations-api,public-people-api,public-six-degrees-api,public-things-api
+      category.services: api-policy-component,concept-rw-elasticsearch,content-preview,content-public-read,content-public-read-preview,document-store-api,enriched-content-read-api,internal-components-preview,internal-content-api,internal-content-preview-api,list-notifications-rw,notifications-rw,public-brands-api,public-concordances-api,public-content-by-concept-api,public-organisations-api,public-people-api,public-things-api
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
