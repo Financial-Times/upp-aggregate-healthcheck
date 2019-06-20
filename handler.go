@@ -322,7 +322,9 @@ func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult fthealth.H
 	jData, err := json.Marshal(healthResult)
 	if err != nil {
 		log.WithError(err).Error("Marshaling healthResult failed.")
-
+		w.WriteHeader(http.StatusInternalServerError)
+		w.Write("{\"message\": \"Internal server error\"}")
+		return
 	}
 	c, err := w.Write(jData)
 	if err != nil {
