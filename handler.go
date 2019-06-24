@@ -321,15 +321,14 @@ func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult fthealth.H
 	w.Header().Set("Content-Type", "application/json")
 	jData, err := json.Marshal(healthResult)
 	if err != nil {
-		log.WithError(err).Error("Marshaling healthResult failed.")
 		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("{\"message\": \"Internal server error\"}"))
+		log.WithError(err).Error("Marshaling healthResult failed.")
+		_, err := w.Write([]byte("{\"message\": \"Internal server error, marshaling healthResult failed\"}"))
+		handleResponseWriterErr(err)
 		return
 	}
-	c, err := w.Write(jData)
-	if err != nil {
-		log.WithError(err).Error("Writing to ResponseWriter failed code=%s", c)
-	}
+	_, err = w.Write(jData)
+	handleResponseWriterErr(err)
 }
 
 func buildServicesCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth.HealthResult, environment string, categories string, pathPrefix string) {
