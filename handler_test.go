@@ -3,13 +3,13 @@ package main
 import (
 	"errors"
 	"fmt"
-	"github.com/Financial-Times/go-logger"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	"github.com/Financial-Times/go-logger"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -520,5 +520,26 @@ func TestPodsHealthCheckHappyFlowJson(t *testing.T) {
 	respRecorder := httptest.NewRecorder()
 	handler := http.HandlerFunc(aggHealthCheckcHandler.handlePodsHealthCheck)
 	handler.ServeHTTP(respRecorder, req)
+	assert.Equal(t, http.StatusOK, respRecorder.Code)
+}
+func TestHealthCheckJsonResponseIsParsedSuccessfully(t *testing.T) {
+	respRecorder := httptest.NewRecorder()
+	checks := []fthealth.CheckResult{
+		{
+			Ok: true,
+		},
+		{
+			Ok: false,
+		},
+	}
+	healthResult := fthealth.HealthResult{
+		Checks:        checks,
+		Description:   "test",
+		Name:          "cluster health",
+		SchemaVersion: 1,
+		Ok:            true,
+		Severity:      1,
+	}
+	buildHealthcheckJSONResponse(respRecorder, healthResult)
 	assert.Equal(t, http.StatusOK, respRecorder.Code)
 }
