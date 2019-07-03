@@ -82,7 +82,6 @@ func (c *healthCheckController) updateCachedHealth(services map[string]service, 
 
 func (c *healthCheckController) scheduleCheck(mService measuredService, refreshPeriod time.Duration, timer *time.Timer) {
 
-	log.Infof("scheduleCheck check for %s at %v", mService.service.name, time.Now())
 	// wait
 	select {
 	case <-mService.cachedHealth.terminate:
