@@ -44,7 +44,7 @@ spec:
           valueFrom:
             configMapKeyRef:
               name: global-config
-              key: cluster.id
+              key: environment
         - name: CLUSTER_URL
           valueFrom:
             configMapKeyRef:

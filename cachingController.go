@@ -107,7 +107,11 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 	checks := []fthealth.Check{newServiceHealthCheck(serviceToBeChecked, deployments, c.healthCheckService)}
 
 	checkResult := fthealth.RunCheck(fthealth.HealthCheck{
-		SystemCode:  serviceToBeChecked.name,
+		if serviceToBeChecked.name == ""    {
+            SystemCode: CLUSTER_ID
+        }    else    {
+            SystemCode:  serviceToBeChecked.name
+        }
 		Name:        serviceToBeChecked.name,
 		Description: fmt.Sprintf("Checks the health of %v", serviceToBeChecked.name),
 		Checks:      checks,
