@@ -110,6 +110,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	finalOk, finalSeverity := getFinalResult(checkResults, matchingCategories)
 
 	health := fthealth.HealthResult{
+		SystemCode:    c.environment,
 		Checks:        checkResults,
 		Description:   desc,
 		Name:          c.environment + " cluster health",
