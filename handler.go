@@ -321,7 +321,7 @@ func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult fthealth.H
 
 	type CheckResultWithHeimdalAck struct {
 		fthealth.CheckResult
-		HeimdalAck string `json:"_acknowledge,omitempty"`
+		HeimdalAck string `json:"_acknowledged,omitempty"`
 	}
 
 	type HealthResult struct {
