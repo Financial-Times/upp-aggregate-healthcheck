@@ -318,9 +318,44 @@ func useCache(theURL *url.URL) bool {
 }
 
 func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult fthealth.HealthResult) {
+
+	type CheckResultWithHeimdalAck struct {
+		fthealth.CheckResult
+		HeimdalAck string `json:"_acknowledged,omitempty"`
+	}
+
+	type HealthResult struct {
+		SchemaVersion float64                     `json:"schemaVersion"`
+		SystemCode    string                      `json:"systemCode"`
+		Name          string                      `json:"name"`
+		Description   string                      `json:"description"`
+		Checks        []CheckResultWithHeimdalAck `json:"checks"`
+		Ok            bool                        `json:"ok"`
+		Severity      uint8                       `json:"severity,omitempty"`
+	}
+
+	var newChecks []CheckResultWithHeimdalAck
+	for _, check := range healthResult.Checks {
+		newCheck := CheckResultWithHeimdalAck{
+			CheckResult: check,
+			HeimdalAck:  check.Ack,
+		}
+		newChecks = append(newChecks, newCheck)
+	}
+
+	newHealthResult := &HealthResult{
+		SchemaVersion: healthResult.SchemaVersion,
+		SystemCode:    healthResult.SystemCode,
+		Name:          healthResult.Name,
+		Description:   healthResult.Description,
+		Ok:            healthResult.Ok,
+		Severity:      healthResult.Severity,
+		Checks:        newChecks,
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	enc := json.NewEncoder(w)
-	err := enc.Encode(healthResult)
+	err := enc.Encode(newHealthResult)
 	if err != nil {
 		panic("Couldn't encode health results to ResponseWriter.")
 	}
