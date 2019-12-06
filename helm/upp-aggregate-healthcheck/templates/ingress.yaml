@@ -8,6 +8,20 @@ metadata:
     ingress.kubernetes.io/ssl-redirect: "true"
 spec:
   rules:
+    - host: "*.ft.com"
+      http:
+        paths:
+        - path: {{ .Values.env.PATH_PREFIX }}
+          backend:
+            serviceName: {{.Values.service.name}}
+            servicePort: 8080
+    - host: "*.ft.com"
+      http:
+        paths:
+        - path: /__gtg
+          backend:
+            serviceName: {{.Values.service.name}}
+            servicePort: 8080
     - host: "*.upp.ft.com"
       http:
         paths:
@@ -22,4 +36,5 @@ spec:
           backend:
             serviceName: {{.Values.service.name}}
             servicePort: 8080
+
 {{ end }}
