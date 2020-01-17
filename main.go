@@ -99,9 +99,9 @@ func listen(httpHandler *httpHandler, pathPrefix string, port int) {
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),
-		WriteTimeout: time.Second * 90,
-		ReadTimeout:  time.Second * 90,
-		IdleTimeout:  time.Second * 90,
+		WriteTimeout: time.Second * 30,
+		ReadTimeout:  time.Second * 30,
+		IdleTimeout:  time.Second * 30,
 		Handler:      r,
 	}
 
