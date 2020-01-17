@@ -1,5 +1,7 @@
 # Values used for the deployed application.
 replicaCount: 1
+secondstack:
+  enabled: "true"
 service:
   name: upp-aggregate-healthcheck
 env:

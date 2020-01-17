@@ -55,4 +55,61 @@ spec:
           initialDelaySeconds: 30 
         resources: 
 {{ toYaml .Values.resources | indent 12 }}
-
+---
+{{ if eq .Values.secondstack.enabled "true" }}
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: {{ .Values.service.name }}-second
+  labels:
+    chart: "{{ .Chart.Name | trunc 63 }}"
+    chartVersion: "{{ .Chart.Version | trunc 63 }}" 
+    visualize: "true" 
+    app: {{ .Values.service.name }}-second
+spec:
+  replicas: {{ .Values.replicaCount }} 
+  selector: 
+    matchLabels:
+      app: {{ .Values.service.name }}-second
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.service.name }}-second
+        visualize: "true" 
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - {{ .Values.service.name }}-second
+            topologyKey: "kubernetes.io/hostname"
+      containers: 
+      - name: {{ .Values.service.name }}-second
+        image: "{{ .Values.image.repository }}:{{ .Chart.Version }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        env: 
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: global-config
+              key: environment
+        - name: CLUSTER_URL
+          valueFrom:
+            configMapKeyRef:
+              name: global-config
+              key: cluster.url
+        - name: PATH_PREFIX
+          value: {{ .Values.env.PATH_PREFIX }} 
+        ports: 
+        - containerPort: 8080 
+        livenessProbe: 
+          tcpSocket: 
+            port: 8080 
+          initialDelaySeconds: 30 
+        resources: 
+{{ toYaml .Values.resources | indent 12 }}
+{{ end }}
