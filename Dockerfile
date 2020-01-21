@@ -3,7 +3,7 @@ FROM golang:1
 ENV PROJECT=upp-aggregate-healthcheck
 ENV ORG_PATH="github.com/Financial-Times"
 ENV SRC_FOLDER="${GOPATH}/src/${ORG_PATH}/${PROJECT}"
-ENV BUILDINFO_PACKAGE="github.com/Financial-Times/service-status-go/buildinfo."
+ENV BUILDINFO_PACKAGE="${ORG_PATH}/${PROJECT}/vendor/${ORG_PATH}/service-status-go/buildinfo."
 
 WORKDIR ${SRC_FOLDER}
 

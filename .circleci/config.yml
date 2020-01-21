@@ -3,7 +3,7 @@ jobs:
   build:
     working_directory: /go/src/github.com/Financial-Times/upp-aggregate-healthcheck
     docker:
-      - image: golang:1
+      - image: circleci/golang:1
     environment:
       CIRCLE_TEST_REPORTS: /tmp/test-results
       CIRCLE_COVERAGE_REPORT: /tmp/coverage-results
@@ -14,8 +14,6 @@ jobs:
           command: |
             GO111MODULE=off go get -u github.com/mattn/goveralls
             GO111MODULE=off go get -u github.com/jstemmer/go-junit-report
-            curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $(go env GOPATH)/bin v1.21.0
-            wget https://raw.githubusercontent.com/Financial-Times/upp-coding-standard/v1.0.0/golangci-config/.golangci.yml
       - run:
           name: Go Build
           command: go build -mod=readonly -v
@@ -24,10 +22,8 @@ jobs:
           command: |
             mkdir -p ${CIRCLE_TEST_REPORTS}/golang
             mkdir -p ${CIRCLE_COVERAGE_REPORT}
-            go test -mod=readonly -race -cover -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out ./... | go-junit-report > ${CIRCLE_TEST_REPORTS}/junit.xml
-      - run:
-          name: Run Linters
-          command: golangci-lint run --new-from-rev=master --config .golangci.yml
+            go test -mod=readonly -race -v | go-junit-report > $CIRCLE_TEST_REPORTS/golang/junit.xml
+            go test -mod=readonly -race -cover -coverprofile=$CIRCLE_COVERAGE_REPORT/coverage.out
       - run:
           name: Upload Coverage
           command: goveralls -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
