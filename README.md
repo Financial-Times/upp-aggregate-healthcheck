@@ -23,8 +23,7 @@ The purpose of this service is to aggregate the healthchecks from services and p
 
 ## Running locally
 To run the service locally, you will need to run the following commands first to get the vendored dependencies for this project:
-  `go get github.com/kardianos/govendor` and
-  `govendor sync`
+  `go build`
  
  There is a limited number of functionality that can be used locally, because we are querying all the apps, inside the pods and there is no current
   solution of accessing them outside of the cluster, without using port-forwarding.
