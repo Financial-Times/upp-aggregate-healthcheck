@@ -141,7 +141,7 @@ func newPodHealthCheck(pod pod, service service, healthcheckService healthcheckS
 	return fthealth.Check{
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		Name:             checkName,
-		PanicGuide:       "https://sites.google.com/a/ft.com/technology/systems/dynamic-semantic-publishing/coco/runbook",
+		PanicGuide:       "https://runbooks.in.ft.com/upp-aggregate-healthcheck",
 		Severity:         defaultSeverity,
 		TechnicalSummary: "The pod is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
@@ -154,7 +154,7 @@ func newServiceHealthCheck(service service, deployments map[string]deployment, h
 	return fthealth.Check{
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		Name:             service.name,
-		PanicGuide:       "https://sites.google.com/a/ft.com/technology/systems/dynamic-semantic-publishing/coco/runbook",
+		PanicGuide:       "https://runbooks.in.ft.com/upp-aggregate-healthcheck",
 		Severity:         defaultSeverity,
 		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
