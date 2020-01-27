@@ -5,6 +5,8 @@ service:
   name: "" # The name of the service, should be defined in the specific app-configs folder.
   hasHealthcheck: "false"
 replicaCount: 1
+secondstack:
+  enabled: "false"
 image:
   repository: coco/upp-aggregate-healthcheck
   pullPolicy: IfNotPresent
