@@ -1,5 +1,5 @@
 # Values used for the deployed application.
-replicaCount: 1
+replicaCount: 2
 service:
   name: upp-aggregate-healthcheck
 env:
