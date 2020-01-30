@@ -6,6 +6,7 @@ metadata:
   annotations:
     kubernetes.io/ingress.class: "nginx"
     ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.com/health-checks: "true"
     # type of authentication
     ingress.kubernetes.io/auth-type: basic
     # name of the secret that contains the user/password definitions
