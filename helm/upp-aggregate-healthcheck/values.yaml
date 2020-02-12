@@ -4,6 +4,9 @@
 service:
   name: "" # The name of the service, should be defined in the specific app-configs folder.
   hasHealthcheck: "false"
+
+eksCluster: false
+
 replicaCount: 1
 secondstack:
   enabled: "false"
