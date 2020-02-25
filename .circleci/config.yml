@@ -1,53 +1,20 @@
-version: 2
-jobs:
-  build:
-    working_directory: /go/src/github.com/Financial-Times/upp-aggregate-healthcheck
-    docker:
-      - image: golang:1
-    environment:
-      CIRCLE_TEST_REPORTS: /tmp/test-results
-      CIRCLE_COVERAGE_REPORT: /tmp/coverage-results
-    steps:
-      - checkout
-      - run:
-          name: External Dependencies
-          command: |
-            GO111MODULE=off go get -u github.com/mattn/goveralls
-            GO111MODULE=off go get -u github.com/jstemmer/go-junit-report
-            curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh| sh -s -- -b $(go env GOPATH)/bin v1.21.0
-            wget https://raw.githubusercontent.com/Financial-Times/upp-coding-standard/v1.0.0/golangci-config/.golangci.yml
-      - run:
-          name: Go Build
-          command: go build -mod=readonly -v
-      - run:
-          name: Run Tests
-          command: |
-            mkdir -p ${CIRCLE_TEST_REPORTS}/golang
-            mkdir -p ${CIRCLE_COVERAGE_REPORT}
-            go test -mod=readonly -race -cover -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out ./... | go-junit-report > ${CIRCLE_TEST_REPORTS}/junit.xml
-      - run:
-          name: Run Linters
-          command: golangci-lint run --new-from-rev=master --config .golangci.yml
-      - run:
-          name: Upload Coverage
-          command: goveralls -coverprofile=${CIRCLE_COVERAGE_REPORT}/coverage.out -service=circle-ci -repotoken=$COVERALLS_TOKEN
-      - store_test_results:
-          path: /tmp/test-results
-  dockerfile:
-    working_directory: /upp-aggregate-healthcheck
-    docker:
-      - image: docker:18
-    steps:
-      - checkout
-      - setup_docker_engine
-      - run:
-          name: Build Dockerfile
-          command: docker build .
+version: 2.1
+
+orbs:
+  ft-golang-ci: financial-times/golang-ci@1
+
 workflows:
-  version: 2
-  test-and-build-docker:
+  tests_and_docker:
     jobs:
-      - build
-      - dockerfile:
+      - ft-golang-ci/build-and-test:
+          name: build-and-test-project
+
+      - ft-golang-ci/docker-build:
+          name: build-docker-image
           requires:
-            - build
+            - build-and-test-project
+  snyk-scanning:
+    jobs:
+      - ft-golang-ci/scan:
+          name: scan-dependencies
+          context: org-global
