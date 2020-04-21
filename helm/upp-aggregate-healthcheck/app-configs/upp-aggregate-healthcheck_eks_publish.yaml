@@ -1,0 +1,52 @@
+# Values used for the deployed application.
+replicaCount: 1
+
+eksCluster: true
+
+secondstack:
+  enabled: "true"
+service:
+  name: upp-aggregate-healthcheck
+env:
+  PATH_PREFIX: "/__health"
+categories:
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.default
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    data:
+      category.name: default
+      category.refreshrate: "60"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.publish
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    data:
+      category.name: publish
+      category.services: cms-notifier, native-ingester-cms, cms-metadata-notifier, native-ingester-metadata, nativerw
+      category.refreshrate: "60"
+      category.issticky: "true"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.publishing-monitors
+      labels:
+         healthcheck-categories-for: aggregate-healthcheck
+    data:
+      category.name: publishing-monitors
+      category.services: publish-availability-monitor, synthetic-article-publication-monitor, synthetic-list-publication-monitor
+      category.refreshrate: "60"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.system
+      labels:
+         healthcheck-categories-for: aggregate-healthcheck
+    data:
+      category.name: system
+      category.services: coreos-version-checker, system-healthcheck
+      category.refreshrate: "60"
