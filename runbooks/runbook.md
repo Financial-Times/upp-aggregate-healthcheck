@@ -124,7 +124,7 @@ Service in UPP K8S delivery clusters:
 Service in UPP PAC clusters:
 
 - PAC-EU health: <https://pac-prod-eu.upp.ft.com/__health>
-- PAC-US health: <https://upp-prod-publish-us.upp.ft.com/__upp-aggregate-healthcheck/__health>
+- PAC-US health: <https://pac-prod-us.upp.ft.com/__health>
 
 ## First Line Troubleshooting
 
