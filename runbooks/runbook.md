@@ -41,7 +41,8 @@ AWS
 
 ## Architecture
 
-Upp-aggregate-healthcheck exposes multiple endpoints, which provide health data on service or category level.
+Upp-aggregate-healthcheck exposes multiple endpoints, which provide health data on service or category level. This service is deployed twice in the Publish and Delivery clusters -
+as `upp-aggregate-healthcheck` and as `upp-aggregate-healthcheck-second` to be able to handle heavy traffic.
 
 ## Contains Personal Data
 
