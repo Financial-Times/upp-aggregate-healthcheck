@@ -1,4 +1,4 @@
-# UPP - Content Search API Port
+# UPP - Aggregate Healthcheck
 
 The purpose of this service is to aggregate the healthchecks from services and pods in the Kubernetes cluster.
 
