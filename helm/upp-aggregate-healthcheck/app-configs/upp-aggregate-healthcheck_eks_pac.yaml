@@ -1,8 +1,6 @@
 # Values used for the deployed application.
 replicaCount: 2
 
-eksCluster: true
-
 service:
   name: upp-aggregate-healthcheck
 env:

@@ -1,8 +1,6 @@
 # Values used for the deployed application.
 replicaCount: 1
 
-eksCluster: true
-
 secondstack:
   enabled: "true"
 service:
