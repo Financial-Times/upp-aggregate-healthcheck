@@ -49,7 +49,7 @@ type AddAckForm struct {
 var defaultCategories = []string{"default"}
 
 const (
-	timeLayout              = "15:04:05 MST"
+	timeLayout              = "2006-01-02 15:04:05 MST"
 	healthcheckTemplateName = "html-templates/healthcheck-template.html"
 	addAckMsgTemplatePath   = "html-templates/add-ack-message-form-template.html"
 	healthcheckPath         = "/__health"

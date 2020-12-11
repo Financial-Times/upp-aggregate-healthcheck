@@ -98,30 +98,29 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 	// run check
 	deployments, err := c.healthCheckService.getDeployments()
 	if err != nil {
-		log.WithError(err).Error("Cannot run scheduled health check")
-		return
+		log.WithError(err).Errorf("Cannot run scheduled health check for service %s", mService.service.name)
+	} else {
+		serviceToBeChecked := mService.service
+
+		checks := []fthealth.Check{newServiceHealthCheck(serviceToBeChecked, deployments, c.healthCheckService)}
+
+		checkResult := fthealth.RunCheck(fthealth.HealthCheck{
+			SystemCode:  serviceToBeChecked.name,
+			Name:        serviceToBeChecked.name,
+			Description: fmt.Sprintf("Checks the health of %v", serviceToBeChecked.name),
+			Checks:      checks,
+		}).Checks[0]
+
+		checkResult.Ack = serviceToBeChecked.ack
+
+		if !checkResult.Ok {
+			severity := c.getSeverityForService(checkResult.Name, serviceToBeChecked.appPort)
+			checkResult.Severity = severity
+		}
+
+		mService.cachedHealth.toWriteToCache <- checkResult
+		mService.cachedHealthMetric.toWriteToCache <- checkResult
 	}
-
-	serviceToBeChecked := mService.service
-
-	checks := []fthealth.Check{newServiceHealthCheck(serviceToBeChecked, deployments, c.healthCheckService)}
-
-	checkResult := fthealth.RunCheck(fthealth.HealthCheck{
-		SystemCode:  serviceToBeChecked.name,
-		Name:        serviceToBeChecked.name,
-		Description: fmt.Sprintf("Checks the health of %v", serviceToBeChecked.name),
-		Checks:      checks,
-	}).Checks[0]
-
-	checkResult.Ack = serviceToBeChecked.ack
-
-	if !checkResult.Ok {
-		severity := c.getSeverityForService(checkResult.Name, serviceToBeChecked.appPort)
-		checkResult.Severity = severity
-	}
-
-	mService.cachedHealth.toWriteToCache <- checkResult
-	mService.cachedHealthMetric.toWriteToCache <- checkResult
 
 	go c.scheduleCheck(mService, refreshPeriod, time.NewTimer(refreshPeriod))
 }
