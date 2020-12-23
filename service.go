@@ -71,6 +71,7 @@ func (hs *k8sHealthcheckService) watchAcks() {
 
 		if err != nil {
 			log.WithError(err).Errorf("Error while starting to watch acks configMap with label selector %s", ackMessagesConfigMapLabelSelector)
+			log.Infof("Reconnecting after %d secconds...", defaultRetryTimeoutAfterError*time.Second)
 			time.Sleep(defaultRetryTimeoutAfterError * time.Second)
 
 			continue
@@ -102,6 +103,7 @@ func (hs *k8sHealthcheckService) watchServices() {
 		watcher, err := hs.k8sClient.CoreV1().Services(k8score.NamespaceDefault).Watch(k8smeta.ListOptions{LabelSelector: "hasHealthcheck=true"})
 		if err != nil {
 			log.WithError(err).Error("Error while starting to watch services")
+			log.Infof("Reconnecting after %d secconds...", defaultRetryTimeoutAfterError*time.Second)
 			time.Sleep(defaultRetryTimeoutAfterError * time.Second)
 
 			continue
@@ -113,13 +115,13 @@ func (hs *k8sHealthcheckService) watchServices() {
 			switch msg.Type {
 			case watch.Added, watch.Modified:
 				k8sService := msg.Object.(*k8score.Service)
-				service := populateService(k8sService, hs.acks)
+				s := populateService(k8sService, hs.acks)
 
 				hs.services.Lock()
-				hs.services.m[service.name] = service
+				hs.services.m[s.name] = s
 				hs.services.Unlock()
 
-				log.Infof("Service with name %s added or updated.", service.name)
+				log.Infof("Service with name %s added or updated.", s.name)
 			case watch.Deleted:
 				k8sService := msg.Object.(*k8score.Service)
 				hs.services.Lock()

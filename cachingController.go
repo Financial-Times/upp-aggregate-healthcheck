@@ -66,14 +66,13 @@ func (c *healthCheckController) updateCachedHealth(services map[string]service, 
 			}
 			newMService := newMeasuredService(service)
 			c.measuredServices[service.name] = newMService
-			if categories != nil {
-				for _, category := range categories {
-					if isStringInSlice(service.name, category.services) {
-						refreshPeriod = category.refreshPeriod
-						break
-					}
+			for _, category := range categories {
+				if isStringInSlice(service.name, category.services) {
+					refreshPeriod = category.refreshPeriod
+					break
 				}
 			}
+
 			log.Infof("Scheduling check for service [%s] with refresh period [%v].\n", service.name, refreshPeriod)
 			go c.scheduleCheck(newMService, refreshPeriod, time.NewTimer(0))
 		}
