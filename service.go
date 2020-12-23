@@ -43,6 +43,7 @@ type healthcheckService interface {
 
 const (
 	defaultRefreshRate                = 60
+	defaultRetryTimeoutAfterError     = 5 //In seconds
 	defaultFailureThreshold           = 3
 	defaultSeverity                   = uint8(2)
 	defaultResiliency                 = true
@@ -65,65 +66,75 @@ func (hs *k8sHealthcheckService) updateAcksForServices(acksMap map[string]string
 }
 
 func (hs *k8sHealthcheckService) watchAcks() {
-	watcher, err := hs.k8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).Watch(k8smeta.ListOptions{LabelSelector: ackMessagesConfigMapLabelSelector})
+	for {
+		watcher, err := hs.k8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).Watch(k8smeta.ListOptions{LabelSelector: ackMessagesConfigMapLabelSelector})
 
-	if err != nil {
-		log.WithError(err).Errorf("Error while starting to watch acks configMap with label selector %s", ackMessagesConfigMapLabelSelector)
-	}
+		if err != nil {
+			log.WithError(err).Errorf("Error while starting to watch acks configMap with label selector %s", ackMessagesConfigMapLabelSelector)
+			log.Infof("Reconnecting after %d seconds...", defaultRetryTimeoutAfterError*time.Second)
+			time.Sleep(defaultRetryTimeoutAfterError * time.Second)
 
-	log.Info("Started watching acks configMap")
-	resultChannel := watcher.ResultChan()
-	for msg := range resultChannel {
-		switch msg.Type {
-		case watch.Added, watch.Modified:
-			k8sConfigMap := msg.Object.(*k8score.ConfigMap)
-			hs.updateAcksForServices(k8sConfigMap.Data)
-			hs.acks = k8sConfigMap.Data
-			log.Infof("Acks configMap has been updated: %s", k8sConfigMap.Data)
-		case watch.Deleted:
-			hs.acks = make(map[string]string)
-			log.Error("Acks configMap has been deleted. From now on the acks will no longer be available.")
-		default:
-			log.Error("Error received on watch acks configMap. Channel may be full")
+			continue
 		}
-	}
 
-	log.Info("Acks configMap watching terminated. Reconnecting...")
-	hs.watchAcks()
+		log.Info("Started watching acks configMap")
+		resultChannel := watcher.ResultChan()
+		for msg := range resultChannel {
+			switch msg.Type {
+			case watch.Added, watch.Modified:
+				k8sConfigMap := msg.Object.(*k8score.ConfigMap)
+				hs.updateAcksForServices(k8sConfigMap.Data)
+				hs.acks = k8sConfigMap.Data
+				log.Infof("Acks configMap has been updated: %s", k8sConfigMap.Data)
+			case watch.Deleted:
+				hs.acks = make(map[string]string)
+				log.Error("Acks configMap has been deleted. From now on the acks will no longer be available.")
+			default:
+				log.Error("Error received on watch acks configMap. Channel may be full")
+			}
+		}
+
+		log.Info("Acks configMap watching terminated. Reconnecting...")
+	}
 }
 
 func (hs *k8sHealthcheckService) watchServices() {
-	watcher, err := hs.k8sClient.CoreV1().Services(k8score.NamespaceDefault).Watch(k8smeta.ListOptions{LabelSelector: "hasHealthcheck=true"})
-	if err != nil {
-		log.WithError(err).Error("Error while starting to watch services")
-	}
+	for {
+		watcher, err := hs.k8sClient.CoreV1().Services(k8score.NamespaceDefault).Watch(k8smeta.ListOptions{LabelSelector: "hasHealthcheck=true"})
+		if err != nil {
+			log.WithError(err).Error("Error while starting to watch services")
+			log.Infof("Reconnecting after %d seconds...", defaultRetryTimeoutAfterError*time.Second)
+			time.Sleep(defaultRetryTimeoutAfterError * time.Second)
 
-	log.Info("Started watching services")
-	resultChannel := watcher.ResultChan()
-	for msg := range resultChannel {
-		switch msg.Type {
-		case watch.Added, watch.Modified:
-			k8sService := msg.Object.(*k8score.Service)
-			service := populateService(k8sService, hs.acks)
-
-			hs.services.Lock()
-			hs.services.m[service.name] = service
-			hs.services.Unlock()
-
-			log.Infof("Service with name %s added or updated.", service.name)
-		case watch.Deleted:
-			k8sService := msg.Object.(*k8score.Service)
-			hs.services.Lock()
-			delete(hs.services.m, k8sService.Name)
-			hs.services.Unlock()
-			log.Infof("Service with name %s has been removed", k8sService.Name)
-		default:
-			log.Error("Error received on watch services. Channel may be full")
+			continue
 		}
-	}
 
-	log.Info("Services watching terminated. Reconnecting...")
-	hs.watchServices()
+		log.Info("Started watching services")
+		resultChannel := watcher.ResultChan()
+		for msg := range resultChannel {
+			switch msg.Type {
+			case watch.Added, watch.Modified:
+				k8sService := msg.Object.(*k8score.Service)
+				s := populateService(k8sService, hs.acks)
+
+				hs.services.Lock()
+				hs.services.m[s.name] = s
+				hs.services.Unlock()
+
+				log.Infof("Service with name %s added or updated.", s.name)
+			case watch.Deleted:
+				k8sService := msg.Object.(*k8score.Service)
+				hs.services.Lock()
+				delete(hs.services.m, k8sService.Name)
+				hs.services.Unlock()
+				log.Infof("Service with name %s has been removed", k8sService.Name)
+			default:
+				log.Error("Error received on watch services. Channel may be full")
+			}
+		}
+
+		log.Info("Services watching terminated. Reconnecting...")
+	}
 }
 
 func getDefaultClient() *http.Client {
