@@ -29,7 +29,7 @@ categories:
         healthcheck-categories-for: aggregate-healthcheck
     data:
       category.name: content-publish
-      category.services: cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,methode-article-internal-components-mapper,methode-article-mapper,methode-content-collection-mapper,methode-content-placeholder-mapper,methode-image-binary-mapper,methode-image-set-mapper,video-mapper,wordpress-article-mapper,wordpress-image-mapper
+      category.services: upp-notifications-creator,notifications-push,cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,methode-article-internal-components-mapper,methode-article-mapper,methode-content-collection-mapper,methode-content-placeholder-mapper,methode-image-binary-mapper,methode-image-set-mapper,video-mapper,wordpress-article-mapper,wordpress-image-mapper
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
