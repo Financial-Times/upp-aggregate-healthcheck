@@ -145,3 +145,68 @@ In the provided examples, it is assumed that the __pathPrefix__ is `__health`.)
 * `__health`
 
 * `__gtg`
+
+### Call sequence
+
+main.go call sequence
+
+* controller.go: `initializeController`
+  * calls service.go: `initializeHealthCheckService`
+* prometheusFeeder.go: `newPrometheusFeeder` & `feed`
+* `listen` starts HTTP server
+  * path `/` -> handler.go: `handleServicesHealthCheck`
+  * path `/__pods-health` -> handler.go: `handlePodsHealthCheck`
+  * path `/__pod-individual-health` -> handler.go: `handleIndividualPodHealthCheck`
+
+httpHandler methods
+
+* handler.go
+  * handleServicesHealthCheck
+    * controller.go: `buildServicesHealthResult`
+    * sort, format and return healthcheck results
+    * `buildServicesCheckHTMLResponse` (format result of buildServicesHealthResult for output)
+
+healthCheckController methods
+
+* controller.go
+  * `buildServicesHealthResult`
+    * `getMatchingCategories` (filter categories)
+    * if useCache -> cachingController.go: `collectChecksFromCachesFor`
+    * if NOT useCache -> `runServiceChecksFor`
+    * `runServiceChecksByServiceNames`
+      * `runServiceChecksByServiceNames`
+        * get services list from `k8sHealthcheckService.getServicesMapByNames`
+        * `runServiceChecksByServiceNames`
+          * `k8sHealthcheckService.getDeployments`
+          * checks health for all services using `go-fthealth.RunCheck`
+          * loops through the result in parallel and calculates the severity of each service using severityController.go: `getSeverityForService`
+          * loops through the services list and updates acks using `updateHealthCheckWithAckMsg`
+          * cachingController.go: `updateCachedHealth`
+            * schedules recurring checks for services not already in `measuredServices`
+            * in practice this means scheduling checks only on startup
+    * `disableStickyFailingCategories`
+* cachingController.go
+* severityController.go
+  * `getSeverityForService`
+    * `k8sHealthcheckService.getPodsForService`
+
+k8sHealthcheckService methods
+
+* service.go
+  * `initializeHealthCheckService`
+    * starts as a Go routine `watchAcks` (load and update the service acks)
+    * starts as a Go routine `watchServices` (load and update the service list)
+  * `watchServices`
+    * using the k8s API gets all services matching `kubectl get services -l hasHealthcheck=true`
+    * prepares them as `service` structures and saves into the `k8sHealthcheckService.services.m` map
+    * after all services are processed it logs `Services watching terminated. Reconnecting...` and invokes itself again
+  * `watchAcks`
+    * using the k8s API gets all (should be only one currently) configmaps matching `kubectl get configmaps -l healthcheck-acknowledgements-for=aggregate-healthcheck`
+    * updates the `service.ack` key of the `k8sHealthcheckService.services.m` map
+    * after all acks are processed it logs `Acks configMap watching terminated. Reconnecting..."` and invokes itself again
+  * `getCategories`
+    * using the k8s API gets all configmaps matching `kubectl get configmaps -l healthcheck-categories-for=aggregate-healthcheck`
+  * `getDeployments`
+    * using the k8s API gets all deployment and statefulset names along with their desired replica count
+  * `getPodsForService`
+    * using the k8s API gets all pods matching `kubectl get pods -l app=%s`
