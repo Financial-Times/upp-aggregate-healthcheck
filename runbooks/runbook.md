@@ -1,10 +1,18 @@
+<!--
+    Written in the format prescribed by https://github.com/Financial-Times/runbook.md.
+    Any future edits should abide by this format.
+-->
 # UPP - Aggregate Healthcheck
 
 The purpose of this service is to aggregate the healthchecks from services and pods in the Kubernetes cluster.
 
+## Code
+
+upp-aggregate-healthcheck
+
 ## Primary URL
 
-<https://upp-prod-publish-glb.upp.ft.com/__upp-aggregate-healthcheck/>
+https://upp-prod-publish-glb.upp.ft.com/__upp-aggregate-healthcheck/
 
 ## Service Tier
 
@@ -13,27 +21,6 @@ Platinum
 ## Lifecycle Stage
 
 Production
-
-## Delivered By
-
-content
-
-## Supported By
-
-content
-
-## Known About By
-
-- dimitar.terziev
-- hristo.georgiev
-- elitsa.pavlova
-- mihail.mihaylov
-- kalin.arsov
-- elina.kaneva
-- ivan.nikolov
-- miroslav.gatsanoga
-- tsvetan.dimitrov
-- georgi.ivanov
 
 ## Host Platform
 
@@ -52,6 +39,20 @@ No
 
 No
 
+<!-- Placeholder - remove HTML comment markers to activate
+## Can Download Personal Data
+Choose Yes or No
+
+...or delete this placeholder if not applicable to this system
+-->
+
+<!-- Placeholder - remove HTML comment markers to activate
+## Can Contact Individuals
+Choose Yes or No
+
+...or delete this placeholder if not applicable to this system
+-->
+
 ## Failover Architecture Type
 
 ActivePassive
@@ -68,9 +69,9 @@ FullyAutomated
 
 The service is deployed in Publish, Delivery and PAC clusters with different configs. So you can follow these guides:
 
-For Publish: https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/publishing-cluster
-For Delivery: https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/delivery-cluster
-For PAC: https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/pac-cluster
+For Publish: <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/publishing-cluster>
+For Delivery: <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/delivery-cluster>
+For PAC: <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/pac-cluster>
 
 ## Data Recovery Process Type
 
@@ -101,6 +102,14 @@ For more details about the failover process please see:
 
 <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/pac-cluster>
 
+<!-- Placeholder - remove HTML comment markers to activate
+## Heroku Pipeline Name
+Enter descriptive text satisfying the following:
+This is the name of the Heroku pipeline for this system. If you don't have a pipeline, this is the name of the app in Heroku. A pipeline is a group of Heroku apps that share the same codebase where each app in a pipeline represents the different stages in a continuous delivery workflow, i.e. staging, production.
+
+...or delete this placeholder if not applicable to this system
+-->
+
 ## Key Management Process Type
 
 Manual
@@ -114,18 +123,18 @@ To rotate credentials you need to login to a particular cluster and update varni
 
 Service in UPP K8S publishing clusters:
 
-- Pub-Prod-EU health: <https://upp-prod-publish-eu.upp.ft.com/__upp-aggregate-healthcheck/__health>
-- Pub-Prod-US health: <https://upp-prod-publish-us.upp.ft.com/__upp-aggregate-healthcheck/__health>
+*   Pub-Prod-EU health: <https://upp-prod-publish-eu.upp.ft.com/__upp-aggregate-healthcheck/__health>
+*   Pub-Prod-US health: <https://upp-prod-publish-us.upp.ft.com/__upp-aggregate-healthcheck/__health>
 
 Service in UPP K8S delivery clusters:
 
-- Delivery-Prod-EU health: <https://upp-prod-delivery-eu.upp.ft.com/__upp-aggregate-healthcheck/__health>
-- Delivery-Prod-US health: <https://upp-prod-delivery-us.upp.ft.com/__upp-aggregate-healthcheck/__health>
+*   Delivery-Prod-EU health: <https://upp-prod-delivery-eu.upp.ft.com/__upp-aggregate-healthcheck/__health>
+*   Delivery-Prod-US health: <https://upp-prod-delivery-us.upp.ft.com/__upp-aggregate-healthcheck/__health>
 
 Service in UPP PAC clusters:
 
-- PAC-EU health: <https://pac-prod-eu.upp.ft.com/__health>
-- PAC-US health: <https://pac-prod-us.upp.ft.com/__health>
+*   PAC-EU health: <https://pac-prod-eu.upp.ft.com/__health>
+*   PAC-US health: <https://pac-prod-us.upp.ft.com/__health>
 
 ## First Line Troubleshooting
 
