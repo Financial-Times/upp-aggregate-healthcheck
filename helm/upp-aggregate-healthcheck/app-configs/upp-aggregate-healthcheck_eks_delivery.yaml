@@ -150,7 +150,7 @@ categories:
         healthcheck-categories-for: aggregate-healthcheck
     data:
       category.name: annotations-read
-      category.services: annotations-mapper,annotations-rw-neo4j,upp-next-video-annotations-mapper,pac-annotations-mapper,system-healthcheck
+      category.services: annotations-rw-neo4j,upp-next-video-annotations-mapper,pac-annotations-mapper,system-healthcheck
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
