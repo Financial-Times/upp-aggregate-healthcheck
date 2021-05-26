@@ -1,0 +1,47 @@
+{{ if eq .Values.ingress.enabled "true" }}
+apiVersion: traefik.containo.us/v1alpha1
+kind: IngressRoute
+metadata:
+  name: upp-aggregate-healthcheck
+  namespace: default
+spec:
+  entryPoints:
+    - websecure
+  routes:
+    - kind: Rule
+      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && PathPrefix(`/__health/{/(?!__).+}`)
+      middlewares:
+      - name: basic-auth
+        namespace: default
+      services:
+      - kind: Service
+        namespace: default
+        name: upp-aggregate-healthcheck
+        port: 8080
+        passHostHeader: true
+        responseForwarding:
+          flushInterval: 100ms
+        strategy: RoundRobin
+    - kind: Rule
+      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && Path(`/__health`)
+      services:
+      - kind: Service
+        namespace: default
+        name: upp-aggregate-healthcheck
+        port: 8080
+        passHostHeader: true
+        responseForwarding:
+          flushInterval: 100ms
+        strategy: RoundRobin
+    - kind: Rule
+      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && Path(`/__gtg`)
+      services:
+      - kind: Service
+        namespace: default
+        name: upp-aggregate-healthcheck
+        port: 8080
+        passHostHeader: true
+        responseForwarding:
+          flushInterval: 100ms
+        strategy: RoundRobin
+{{ end }}
