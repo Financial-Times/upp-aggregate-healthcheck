@@ -9,7 +9,7 @@ spec:
     - websecure
   routes:
     - kind: Rule
-      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && PathPrefix(`/__health/{/(?!__).+}`)
+      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && PathPrefix(`{{ .Values.env.PATH_PREFIX }}{/(?!__).+}`)
       middlewares:
       - name: basic-auth
         namespace: default
@@ -23,7 +23,7 @@ spec:
           flushInterval: 100ms
         strategy: RoundRobin
     - kind: Rule
-      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && Path(`/__health`)
+      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && Path(`{{ .Values.env.PATH_PREFIX }}`)
       services:
       - kind: Service
         namespace: default
