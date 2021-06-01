@@ -8,11 +8,9 @@ spec:
   entryPoints:
     - websecure
   routes:
+# Allow PATH_PREFIX to be accessed. Like: "__health"
     - kind: Rule
-      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && PathPrefix(`{{ .Values.env.PATH_PREFIX }}{/(?!__).+}`)
-      middlewares:
-      - name: basic-auth
-        namespace: default
+      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && Path(`{{ .Values.env.PATH_PREFIX }}`)
       services:
       - kind: Service
         namespace: default
@@ -22,8 +20,24 @@ spec:
         responseForwarding:
           flushInterval: 100ms
         strategy: RoundRobin
+# Allow everything with "__pod" to be accessed WITHOUT basic auth. Like: "__pods-health" and "/__pod-individual-health"
     - kind: Rule
-      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && Path(`{{ .Values.env.PATH_PREFIX }}`)
+      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && PathPrefix(`{{ .Values.env.PATH_PREFIX }}/__pod{/(?!__).+}`)
+      services:
+      - kind: Service
+        namespace: default
+        name: upp-aggregate-healthcheck
+        port: 8080
+        passHostHeader: true
+        responseForwarding:
+          flushInterval: 100ms
+        strategy: RoundRobin
+# Deny access WITHOUT basic auth to anything else
+    - kind: Rule
+      match: HostRegexp(`{subdomain:[a-zA-Z0-9-]+}.upp.ft.com`) && PathPrefix(`{{ .Values.env.PATH_PREFIX }}/{/(?!__).+}`)
+      middlewares:
+      - name: basic-auth
+        namespace: default
       services:
       - kind: Service
         namespace: default
