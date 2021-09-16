@@ -62,7 +62,7 @@ categories:
         healthcheck-categories-for: aggregate-healthcheck
     data:
       category.name: lists-publish
-      category.services: cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,methode-list-mapper,public-concordances-api,public-things-api,system-healthcheck
+      category.services: cms-kafka-bridge-pub-pre-prod,cms-notifier,upp-list-validator,list-ingester,public-lists-api,public-concordances-api,public-things-api,system-healthcheck
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
@@ -73,7 +73,7 @@ categories:
         healthcheck-categories-for: aggregate-healthcheck
     data:
       category.name: read
-      category.services: api-policy-component,concept-rw-elasticsearch,content-public-read,document-store-api,enriched-content-read-api,internal-content-api,list-notifications-rw,notifications-rw,public-brands-api,public-concordances-api,public-content-by-concept-api,public-organisations-api,public-people-api,public-things-api
+      category.services: api-policy-component,concept-rw-elasticsearch,content-public-read,document-store-api,enriched-content-read-api,internal-content-api,public-lists-api,list-notifications-rw,notifications-rw,public-brands-api,public-concordances-api,public-content-by-concept-api,public-organisations-api,public-people-api,public-things-api
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
@@ -117,7 +117,7 @@ categories:
         healthcheck-categories-for: aggregate-healthcheck
     data:
       category.name: lists-read
-      category.services: api-policy-component,document-store-api,system-healthcheck
+      category.services: api-policy-component,public-lists-api,system-healthcheck
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
