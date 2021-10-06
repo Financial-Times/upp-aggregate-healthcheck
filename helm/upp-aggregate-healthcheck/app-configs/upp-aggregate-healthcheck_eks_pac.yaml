@@ -14,6 +14,7 @@ categories:
       name: category.default
       labels:
          healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
     data:
       category.name: default
       category.refreshrate: "60"
@@ -24,6 +25,7 @@ categories:
       name: category.annotations-curation
       labels:
         healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
     data:
       category.name: annotations-curation
       category.services: annotations-publisher,draft-annotations-api,draft-content-api,draft-content-public-read,draft-content-suggestions

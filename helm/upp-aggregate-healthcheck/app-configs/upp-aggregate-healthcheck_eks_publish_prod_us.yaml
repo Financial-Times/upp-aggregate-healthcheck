@@ -14,6 +14,7 @@ categories:
       name: category.default
       labels:
         healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
     data:
       category.name: default
       category.refreshrate: "60"
@@ -23,6 +24,7 @@ categories:
       name: category.publish
       labels:
         healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
     data:
       category.name: publish
       category.services: cms-notifier, native-ingester-cms, cms-metadata-notifier, native-ingester-metadata, nativerw
@@ -34,6 +36,7 @@ categories:
       name: category.publishing-monitors
       labels:
          healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
     data:
       category.name: publishing-monitors
       category.services: publish-availability-monitor, synthetic-article-publication-monitor, synthetic-generic-list-publication-monitor
@@ -44,6 +47,7 @@ categories:
       name: category.system
       labels:
          healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
     data:
       category.name: system
       category.services: coreos-version-checker, system-healthcheck

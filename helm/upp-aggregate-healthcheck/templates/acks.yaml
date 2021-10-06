@@ -4,4 +4,5 @@ metadata:
   name: healthcheck.ack.messages
   labels: 
     healthcheck-acknowledgements-for: aggregate-healthcheck
+immutable: false
 data:

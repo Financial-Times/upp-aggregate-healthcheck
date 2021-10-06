@@ -28,6 +28,7 @@ categories:
       name: category.default
       labels:
         healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
     data:
       category.name: default
       category.refreshrate: "60"
