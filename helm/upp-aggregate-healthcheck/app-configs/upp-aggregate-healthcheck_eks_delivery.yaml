@@ -31,7 +31,7 @@ categories:
     immutable: false
     data:
       category.name: content-publish
-      category.services: upp-notifications-creator,notifications-push,cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,methode-article-internal-components-mapper,methode-article-mapper,methode-content-collection-mapper,methode-content-placeholder-mapper,methode-image-binary-mapper,methode-image-set-mapper,video-mapper,wordpress-article-mapper,wordpress-image-mapper
+      category.services: upp-notifications-creator,notifications-push,cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,video-mapper,wordpress-article-mapper,wordpress-image-mapper
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
@@ -115,7 +115,7 @@ categories:
     immutable: false
     data:
       category.name: image-publish
-      category.services: binary-ingester,binary-writer,cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,methode-image-binary-mapper,methode-image-model-mapper,methode-image-set-mapper,synthetic-image-publication-monitor,system-healthcheck
+      category.services: binary-ingester,binary-writer,cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,synthetic-image-publication-monitor,system-healthcheck
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
