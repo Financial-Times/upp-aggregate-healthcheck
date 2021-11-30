@@ -115,7 +115,7 @@ categories:
     immutable: false
     data:
       category.name: image-publish
-      category.services: binary-ingester,binary-writer,cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,synthetic-image-publication-monitor,system-healthcheck
+      category.services: cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,synthetic-image-publication-monitor,system-healthcheck
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
