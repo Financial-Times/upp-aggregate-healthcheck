@@ -31,9 +31,9 @@ func init() {
 	logger.InitLogger("upp-aggregate-healthcheck", "debug")
 }
 
-func (m *mockController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, error) {
+func (m *mockController) buildServicesHealthResult(providedCategories []string, useCache bool) (enrichedHealthResult, map[string]category, error) {
 	if len(providedCategories) == 1 && providedCategories[0] == brokenCategoryName {
-		return fthealth.HealthResult{}, map[string]category{}, errors.New("Broken category")
+		return enrichedHealthResult{}, map[string]category{}, errors.New("Broken category")
 	}
 
 	matchingCategories := map[string]category{}
@@ -51,15 +51,15 @@ func (m *mockController) buildServicesHealthResult(providedCategories []string, 
 		}
 	}
 
-	var checks []fthealth.CheckResult
+	var checks []enrichedCheckResult
 	finalOk := true
 	if len(providedCategories) == 1 && providedCategories[0] == categoryWithChecks {
-		checks = []fthealth.CheckResult{
+		checks = []enrichedCheckResult{
 			{
-				Ok: true,
+				CheckResult: fthealth.CheckResult{Ok: true},
 			},
 			{
-				Ok: false,
+				CheckResult: fthealth.CheckResult{Ok: false},
 			},
 		}
 
@@ -67,7 +67,7 @@ func (m *mockController) buildServicesHealthResult(providedCategories []string, 
 	}
 
 	health := fthealth.HealthResult{
-		Checks:        checks,
+		//Checks:        checks,
 		Description:   "test",
 		Name:          "cluster health",
 		SchemaVersion: 1,
@@ -75,7 +75,12 @@ func (m *mockController) buildServicesHealthResult(providedCategories []string, 
 		Severity:      1,
 	}
 
-	return health, matchingCategories, nil
+	enrichedHealth := enrichedHealthResult{
+		HealthResult: health,
+		Checks:       checks,
+	}
+
+	return enrichedHealth, matchingCategories, nil
 }
 
 func (m *mockController) getMeasuredServices() map[string]measuredService {
