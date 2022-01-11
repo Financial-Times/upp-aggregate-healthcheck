@@ -85,6 +85,16 @@ func (c *healthCheckController) addAck(serviceName string, ackMessage string) er
 	return nil
 }
 
+// type AggregateHealthResult struct {
+// 	HealthResult fthealth.HealthResult
+// 	Checks       []CustomCheckResult
+// }
+
+// type CustomCheckResult struct {
+// 	CheckResult fthealth.CheckResult
+// 	SystemCode  string
+// }
+
 func (c *healthCheckController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, error) {
 	var checkResults []fthealth.CheckResult
 	desc := "Health of the whole cluster of the moment served without cache."

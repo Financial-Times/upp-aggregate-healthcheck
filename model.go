@@ -27,6 +27,7 @@ type deployment struct {
 
 type service struct {
 	name        string
+	sysCode     string
 	ack         string
 	appPort     int32
 	isResilient bool
