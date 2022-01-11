@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -39,6 +40,10 @@ type healthcheckService interface {
 	addAck(string, string) error
 	removeAck(string) error
 	getHTTPClient() *http.Client
+}
+
+type healthcheckEndpointResponse struct {
+	Code string `json:"systemCode"`
 }
 
 const (
@@ -115,7 +120,7 @@ func (hs *k8sHealthcheckService) watchServices() {
 			switch msg.Type {
 			case watch.Added, watch.Modified:
 				k8sService := msg.Object.(*k8score.Service)
-				s := populateService(k8sService, hs.acks)
+				s := hs.populateService(k8sService, hs.acks)
 
 				hs.services.Lock()
 				hs.services.m[s.name] = s
@@ -404,7 +409,7 @@ func populatePod(k8sPod k8score.Pod) pod {
 	}
 }
 
-func populateService(k8sService *k8score.Service, acks map[string]string) service {
+func (hs *k8sHealthcheckService) populateService(k8sService *k8score.Service, acks map[string]string) service {
 	//services are resilient by default.
 	isResilient := true
 	isDaemon := false
@@ -424,13 +429,46 @@ func populateService(k8sService *k8score.Service, acks map[string]string) servic
 		}
 	}
 
+	serviceCode, err := hs.getSystemCodeForService(serviceName)
+	if err != nil {
+		log.WithError(err).Warnf("Failed to fetch system code for service '%s'", serviceName)
+	}
+	log.Infof("Fetched code %s for service %s", serviceCode, serviceName)
+
 	return service{
 		name:        serviceName,
+		sysCode:     serviceCode,
 		appPort:     getAppPortForService(k8sService),
 		isDaemon:    isDaemon,
 		isResilient: isResilient,
 		ack:         acks[serviceName],
 	}
+}
+
+func (hs *k8sHealthcheckService) getSystemCodeForService(serviceName string) (string, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://__%s/__health", serviceName), nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := hs.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("healthcheck returned non-200 status (%v)", resp.Status)
+	}
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.WithError(err).Error("Failed to close close response body reader.")
+		}
+	}()
+	response := &healthcheckEndpointResponse{}
+	err = json.NewDecoder(resp.Body).Decode(response)
+	if err != nil {
+		return "", err
+	}
+	return response.Code, nil
 }
 
 func getAppPortForService(k8sService *k8score.Service) int32 {
