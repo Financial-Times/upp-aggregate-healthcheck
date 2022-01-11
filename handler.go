@@ -21,6 +21,7 @@ type httpHandler struct {
 //IndividualHealthcheckParams struct used to populate HTML template with individual checks
 type IndividualHealthcheckParams struct {
 	Name                   string
+	SystemCode             string
 	Status                 string
 	LastUpdated            string
 	MoreInfoPath           string
@@ -411,14 +412,14 @@ func parseHTMLTemplate(w http.ResponseWriter, templateName string) *template.Tem
 }
 
 func populateAggregateServiceChecks(healthResult fthealth.HealthResult, environment string, categories string, pathPrefix string) *AggregateHealthcheckParams {
-	indiviualServiceChecks, ackCount := populateIndividualServiceChecks(healthResult.Checks, pathPrefix)
+	individualServiceChecks, ackCount := populateIndividualServiceChecks(healthResult, pathPrefix)
 	aggregateChecks := &AggregateHealthcheckParams{
 		PageTitle:               buildPageTitle(environment, categories),
 		GeneralStatus:           getGeneralStatus(healthResult),
 		RefreshFromCachePath:    buildRefreshFromCachePath(categories, pathPrefix),
 		RefreshWithoutCachePath: buildRefreshWithoutCachePath(categories, pathPrefix),
 		AckCount:                ackCount,
-		IndividualHealthChecks:  indiviualServiceChecks,
+		IndividualHealthChecks:  individualServiceChecks,
 	}
 
 	return aggregateChecks
@@ -441,8 +442,9 @@ func buildRefreshWithoutCachePath(categories string, pathPrefix string) string {
 	return refreshWithoutCachePath
 }
 
-func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix string) ([]IndividualHealthcheckParams, int) {
-	indiviualServiceChecks := make([]IndividualHealthcheckParams, len(checks))
+func populateIndividualServiceChecks(healthResult fthealth.HealthResult, pathPrefix string) ([]IndividualHealthcheckParams, int) {
+	checks := healthResult.Checks
+	individualServiceChecks := make([]IndividualHealthcheckParams, len(checks))
 	ackCount := 0
 	for i, individualCheck := range checks {
 		if individualCheck.Ack != "" {
@@ -452,6 +454,7 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix s
 		addOrRemoveAckPath, addOrRemoveAckPathName := buildAddOrRemoveAckPath(individualCheck.Name, pathPrefix, individualCheck.Ack)
 		hc := IndividualHealthcheckParams{
 			Name:                   individualCheck.Name,
+			SystemCode:             healthResult.SystemCode,
 			Status:                 getServiceStatusFromCheck(individualCheck),
 			LastUpdated:            individualCheck.LastUpdated.Format(timeLayout),
 			MoreInfoPath:           fmt.Sprintf("%s/__pods-health?service-name=%s", pathPrefix, individualCheck.Name),
@@ -461,10 +464,10 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix s
 			Output:                 individualCheck.CheckOutput,
 		}
 
-		indiviualServiceChecks[i] = hc
+		individualServiceChecks[i] = hc
 	}
 
-	return indiviualServiceChecks, ackCount
+	return individualServiceChecks, ackCount
 }
 
 func buildAddOrRemoveAckPath(serviceName string, pathPrefix string, ackMessage string) (string, string) {
