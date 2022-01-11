@@ -18,7 +18,7 @@ type healthCheckController struct {
 }
 
 type controller interface {
-	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, error)
+	buildServicesHealthResult([]string, bool) (enrichedHealthResult, map[string]category, error)
 	runServiceChecksByServiceNames(map[string]service, map[string]category) ([]fthealth.CheckResult, error)
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, error)
 	buildPodsHealthResult(string) (fthealth.HealthResult, error)
@@ -34,6 +34,17 @@ type controller interface {
 	getSeverityForService(string, int32) uint8
 	getSeverityForPod(string, int32) uint8
 	getMeasuredServices() map[string]measuredService
+}
+
+//Both enriched structs are used for applying the services' system code to the ft check results
+type enrichedHealthResult struct {
+	HealthResult fthealth.HealthResult
+	Checks       []enrichedCheckResult
+}
+
+type enrichedCheckResult struct {
+	CheckResult fthealth.CheckResult
+	SystemCode  string
 }
 
 func initializeController(environment string) *healthCheckController {
@@ -85,12 +96,12 @@ func (c *healthCheckController) addAck(serviceName string, ackMessage string) er
 	return nil
 }
 
-func (c *healthCheckController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, error) {
+func (c *healthCheckController) buildServicesHealthResult(providedCategories []string, useCache bool) (enrichedHealthResult, map[string]category, error) {
 	var checkResults []fthealth.CheckResult
 	desc := "Health of the whole cluster of the moment served without cache."
 	availableCategories, err := c.healthCheckService.getCategories()
 	if err != nil {
-		return fthealth.HealthResult{}, nil, fmt.Errorf("cannot build health check result for services: %v", err.Error())
+		return enrichedHealthResult{}, nil, fmt.Errorf("cannot build health check result for services: %v", err.Error())
 	}
 
 	matchingCategories := getMatchingCategories(providedCategories, availableCategories)
@@ -102,7 +113,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 		checkResults, err = c.runServiceChecksFor(matchingCategories)
 	}
 	if err != nil {
-		return fthealth.HealthResult{}, nil, fmt.Errorf("cannot build health check result for services: %v", err.Error())
+		return enrichedHealthResult{}, nil, fmt.Errorf("cannot build health check result for services: %v", err.Error())
 	}
 
 	c.disableStickyFailingCategories(matchingCategories, checkResults)
@@ -118,10 +129,27 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 		Ok:            finalOk,
 		Severity:      finalSeverity,
 	}
+	enrichedCheckResults := c.enrichCheckResults(checkResults)
+	enrichedHealthResult := enrichedHealthResult{
+		HealthResult: health,
+		Checks:       enrichedCheckResults,
+	}
 
 	sort.Sort(byNameComparator(health.Checks))
 
-	return health, matchingCategories, nil
+	return enrichedHealthResult, matchingCategories, nil
+}
+
+func (c *healthCheckController) enrichCheckResults(checkResults []fthealth.CheckResult) []enrichedCheckResult {
+	enrichedResults := make([]enrichedCheckResult, 0, len(checkResults))
+	for _, result := range checkResults {
+		enriched := enrichedCheckResult{
+			CheckResult: result,
+			SystemCode:  c.healthCheckService.getServiceCodeByName(result.Name),
+		}
+		enrichedResults = append(enrichedResults, enriched)
+	}
+	return enrichedResults
 }
 
 func (c *healthCheckController) runServiceChecksByServiceNames(services map[string]service, categories map[string]category) ([]fthealth.CheckResult, error) {
