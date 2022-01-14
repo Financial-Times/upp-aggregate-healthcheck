@@ -360,7 +360,7 @@ func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult fthealth.H
 	enc := json.NewEncoder(w)
 	err := enc.Encode(newHealthResult)
 	if err != nil {
-		panic("Couldn't encode health results to ResponseWriter.")
+		log.WithError(err).Panic("Couldn't encode health results to ResponseWriter.")
 	}
 }
 
