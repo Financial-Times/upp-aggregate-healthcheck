@@ -18,10 +18,11 @@ import (
 )
 
 type k8sHealthcheckService struct {
-	k8sClient  kubernetes.Interface
-	httpClient *http.Client
-	services   servicesMap
-	acks       map[string]string
+	k8sClient         kubernetes.Interface
+	httpClient        *http.Client
+	services          servicesMap
+	acks              map[string]string
+	sysCodeFetchGuard chan struct{}
 }
 
 type healthcheckService interface {
@@ -178,11 +179,13 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 	}
 
 	services := make(map[string]service)
+	sysCodeFetchGuard := make(chan struct{}, 20)
 
 	k8sService := &k8sHealthcheckService{
-		httpClient: httpClient,
-		k8sClient:  k8sClient,
-		services:   servicesMap{m: services},
+		httpClient:        httpClient,
+		k8sClient:         k8sClient,
+		services:          servicesMap{m: services},
+		sysCodeFetchGuard: sysCodeFetchGuard,
 	}
 
 	go k8sService.watchAcks()
@@ -440,16 +443,10 @@ func (hs *k8sHealthcheckService) populateService(k8sService *k8score.Service, ac
 		}
 	}
 	appPort := getAppPortForService(k8sService)
-
-	serviceCode, err := hs.getSystemCodeForService(serviceName, appPort)
-	if err != nil {
-		log.WithError(err).Warnf("Failed to fetch system code for service '%s'", serviceName)
-	}
-	log.Debugf("Fetched system code [%s] for service %s", serviceCode, serviceName)
+	hs.populateSystemCodeForService(serviceName, appPort)
 
 	return service{
 		name:        serviceName,
-		sysCode:     serviceCode,
 		appPort:     appPort,
 		isDaemon:    isDaemon,
 		isResilient: isResilient,
@@ -457,30 +454,48 @@ func (hs *k8sHealthcheckService) populateService(k8sService *k8score.Service, ac
 	}
 }
 
-func (hs *k8sHealthcheckService) getSystemCodeForService(serviceName string, servicePort int32) (string, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/__health", serviceName, servicePort), nil)
-	if err != nil {
-		return "", err
-	}
-	resp, err := hs.httpClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return "", fmt.Errorf("healthcheck returned non-200 status (%v)", resp.Status)
-	}
-	defer func() {
-		err := resp.Body.Close()
+func (hs *k8sHealthcheckService) populateSystemCodeForService(serviceName string, servicePort int32) {
+	go func(serviceName string, servicePort int32, services *servicesMap, guard chan struct{}) {
+		log.Infof("Fetching system code for service %s", serviceName)
+		guard <- struct{}{}
+		defer func(g chan struct{}) {
+			<-g
+		}(guard)
+
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/__health", serviceName, servicePort), nil)
 		if err != nil {
-			log.WithError(err).Error("Failed to close close response body reader.")
+			log.WithError(err).Errorf("Failed to prepare system code request for service %s", serviceName)
+			return
 		}
-	}()
-	response := &healthcheckEndpointResponse{}
-	err = json.NewDecoder(resp.Body).Decode(response)
-	if err != nil {
-		return "", err
-	}
-	return response.Code, nil
+		resp, err := hs.httpClient.Do(req)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to execute system code request for service %s", serviceName)
+			return
+		}
+		if resp.StatusCode != http.StatusOK {
+			log.WithError(err).Errorf("System code request returned non-200 code [%d] for service %s", resp.StatusCode, serviceName)
+			return
+		}
+		defer func() {
+			err := resp.Body.Close()
+			if err != nil {
+				log.WithError(err).Errorf("Failed to close close response body reader for service %s.", serviceName)
+			}
+		}()
+		response := &healthcheckEndpointResponse{}
+		err = json.NewDecoder(resp.Body).Decode(response)
+		if err != nil {
+			log.WithError(err).Errorf("Failed to decode response body for service %s", serviceName)
+			return
+		}
+		services.Lock()
+		if service, ok := services.m[serviceName]; ok {
+			service.sysCode = response.Code
+			services.m[serviceName] = service
+			log.Infof("Fetched code [%s] for service %s", response.Code, serviceName)
+		}
+		services.Unlock()
+	}(serviceName, servicePort, &hs.services, hs.sysCodeFetchGuard)
 }
 
 func getAppPortForService(k8sService *k8score.Service) int32 {
