@@ -21,7 +21,7 @@ type controller interface {
 	buildServicesHealthResult([]string, bool) (enrichedHealthResult, map[string]category, error)
 	runServiceChecksByServiceNames(map[string]service, map[string]category) ([]fthealth.CheckResult, error)
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, error)
-	buildPodsHealthResult(string) (fthealth.HealthResult, error)
+	buildPodsHealthResult(string) (enrichedHealthResult, error)
 	runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, error)
 	updateCachedHealth(map[string]service, map[string]category)
@@ -44,7 +44,7 @@ type enrichedHealthResult struct {
 
 type enrichedCheckResult struct {
 	CheckResult fthealth.CheckResult
-	SystemCode  string
+	SystemCode  string `json:"systemCode"`
 }
 
 func initializeController(environment string) *healthCheckController {
