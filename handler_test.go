@@ -95,32 +95,39 @@ func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.Ch
 	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
+func (m *mockController) buildPodsHealthResult(serviceName string) (enrichedHealthResult, error) {
 	if serviceName == brokenServiceName {
-		return fthealth.HealthResult{}, errors.New("Broken pod")
+		return enrichedHealthResult{}, errors.New("Broken pod")
 	}
 
 	if serviceName == validServiceName {
-		checks := []fthealth.CheckResult{
+		checks := []enrichedCheckResult{
 			{
-				Ok: true,
+				CheckResult: fthealth.CheckResult{
+					Ok: true,
+				},
 			},
 			{
-				Ok: false,
+				CheckResult: fthealth.CheckResult{
+					Ok: false,
+				},
 			},
 		}
 
-		return fthealth.HealthResult{
-			Checks:        checks,
+		health := fthealth.HealthResult{
 			Description:   "test",
 			Name:          "cluster health",
 			SchemaVersion: 1,
 			Ok:            true,
 			Severity:      1,
+		}
+		return enrichedHealthResult{
+			HealthResult: health,
+			Checks:       checks,
 		}, nil
 	}
 
-	return fthealth.HealthResult{}, nil
+	return enrichedHealthResult{}, nil
 }
 
 func (m *mockController) runPodChecksFor(string) ([]fthealth.CheckResult, error) {
