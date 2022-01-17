@@ -12,17 +12,17 @@ import (
 	log "github.com/Financial-Times/go-logger"
 )
 
-func (c *healthCheckController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
+func (c *healthCheckController) buildPodsHealthResult(serviceName string) (enrichedHealthResult, error) {
 	desc := fmt.Sprintf("Health of pods that are under service %s served without cache.", serviceName)
 
 	checkResults, err := c.runPodChecksFor(serviceName)
 
 	if err != nil {
-		return fthealth.HealthResult{}, fmt.Errorf("Cannot perform pod checks for service %s, error was: %s", serviceName, err.Error())
+		return enrichedHealthResult{}, fmt.Errorf("cannot perform pod checks for service %s, error was: %s", serviceName, err.Error())
 	}
 
 	finalOk, finalSeverity := getFinalResult(checkResults, nil)
-
+	sort.Sort(byNameComparator(checkResults))
 	health := fthealth.HealthResult{
 		Checks:        checkResults,
 		Description:   desc,
@@ -32,9 +32,20 @@ func (c *healthCheckController) buildPodsHealthResult(serviceName string) (fthea
 		Severity:      finalSeverity,
 	}
 
-	sort.Sort(byNameComparator(health.Checks))
+	serviceCode := c.healthCheckService.getServiceCodeByName(serviceName)
 
-	return health, nil
+	enrichedChecks := make([]enrichedCheckResult, 0, len(checkResults))
+	for _, check := range checkResults {
+		enrichedChecks = append(enrichedChecks, enrichedCheckResult{
+			CheckResult: check,
+			SystemCode:  serviceCode,
+		})
+	}
+	result := enrichedHealthResult{
+		HealthResult: health,
+		Checks:       enrichedChecks,
+	}
+	return result, nil
 }
 
 func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.CheckResult, error) {

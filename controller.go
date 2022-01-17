@@ -21,7 +21,7 @@ type controller interface {
 	buildServicesHealthResult([]string, bool) (enrichedHealthResult, map[string]category, error)
 	runServiceChecksByServiceNames(map[string]service, map[string]category) ([]fthealth.CheckResult, error)
 	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, error)
-	buildPodsHealthResult(string) (fthealth.HealthResult, error)
+	buildPodsHealthResult(string) (enrichedHealthResult, error)
 	runPodChecksFor(string) ([]fthealth.CheckResult, error)
 	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, error)
 	updateCachedHealth(map[string]service, map[string]category)
@@ -44,7 +44,7 @@ type enrichedHealthResult struct {
 
 type enrichedCheckResult struct {
 	CheckResult fthealth.CheckResult
-	SystemCode  string
+	SystemCode  string `json:"systemCode"`
 }
 
 func initializeController(environment string) *healthCheckController {
@@ -119,7 +119,7 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	c.disableStickyFailingCategories(matchingCategories, checkResults)
 
 	finalOk, finalSeverity := getFinalResult(checkResults, matchingCategories)
-
+	sort.Sort(byNameComparator(checkResults))
 	health := fthealth.HealthResult{
 		SystemCode:    c.environment,
 		Checks:        checkResults,
@@ -134,8 +134,6 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 		HealthResult: health,
 		Checks:       enrichedCheckResults,
 	}
-
-	sort.Sort(byNameComparator(health.Checks))
 
 	return enrichedHealthResult, matchingCategories, nil
 }
