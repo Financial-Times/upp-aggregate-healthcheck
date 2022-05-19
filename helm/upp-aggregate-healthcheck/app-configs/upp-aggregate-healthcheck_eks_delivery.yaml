@@ -31,7 +31,7 @@ categories:
     immutable: false
     data:
       category.name: content-publish
-      category.services: upp-notifications-creator,notifications-push,cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,video-mapper,wordpress-article-mapper,wordpress-image-mapper
+      category.services: upp-notifications-creator,notifications-push,cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,video-mapper
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
