@@ -3,14 +3,12 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	log "github.com/Financial-Times/go-logger"
 	"html/template"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
-
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
-	log "github.com/Financial-Times/go-logger"
 )
 
 type httpHandler struct {
@@ -323,18 +321,9 @@ func useCache(theURL *url.URL) bool {
 
 func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult enrichedHealthResult) {
 	type CheckResultWithHeimdalAck struct {
-		ID               string    `json:"id"`
-		Name             string    `json:"name"`
-		SystemCode       string    `json:"systemCode"`
-		Ok               bool      `json:"ok"`
-		Severity         uint8     `json:"severity"`
-		BusinessImpact   string    `json:"businessImpact"`
-		TechnicalSummary string    `json:"technicalSummary"`
-		PanicGuide       string    `json:"panicGuide"`
-		CheckOutput      string    `json:"checkOutput"`
-		LastUpdated      time.Time `json:"lastUpdated"`
-		Ack              string    `json:"ack,omitempty"`
-		HeimdalAck       string    `json:"_acknowledged,omitempty"`
+		fthealth.CheckResult
+		SystemCode string `json:"systemCode"`
+		HeimdalAck string `json:"_acknowledged,omitempty"`
 	}
 
 	type HealthResult struct {
@@ -351,18 +340,9 @@ func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult enrichedHe
 	for _, check := range healthResult.Checks {
 		originalCheck := check.CheckResult
 		newCheck := CheckResultWithHeimdalAck{
-			SystemCode:       check.SystemCode,
-			ID:               originalCheck.ID,
-			Name:             originalCheck.Name,
-			Ok:               originalCheck.Ok,
-			Severity:         originalCheck.Severity,
-			BusinessImpact:   originalCheck.BusinessImpact,
-			TechnicalSummary: originalCheck.TechnicalSummary,
-			PanicGuide:       originalCheck.PanicGuide,
-			CheckOutput:      originalCheck.CheckOutput,
-			LastUpdated:      originalCheck.LastUpdated,
-			Ack:              originalCheck.Ack,
-			HeimdalAck:       originalCheck.Ack,
+			CheckResult: originalCheck,
+			SystemCode:  check.SystemCode,
+			HeimdalAck:  originalCheck.Ack,
 		}
 		newChecks = append(newChecks, newCheck)
 	}
