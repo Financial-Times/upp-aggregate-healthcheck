@@ -26,12 +26,13 @@ type deployment struct {
 }
 
 type service struct {
-	name        string
-	sysCode     string
-	ack         string
-	appPort     int32
-	isResilient bool
-	isDaemon    bool
+	name            string
+	sysCode         string
+	ack             string
+	appPort         int32
+	healthcheckPort int32
+	isResilient     bool
+	isDaemon        bool
 }
 
 type servicesMap struct {
