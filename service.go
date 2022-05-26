@@ -472,16 +472,16 @@ func (hs *k8sHealthcheckService) populateSystemCodeForService(serviceName string
 			log.WithError(err).Errorf("Failed to execute system code request for service %s", serviceName)
 			return
 		}
+		defer func() {
+			err := resp.Body.Close()
+			if err != nil {
+				log.WithError(err).Errorf("Failed to close the response body reader for service %s.", serviceName)
+			}
+		}()
 		if resp.StatusCode != http.StatusOK {
 			log.WithError(err).Errorf("System code request returned non-200 code [%d] for service %s", resp.StatusCode, serviceName)
 			return
 		}
-		defer func() {
-			err := resp.Body.Close()
-			if err != nil {
-				log.WithError(err).Errorf("Failed to close close response body reader for service %s.", serviceName)
-			}
-		}()
 		response := &healthcheckEndpointResponse{}
 		err = json.NewDecoder(resp.Body).Decode(response)
 		if err != nil {
@@ -499,14 +499,15 @@ func (hs *k8sHealthcheckService) populateSystemCodeForService(serviceName string
 }
 
 func getAppPortForService(k8sService *k8score.Service) int32 {
+	healthcheckPort := defaultAppPort
 	servicePorts := k8sService.Spec.Ports
 	for _, port := range servicePorts {
-		if port.Name == "app" {
-			return port.TargetPort.IntVal
+		if port.Name == "healthcheck" {
+			return port.Port
 		}
+		healthcheckPort = port.Port
 	}
-
-	return defaultAppPort
+	return healthcheckPort
 }
 
 func getAcksConfigMap(k8sClient kubernetes.Interface) (k8score.ConfigMap, error) {
