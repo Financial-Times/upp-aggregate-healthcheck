@@ -67,7 +67,15 @@ categories:
     immutable: false
     data:
       category.name: lists-publish
-      category.services: cms-kafka-bridge-pub-pre-prod,cms-notifier,upp-list-validator,list-ingester,public-lists-api,public-concordances-api,public-things-api,system-healthcheck
+      category.services: >- 
+        cms-notifier,
+        upp-list-validator,
+        list-ingester,
+        public-lists-api,
+        upp-notifications-creator,
+        list-notifications-ingester,
+        list-notifications-push,
+        list-notifications-rw
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
