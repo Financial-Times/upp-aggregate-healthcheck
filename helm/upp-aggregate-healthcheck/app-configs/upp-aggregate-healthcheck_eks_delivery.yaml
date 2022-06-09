@@ -78,7 +78,15 @@ categories:
     immutable: false
     data:
       category.name: internalcontent-read
-      category.services: api-policy-component,content-public-read,document-store-api,system-healthcheck,enriched-content-read-api,internal-content-api,public-annotations-api,relations-api
+      category.services: >- 
+        api-policy-component,
+        content-public-read,
+        document-store-api,
+        enriched-content-read-api,
+        internal-content-api,
+        content-unroller,
+        public-annotations-api,
+        relations-api
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
