@@ -66,7 +66,7 @@ categories:
     immutable: false
     data:
       category.name: content-read
-      category.services: api-policy-component,content-public-read,document-store-api,system-healthcheck
+      category.services: api-policy-component,content-public-read,document-store-api
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
