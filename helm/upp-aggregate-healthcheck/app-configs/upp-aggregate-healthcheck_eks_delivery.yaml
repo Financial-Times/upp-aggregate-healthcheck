@@ -150,7 +150,7 @@ categories:
     immutable: false
     data:
       category.name: concordances-read
-      category.services: api-policy-component,public-concordances-api,system-healthcheck
+      category.services: api-policy-component,public-concordances-api,internal-concordances
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
