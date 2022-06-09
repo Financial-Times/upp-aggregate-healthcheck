@@ -181,7 +181,15 @@ categories:
     immutable: false
     data:
       category.name: image-publish
-      category.services: cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,system-healthcheck
+      category.services: >-
+        cms-notifier,
+        upp-image-validator,
+        upp-image-set-validator,
+        upp-graphic-validator,
+        content-ingester,
+        document-store-api,
+        post-publication-combiner,
+        enriched-content-rw-postgres
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
