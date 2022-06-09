@@ -31,7 +31,30 @@ categories:
     immutable: false
     data:
       category.name: content-publish
-      category.services: upp-notifications-creator,notifications-push,cms-kafka-bridge-pub-pre-prod,cms-notifier,content-ingester,document-store-api,video-mapper
+      category.services: >-
+        cms-notifier,
+        upp-audio-validator,
+        upp-article-validator,
+        upp-internal-article-validator,
+        upp-content-placeholder-validator,
+        upp-internal-content-placeholder-validator,
+        upp-live-blog-post-validator,
+        upp-internal-live-blog-post-validator,
+        upp-live-blog-package-validator,
+        upp-internal-live-blog-package-validator,
+        upp-live-event-validator,
+        upp-next-video-mapper,
+        body-validation-service,
+        content-ingester,
+        document-store-api,
+        post-publication-combiner,
+        content-rw-elasticsearch,
+        ccf-content-rw-elasticsearch,
+        enriched-content-rw-postgres,
+        upp-notifications-creator,
+        notifications-ingester,
+        notifications-rw,
+        notifications-push
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
