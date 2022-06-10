@@ -225,7 +225,15 @@ categories:
     immutable: false
     data:
       category.name: annotations-publish
-      category.services: public-annotations-api,system-healthcheck
+      category.services: >-
+        pac-annotations-mapper,
+        upp-next-video-annotations-mapper,
+        annotations-rw-neo4j,
+        annotations-writer-ontotext,
+        public-annotations-api,
+        annotation-notifications-ingester,
+        notifications-rw,
+        notifications-push
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
