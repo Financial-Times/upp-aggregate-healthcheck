@@ -245,7 +245,7 @@ categories:
     immutable: false
     data:
       category.name: annotations-read
-      category.services: annotations-rw-neo4j,upp-next-video-annotations-mapper,pac-annotations-mapper,system-healthcheck
+      category.services: api-policy-component,public-annotations-api
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
