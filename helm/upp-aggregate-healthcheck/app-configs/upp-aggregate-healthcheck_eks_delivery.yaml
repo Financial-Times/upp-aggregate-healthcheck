@@ -257,6 +257,6 @@ categories:
     immutable: false
     data:
       category.name: concept-search
-      category.services: concept-search-api,system-healthcheck
+      category.services: concept-search-api
       category.refreshrate: "60"
       category.issticky: "false"
