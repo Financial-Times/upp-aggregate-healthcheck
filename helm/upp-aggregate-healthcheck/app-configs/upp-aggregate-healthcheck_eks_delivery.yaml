@@ -49,8 +49,6 @@ categories:
         document-store-api,
         post-publication-combiner,
         content-rw-elasticsearch,
-        ccf-content-rw-elasticsearch,
-        enriched-content-rw-postgres,
         upp-notifications-creator,
         notifications-ingester,
         notifications-rw,
@@ -122,7 +120,6 @@ categories:
         api-policy-component,
         content-search-api-port,
         concept-search-api,
-        combined-content-search,
         internal-content-api,
         enriched-content-read-api,
         content-public-read,
@@ -187,9 +184,7 @@ categories:
         upp-image-set-validator,
         upp-graphic-validator,
         content-ingester,
-        document-store-api,
-        post-publication-combiner,
-        enriched-content-rw-postgres
+        document-store-api
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
