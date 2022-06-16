@@ -39,7 +39,20 @@ categories:
     immutable: false
     data:
       category.name: publishing-monitors
-      category.services: publish-availability-monitor, synthetic-generic-list-publication-monitor
+      category.services: >-
+        publish-availability-monitor,
+        synthetic-audio-publication-monitor,
+        synthetic-generic-article-publication-monitor,
+        synthetic-generic-content-collection-pub-monitor,
+        synthetic-generic-content-placeholder-pub-monitor,
+        synthetic-generic-list-publication-monitor,
+        synthetic-generic-live-blog-package-pub-monitor,
+        synthetic-generic-live-blog-post-pub-monitor,
+        synthetic-graphic-publication-monitor,
+        synthetic-image-publication-monitor,
+        synthetic-imageset-publication-monitor,
+        synthetic-live-event-publication-monitor,
+        synthetic-page-publication-monitor
       category.refreshrate: "60"
   - kind: ConfigMap
     apiVersion: v1
