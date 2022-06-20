@@ -70,9 +70,8 @@ func (h *httpHandler) updateStickyCategory(w http.ResponseWriter, r *http.Reques
 		handleResponseWriterErr(err)
 		return
 	}
-
 	log.Infof("Updating category [%s] with isEnabled flag value of [%t]", categoryName, isEnabled)
-	err := h.controller.updateStickyCategory(categoryName, isEnabled)
+	err := h.controller.updateStickyCategory(r.Context(), categoryName, isEnabled)
 
 	if err != nil {
 		log.WithError(err).Errorf("Failed to update category with name %s.", categoryName)
@@ -104,7 +103,7 @@ func (h *httpHandler) handleRemoveAck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Infof("Removing ack for service with name %s", serviceName)
-	err := h.controller.removeAck(serviceName)
+	err := h.controller.removeAck(r.Context(), serviceName)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -126,7 +125,7 @@ func (h *httpHandler) handleAddAck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	log.Infof("Acking service with name %s", serviceName)
-	err := h.controller.addAck(serviceName, ackMessage)
+	err := h.controller.addAck(r.Context(), serviceName, ackMessage)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -169,7 +168,7 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.Request) {
 	categories := parseCategories(r.URL)
 	useCache := useCache(r.URL)
-	healthResult, validCategories, err := h.controller.buildServicesHealthResult(categories, useCache)
+	healthResult, validCategories, err := h.controller.buildServicesHealthResult(r.Context(), categories, useCache)
 
 	if len(validCategories) == 0 && err == nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -215,7 +214,7 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	healthResult, err := h.controller.buildPodsHealthResult(serviceName)
+	healthResult, err := h.controller.buildPodsHealthResult(r.Context(), serviceName)
 
 	log.Infof("Checking pods health for service [%s]", serviceName)
 	if err != nil {
@@ -250,7 +249,7 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 	}
 
 	log.Infof("Retrieving individual pod health check for pod with name %s", podName)
-	podHealth, contentTypeHeader, err := h.controller.getIndividualPodHealth(podName)
+	podHealth, contentTypeHeader, err := h.controller.getIndividualPodHealth(r.Context(), podName)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -269,7 +268,7 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
 	categories := parseCategories(r.URL)
 	useCache := useCache(r.URL)
-	healthResults, validCategories, err := h.controller.buildServicesHealthResult(categories, useCache)
+	healthResults, validCategories, err := h.controller.buildServicesHealthResult(r.Context(), categories, useCache)
 
 	if len(validCategories) == 0 && err == nil {
 		w.WriteHeader(http.StatusBadRequest)
