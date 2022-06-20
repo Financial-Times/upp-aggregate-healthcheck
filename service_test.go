@@ -1,19 +1,20 @@
 package main
 
 import (
-	"github.com/Financial-Times/go-logger"
+	"context"
 	"io/ioutil"
-	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/Financial-Times/go-logger"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 )
@@ -200,19 +201,19 @@ func TestCheckPodHealthPassingChecks(t *testing.T) {
 
 func TestGetCategories(t *testing.T) {
 	service := initializeMockService(nil)
-	_, err := service.getCategories()
+	_, err := service.getCategories(context.TODO())
 	assert.Nil(t, err)
 }
 
 func TestUpdateCategoryInvalidConfigMap(t *testing.T) {
 	service := initializeMockService(nil)
-	err := service.updateCategory("validCategoryName", true)
+	err := service.updateCategory(context.TODO(), "validCategoryName", true)
 	assert.NotNil(t, err)
 }
 
 func TestAddAckConfigMapNotFound(t *testing.T) {
 	service := initializeMockService(nil)
-	err := service.addAck("invalidServiceName", "ack message")
+	err := service.addAck(context.TODO(), "invalidServiceName", "ack message")
 	assert.NotNil(t, err)
 }
 
@@ -230,30 +231,33 @@ func TestGetDeploymentsReturnsDeployments(t *testing.T) {
 	service := initializeMockService(nil)
 	var replicas int32 = 1
 	_, err := service.k8sClient.AppsV1().Deployments(apiv1.NamespaceDefault).Create(
+		context.TODO(),
 		&appsv1.Deployment{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: k8smeta.ObjectMeta{
 				Name:      "deployment1",
 				Namespace: apiv1.NamespaceDefault,
 			},
 			Spec: appsv1.DeploymentSpec{
 				Replicas: &replicas,
 			},
-		})
+		},
+		k8smeta.CreateOptions{})
 	assert.Nil(t, err)
 
 	_, err = service.k8sClient.AppsV1().Deployments(apiv1.NamespaceDefault).Create(
+		context.TODO(),
 		&appsv1.Deployment{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: k8smeta.ObjectMeta{
 				Name:      "deployment2",
 				Namespace: apiv1.NamespaceDefault,
 			},
 			Spec: appsv1.DeploymentSpec{
 				Replicas: &replicas,
 			},
-		})
+		}, k8smeta.CreateOptions{})
 	assert.Nil(t, err)
 
-	deployments, err := service.getDeployments()
+	deployments, err := service.getDeployments(context.TODO())
 
 	assert.Nil(t, err)
 	assert.Equal(t, 2, len(deployments))
@@ -265,32 +269,35 @@ func TestGetDeploymentsReturnsDeploymentsAndStatefulSets(t *testing.T) {
 	service := initializeMockService(nil)
 	var replicas int32 = 1
 	_, err := service.k8sClient.AppsV1().Deployments(apiv1.NamespaceDefault).Create(
+		context.TODO(),
 		&appsv1.Deployment{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: k8smeta.ObjectMeta{
 				Name:      "deployment1",
 				Namespace: apiv1.NamespaceDefault,
 			},
 			Spec: appsv1.DeploymentSpec{
 				Replicas: &replicas,
 			},
-		})
+		}, k8smeta.CreateOptions{})
 	assert.Nil(t, err)
 
 	_, err = service.k8sClient.AppsV1().Deployments(apiv1.NamespaceDefault).Create(
+		context.TODO(),
 		&appsv1.Deployment{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: k8smeta.ObjectMeta{
 				Name:      "deployment2",
 				Namespace: apiv1.NamespaceDefault,
 			},
 			Spec: appsv1.DeploymentSpec{
 				Replicas: &replicas,
 			},
-		})
+		}, k8smeta.CreateOptions{})
 	assert.Nil(t, err)
 
 	_, err = service.k8sClient.AppsV1().StatefulSets(apiv1.NamespaceDefault).Create(
+		context.TODO(),
 		&appsv1.StatefulSet{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: k8smeta.ObjectMeta{
 				Name:      "deployment3",
 				Namespace: apiv1.NamespaceDefault,
 			},
@@ -298,10 +305,10 @@ func TestGetDeploymentsReturnsDeploymentsAndStatefulSets(t *testing.T) {
 				ServiceName: "special-stateful-service",
 				Replicas:    &replicas,
 			},
-		})
+		}, k8smeta.CreateOptions{})
 	assert.Nil(t, err)
 
-	deployments, err := service.getDeployments()
+	deployments, err := service.getDeployments(context.TODO())
 
 	assert.Nil(t, err)
 	assert.Equal(t, 3, len(deployments))
@@ -322,7 +329,7 @@ func TestGetDeploymentsReturnsErrorForDeployments(t *testing.T) {
 	mock.AddReactor("list", "deployments", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewNotFound(action.GetResource().GroupResource(), action.GetResource().Resource)
 	})
-	deployments, err := service.getDeployments()
+	deployments, err := service.getDeployments(context.TODO())
 	assert.Error(t, err)
 	assert.Nil(t, deployments)
 }
@@ -337,7 +344,7 @@ func TestGetDeploymentsReturnsErrorForStatefulSets(t *testing.T) {
 	mock.AddReactor("list", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {
 		return true, nil, apierrors.NewNotFound(action.GetResource().GroupResource(), action.GetResource().Resource)
 	})
-	deployments, err := service.getDeployments()
+	deployments, err := service.getDeployments(context.TODO())
 	assert.Error(t, err)
 	assert.Nil(t, deployments)
 }

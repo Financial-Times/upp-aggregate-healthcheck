@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
+
 	log "github.com/Financial-Times/go-logger"
 )
 
-func (c *healthCheckController) getSeverityForService(serviceName string, appPort int32) uint8 {
-	pods, err := c.healthCheckService.getPodsForService(serviceName)
+func (c *healthCheckController) getSeverityForService(ctx context.Context, serviceName string, appPort int32) uint8 {
+	pods, err := c.healthCheckService.getPodsForService(ctx, serviceName)
 	if err != nil {
 		log.WithError(err).Warnf("Cannot get pods for service with name %s in order to get severity level, using default severity: %d.", serviceName, defaultSeverity)
 		return defaultSeverity
@@ -44,8 +46,8 @@ func (c *healthCheckController) getSeverityForService(serviceName string, appPor
 	return finalSeverity
 }
 
-func (c *healthCheckController) getSeverityForPod(podName string, appPort int32) uint8 {
-	podToBeChecked, err := c.healthCheckService.getPodByName(podName)
+func (c *healthCheckController) getSeverityForPod(ctx context.Context, podName string, appPort int32) uint8 {
+	podToBeChecked, err := c.healthCheckService.getPodByName(ctx, podName)
 
 	if err != nil {
 		log.WithError(err).Errorf("Cannot get pod by name: %s in order to get severity level, using default severity: %d.", podName, defaultSeverity)

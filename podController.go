@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -12,10 +13,10 @@ import (
 	log "github.com/Financial-Times/go-logger"
 )
 
-func (c *healthCheckController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
+func (c *healthCheckController) buildPodsHealthResult(ctx context.Context, serviceName string) (fthealth.HealthResult, error) {
 	desc := fmt.Sprintf("Health of pods that are under service %s served without cache.", serviceName)
 
-	checkResults, err := c.runPodChecksFor(serviceName)
+	checkResults, err := c.runPodChecksFor(ctx, serviceName)
 
 	if err != nil {
 		return fthealth.HealthResult{}, fmt.Errorf("Cannot perform pod checks for service %s, error was: %s", serviceName, err.Error())
@@ -37,13 +38,13 @@ func (c *healthCheckController) buildPodsHealthResult(serviceName string) (fthea
 	return health, nil
 }
 
-func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.CheckResult, error) {
+func (c *healthCheckController) runPodChecksFor(ctx context.Context, serviceName string) ([]fthealth.CheckResult, error) {
 	serviceToBeChecked, err := c.healthCheckService.getServiceByName(serviceName)
 	if err != nil {
 		return []fthealth.CheckResult{}, err
 	}
 
-	pods, err := c.healthCheckService.getPodsForService(serviceName)
+	pods, err := c.healthCheckService.getPodsForService(ctx, serviceName)
 	if err != nil {
 		return []fthealth.CheckResult{}, fmt.Errorf("Cannot get pods for service %s, error was: %s", serviceName, err.Error())
 	}
@@ -68,7 +69,7 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 			defer wg.Done()
 			healthCheck := healthChecks[i]
 			if !healthCheck.Ok {
-				severity := c.getSeverityForPod(healthCheck.Name, serviceToBeChecked.appPort)
+				severity := c.getSeverityForPod(ctx, healthCheck.Name, serviceToBeChecked.appPort)
 				healthChecks[i].Severity = severity
 			}
 
@@ -82,8 +83,8 @@ func (c *healthCheckController) runPodChecksFor(serviceName string) ([]fthealth.
 	return healthChecks, nil
 }
 
-func (c *healthCheckController) getIndividualPodHealth(podName string) ([]byte, string, error) {
-	podToBeChecked, err := c.healthCheckService.getPodByName(podName)
+func (c *healthCheckController) getIndividualPodHealth(ctx context.Context, podName string) ([]byte, string, error) {
+	podToBeChecked, err := c.healthCheckService.getPodByName(ctx, podName)
 	if err != nil {
 		return nil, "", errors.New("Error retrieving pod: " + err.Error())
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"reflect"
@@ -27,7 +28,7 @@ func newMeasuredService(service service) measuredService {
 	}
 }
 
-func (c *healthCheckController) collectChecksFromCachesFor(categories map[string]category) ([]fthealth.CheckResult, error) {
+func (c *healthCheckController) collectChecksFromCachesFor(ctx context.Context, categories map[string]category) ([]fthealth.CheckResult, error) {
 	var checkResults []fthealth.CheckResult
 	serviceNames := getServiceNamesFromCategories(categories)
 	services := c.healthCheckService.getServicesMapByNames(serviceNames)
@@ -42,7 +43,7 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 	}
 
 	if len(servicesThatAreNotInCache) != 0 {
-		notCachedChecks, err := c.runServiceChecksByServiceNames(servicesThatAreNotInCache, categories)
+		notCachedChecks, err := c.runServiceChecksByServiceNames(ctx, servicesThatAreNotInCache, categories)
 		if err != nil {
 			return nil, err
 		}
@@ -52,10 +53,10 @@ func (c *healthCheckController) collectChecksFromCachesFor(categories map[string
 	return checkResults, nil
 }
 
-func (c *healthCheckController) updateCachedHealth(services map[string]service, categories map[string]category) {
+func (c *healthCheckController) updateCachedHealth(ctx context.Context, services map[string]service, categories map[string]category) {
 	// adding new services, not touching existing
 	refreshPeriod := findShortestPeriod(categories)
-	categories, err := c.healthCheckService.getCategories()
+	categories, err := c.healthCheckService.getCategories(ctx)
 	if err != nil {
 		log.WithError(err).Warn("Cannot read categories. Using minimum refresh period for services")
 	}
@@ -94,14 +95,17 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 		return
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// run check
-	deployments, err := c.healthCheckService.getDeployments()
+	deployments, err := c.healthCheckService.getDeployments(ctx)
 	if err != nil {
 		log.WithError(err).Errorf("Cannot run scheduled health check for service %s", mService.service.name)
 	} else {
 		serviceToBeChecked := mService.service
 
-		checks := []fthealth.Check{newServiceHealthCheck(serviceToBeChecked, deployments, c.healthCheckService)}
+		checks := []fthealth.Check{newServiceHealthCheck(ctx, serviceToBeChecked, deployments, c.healthCheckService)}
 
 		checkResult := fthealth.RunCheck(fthealth.HealthCheck{
 			SystemCode:  serviceToBeChecked.name,
@@ -113,7 +117,7 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 		checkResult.Ack = serviceToBeChecked.ack
 
 		if !checkResult.Ok {
-			severity := c.getSeverityForService(checkResult.Name, serviceToBeChecked.appPort)
+			severity := c.getSeverityForService(ctx, checkResult.Name, serviceToBeChecked.appPort)
 			checkResult.Severity = severity
 		}
 
