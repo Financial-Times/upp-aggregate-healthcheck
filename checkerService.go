@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -20,9 +21,9 @@ type healthcheckResponse struct {
 	}
 }
 
-func (hs *k8sHealthcheckService) checkServiceHealth(service service, deployments map[string]deployment) (string, error) {
+func (hs *k8sHealthcheckService) checkServiceHealth(ctx context.Context, service service, deployments map[string]deployment) (string, error) {
 	var err error
-	pods, err := hs.getPodsForService(service.name)
+	pods, err := hs.getPodsForService(ctx, service.name)
 	if err != nil {
 		return "", fmt.Errorf("cannot retrieve pods for service with name %s to perform healthcheck: %s", service.name, err.Error())
 	}
@@ -150,7 +151,7 @@ func newPodHealthCheck(pod pod, service service, healthcheckService healthcheckS
 	}
 }
 
-func newServiceHealthCheck(service service, deployments map[string]deployment, healthcheckService healthcheckService) fthealth.Check {
+func newServiceHealthCheck(ctx context.Context, service service, deployments map[string]deployment, healthcheckService healthcheckService) fthealth.Check {
 	return fthealth.Check{
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		Name:             service.name,
@@ -158,7 +159,7 @@ func newServiceHealthCheck(service service, deployments map[string]deployment, h
 		Severity:         defaultSeverity,
 		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
-			return healthcheckService.checkServiceHealth(service, deployments)
+			return healthcheckService.checkServiceHealth(ctx, service, deployments)
 		},
 	}
 }
