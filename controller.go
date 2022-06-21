@@ -145,8 +145,8 @@ func (c *healthCheckController) runServiceChecksByServiceNames(ctx context.Conte
 	}).Checks
 
 	wg := sync.WaitGroup{}
-	tempCtx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	//tempCtx, cancel := context.WithCancel(context.Background())
+	// cancel()
 	for i := range healthChecks {
 		wg.Add(1)
 		go func(context context.Context, i int) {
@@ -160,7 +160,7 @@ func (c *healthCheckController) runServiceChecksByServiceNames(ctx context.Conte
 				}
 			}
 			wg.Done()
-		}(tempCtx, i)
+		}(ctx, i)
 	}
 	wg.Wait()
 
@@ -170,7 +170,7 @@ func (c *healthCheckController) runServiceChecksByServiceNames(ctx context.Conte
 		}
 	}
 
-	c.updateCachedHealth(tempCtx, services, categories)
+	c.updateCachedHealth(ctx, services, categories)
 	return healthChecks, nil
 }
 
