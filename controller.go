@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"sync"
@@ -18,21 +19,21 @@ type healthCheckController struct {
 }
 
 type controller interface {
-	buildServicesHealthResult([]string, bool) (fthealth.HealthResult, map[string]category, error)
-	runServiceChecksByServiceNames(map[string]service, map[string]category) ([]fthealth.CheckResult, error)
-	runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, error)
-	buildPodsHealthResult(string) (fthealth.HealthResult, error)
-	runPodChecksFor(string) ([]fthealth.CheckResult, error)
-	collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, error)
-	updateCachedHealth(map[string]service, map[string]category)
+	buildServicesHealthResult(context.Context, []string, bool) (fthealth.HealthResult, map[string]category, error)
+	runServiceChecksByServiceNames(context.Context, map[string]service, map[string]category) ([]fthealth.CheckResult, error)
+	runServiceChecksFor(context.Context, map[string]category) ([]fthealth.CheckResult, error)
+	buildPodsHealthResult(context.Context, string) (fthealth.HealthResult, error)
+	runPodChecksFor(context.Context, string) ([]fthealth.CheckResult, error)
+	collectChecksFromCachesFor(context.Context, map[string]category) ([]fthealth.CheckResult, error)
+	updateCachedHealth(context.Context, map[string]service, map[string]category)
 	scheduleCheck(measuredService, time.Duration, *time.Timer)
-	getIndividualPodHealth(string) ([]byte, string, error)
-	addAck(string, string) error
-	updateStickyCategory(string, bool) error
-	removeAck(string) error
+	getIndividualPodHealth(context.Context, string) ([]byte, string, error)
+	addAck(context.Context, string, string) error
+	updateStickyCategory(context.Context, string, bool) error
+	removeAck(context.Context, string) error
 	getEnvironment() string
-	getSeverityForService(string, int32) uint8
-	getSeverityForPod(string, int32) uint8
+	getSeverityForService(context.Context, string, int32) uint8
+	getSeverityForPod(context.Context, string, int32) uint8
 	getMeasuredServices() map[string]measuredService
 }
 
@@ -53,16 +54,16 @@ func (c *healthCheckController) getEnvironment() string {
 	return c.environment
 }
 
-func (c *healthCheckController) updateStickyCategory(categoryName string, isEnabled bool) error {
-	return c.healthCheckService.updateCategory(categoryName, isEnabled)
+func (c *healthCheckController) updateStickyCategory(ctx context.Context, categoryName string, isEnabled bool) error {
+	return c.healthCheckService.updateCategory(ctx, categoryName, isEnabled)
 }
 
-func (c *healthCheckController) removeAck(serviceName string) error {
+func (c *healthCheckController) removeAck(ctx context.Context, serviceName string) error {
 	if !c.healthCheckService.isServicePresent(serviceName) {
 		return fmt.Errorf("cannot find service with name %s", serviceName)
 	}
 
-	err := c.healthCheckService.removeAck(serviceName)
+	err := c.healthCheckService.removeAck(ctx, serviceName)
 
 	if err != nil {
 		return fmt.Errorf("failed to remove ack for service %s: %s", serviceName, err.Error())
@@ -71,12 +72,12 @@ func (c *healthCheckController) removeAck(serviceName string) error {
 	return nil
 }
 
-func (c *healthCheckController) addAck(serviceName string, ackMessage string) error {
+func (c *healthCheckController) addAck(ctx context.Context, serviceName, ackMessage string) error {
 	if !c.healthCheckService.isServicePresent(serviceName) {
 		return fmt.Errorf("cannot find service with name %s", serviceName)
 	}
 
-	err := c.healthCheckService.addAck(serviceName, ackMessage)
+	err := c.healthCheckService.addAck(ctx, serviceName, ackMessage)
 
 	if err != nil {
 		return fmt.Errorf("failed to add ack message [%s] for service %s: %s", ackMessage, serviceName, err.Error())
@@ -85,10 +86,10 @@ func (c *healthCheckController) addAck(serviceName string, ackMessage string) er
 	return nil
 }
 
-func (c *healthCheckController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, error) {
+func (c *healthCheckController) buildServicesHealthResult(ctx context.Context, providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, error) {
 	var checkResults []fthealth.CheckResult
 	desc := "Health of the whole cluster of the moment served without cache."
-	availableCategories, err := c.healthCheckService.getCategories()
+	availableCategories, err := c.healthCheckService.getCategories(ctx)
 	if err != nil {
 		return fthealth.HealthResult{}, nil, fmt.Errorf("cannot build health check result for services: %v", err.Error())
 	}
@@ -97,15 +98,15 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 
 	if useCache {
 		desc = "Health of the whole cluster served from cache."
-		checkResults, err = c.collectChecksFromCachesFor(matchingCategories)
+		checkResults, err = c.collectChecksFromCachesFor(ctx, matchingCategories)
 	} else {
-		checkResults, err = c.runServiceChecksFor(matchingCategories)
+		checkResults, err = c.runServiceChecksFor(ctx, matchingCategories)
 	}
 	if err != nil {
 		return fthealth.HealthResult{}, nil, fmt.Errorf("cannot build health check result for services: %v", err.Error())
 	}
 
-	c.disableStickyFailingCategories(matchingCategories, checkResults)
+	c.disableStickyFailingCategories(ctx, matchingCategories, checkResults)
 
 	finalOk, finalSeverity := getFinalResult(checkResults, matchingCategories)
 
@@ -124,15 +125,15 @@ func (c *healthCheckController) buildServicesHealthResult(providedCategories []s
 	return health, matchingCategories, nil
 }
 
-func (c *healthCheckController) runServiceChecksByServiceNames(services map[string]service, categories map[string]category) ([]fthealth.CheckResult, error) {
-	deployments, err := c.healthCheckService.getDeployments()
+func (c *healthCheckController) runServiceChecksByServiceNames(ctx context.Context, services map[string]service, categories map[string]category) ([]fthealth.CheckResult, error) {
+	deployments, err := c.healthCheckService.getDeployments(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	checks := make([]fthealth.Check, 0, len(services))
 	for _, service := range services {
-		check := newServiceHealthCheck(service, deployments, c.healthCheckService)
+		check := newServiceHealthCheck(ctx, service, deployments, c.healthCheckService)
 		checks = append(checks, check)
 	}
 
@@ -144,20 +145,22 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services map[stri
 	}).Checks
 
 	wg := sync.WaitGroup{}
+	tempCtx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	for i := range healthChecks {
 		wg.Add(1)
-		go func(i int) {
+		go func(context context.Context, i int) {
 			healthCheck := healthChecks[i]
 			if !healthCheck.Ok {
 				if unhealthyService, ok := services[healthCheck.Name]; ok {
-					severity := c.getSeverityForService(healthCheck.Name, unhealthyService.appPort)
+					severity := c.getSeverityForService(context, healthCheck.Name, unhealthyService.appPort)
 					healthChecks[i].Severity = severity
 				} else {
 					log.Warnf("Cannot compute severity for service with name %s because it was not found. Using default value.", healthCheck.Name)
 				}
 			}
 			wg.Done()
-		}(i)
+		}(tempCtx, i)
 	}
 	wg.Wait()
 
@@ -167,15 +170,14 @@ func (c *healthCheckController) runServiceChecksByServiceNames(services map[stri
 		}
 	}
 
-	c.updateCachedHealth(services, categories)
-
+	c.updateCachedHealth(tempCtx, services, categories)
 	return healthChecks, nil
 }
 
-func (c *healthCheckController) runServiceChecksFor(categories map[string]category) (healthChecks []fthealth.CheckResult, err error) {
+func (c *healthCheckController) runServiceChecksFor(ctx context.Context, categories map[string]category) (healthChecks []fthealth.CheckResult, err error) {
 	serviceNames := getServiceNamesFromCategories(categories)
 	services := c.healthCheckService.getServicesMapByNames(serviceNames)
-	healthChecks, err = c.runServiceChecksByServiceNames(services, categories)
+	healthChecks, err = c.runServiceChecksByServiceNames(ctx, services, categories)
 	if err != nil {
 		return nil, err
 	}
@@ -183,7 +185,8 @@ func (c *healthCheckController) runServiceChecksFor(categories map[string]catego
 	return healthChecks, err
 }
 
-func (c *healthCheckController) disableStickyFailingCategories(categories map[string]category, healthChecks []fthealth.CheckResult) {
+//nolint:gocognit
+func (c *healthCheckController) disableStickyFailingCategories(ctx context.Context, categories map[string]category, healthChecks []fthealth.CheckResult) {
 	for catIndex, category := range categories {
 		if !isEnabledAndSticky(category) {
 			continue
@@ -200,7 +203,7 @@ func (c *healthCheckController) disableStickyFailingCategories(categories map[st
 						category.isEnabled = false
 						categories[catIndex] = category
 
-						err := c.healthCheckService.updateCategory(category.name, false)
+						err := c.healthCheckService.updateCategory(ctx, category.name, false)
 						if err != nil {
 							log.WithError(err).Errorf("Cannot disable sticky category with name %s.", category.name)
 						} else {

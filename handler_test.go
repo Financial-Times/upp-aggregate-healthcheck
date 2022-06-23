@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/Financial-Times/go-logger"
@@ -31,7 +32,7 @@ func init() {
 	logger.InitLogger("upp-aggregate-healthcheck", "debug")
 }
 
-func (m *mockController) buildServicesHealthResult(providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, error) {
+func (m *mockController) buildServicesHealthResult(_ context.Context, providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, error) {
 	if len(providedCategories) == 1 && providedCategories[0] == brokenCategoryName {
 		return fthealth.HealthResult{}, map[string]category{}, errors.New("Broken category")
 	}
@@ -82,15 +83,15 @@ func (m *mockController) getMeasuredServices() map[string]measuredService {
 	return map[string]measuredService{}
 }
 
-func (m *mockController) runServiceChecksByServiceNames(map[string]service, map[string]category) ([]fthealth.CheckResult, error) {
+func (m *mockController) runServiceChecksByServiceNames(context.Context, map[string]service, map[string]category) ([]fthealth.CheckResult, error) {
 	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController) runServiceChecksFor(map[string]category) ([]fthealth.CheckResult, error) {
+func (m *mockController) runServiceChecksFor(context.Context, map[string]category) ([]fthealth.CheckResult, error) {
 	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController) buildPodsHealthResult(serviceName string) (fthealth.HealthResult, error) {
+func (m *mockController) buildPodsHealthResult(_ context.Context, serviceName string) (fthealth.HealthResult, error) {
 	if serviceName == brokenServiceName {
 		return fthealth.HealthResult{}, errors.New("Broken pod")
 	}
@@ -118,15 +119,15 @@ func (m *mockController) buildPodsHealthResult(serviceName string) (fthealth.Hea
 	return fthealth.HealthResult{}, nil
 }
 
-func (m *mockController) runPodChecksFor(string) ([]fthealth.CheckResult, error) {
+func (m *mockController) runPodChecksFor(context.Context, string) ([]fthealth.CheckResult, error) {
 	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController) collectChecksFromCachesFor(map[string]category) ([]fthealth.CheckResult, error) {
+func (m *mockController) collectChecksFromCachesFor(context.Context, map[string]category) ([]fthealth.CheckResult, error) {
 	return []fthealth.CheckResult{}, nil
 }
 
-func (m *mockController) updateCachedHealth(map[string]service, map[string]category) {
+func (m *mockController) updateCachedHealth(context.Context, map[string]service, map[string]category) {
 
 }
 
@@ -134,14 +135,14 @@ func (m *mockController) scheduleCheck(measuredService, time.Duration, *time.Tim
 
 }
 
-func (m *mockController) getIndividualPodHealth(podName string) ([]byte, string, error) {
+func (m *mockController) getIndividualPodHealth(_ context.Context, podName string) ([]byte, string, error) {
 	if podName == brokenPodName {
 		return []byte{}, "", errors.New("Broken pod")
 	}
 	return []byte("test pod health"), "", nil
 }
 
-func (m *mockController) addAck(serviceName string, message string) error {
+func (m *mockController) addAck(_ context.Context, serviceName string, message string) error {
 	if serviceName == brokenServiceName {
 		return errors.New("Broken service")
 	}
@@ -149,7 +150,7 @@ func (m *mockController) addAck(serviceName string, message string) error {
 	return nil
 }
 
-func (m *mockController) updateStickyCategory(categoryName string, isEnabled bool) error {
+func (m *mockController) updateStickyCategory(_ context.Context, categoryName string, isEnabled bool) error {
 	if categoryName == brokenCategoryName {
 		return errors.New("Broken category")
 	}
@@ -157,7 +158,7 @@ func (m *mockController) updateStickyCategory(categoryName string, isEnabled boo
 	return nil
 }
 
-func (m *mockController) removeAck(serviceName string) error {
+func (m *mockController) removeAck(_ context.Context, serviceName string) error {
 	if serviceName == brokenServiceName {
 		return errors.New("Broken service")
 	}
@@ -169,11 +170,11 @@ func (m *mockController) getEnvironment() string {
 	return ""
 }
 
-func (m *mockController) getSeverityForService(string, int32) uint8 {
+func (m *mockController) getSeverityForService(context.Context, string, int32) uint8 {
 	return 1
 }
 
-func (m *mockController) getSeverityForPod(string, int32) uint8 {
+func (m *mockController) getSeverityForPod(context.Context, string, int32) uint8 {
 	return 1
 }
 
