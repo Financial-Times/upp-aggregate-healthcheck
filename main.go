@@ -13,7 +13,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-//TODO: in check pod health
+//TODO: Add tests for the new behavior
 
 func main() {
 	app := cli.App("upp-aggregate-healthcheck", "Monitoring health of multiple services in cluster.")

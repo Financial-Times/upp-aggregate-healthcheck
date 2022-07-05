@@ -69,6 +69,8 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32, ignoreLa
 		if !check.OK {
 			//checks if the error is lag and if it should be skipped
 			if ignoreLagWarning && strings.Contains(check.TechnicalSummary, "Messages awaiting handling exceed the configured lag tolerance. Check if Kafka consumer is stuck.") {
+				//TODO:Change to debug
+				log.Infof("Service %s is lagging", health.Name)
 				continue
 			}
 			return fmt.Errorf("failing check is: %s", check.Name)
