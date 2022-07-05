@@ -33,8 +33,8 @@ type healthcheckService interface {
 	isServicePresent(string) bool
 	getPodsForService(context.Context, string) ([]pod, error)
 	getPodByName(context.Context, string) (pod, error)
-	checkServiceHealth(context.Context, service, map[string]deployment) (string, error)
-	checkPodHealth(pod, int32) error
+	checkServiceHealth(context.Context, service, map[string]deployment, bool) (string, error)
+	checkPodHealth(pod, int32, bool) error
 	getIndividualPodSeverity(pod, int32) (uint8, bool, error)
 	getHealthChecksForPod(pod, int32) (healthcheckResponse, error)
 	addAck(context.Context, string, string) error

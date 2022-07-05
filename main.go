@@ -2,15 +2,18 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Financial-Times/go-logger"
 	"net/http"
 	"os"
 	"time"
+
+	log "github.com/Financial-Times/go-logger"
 
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+//TODO: in check pod health
 
 func main() {
 	app := cli.App("upp-aggregate-healthcheck", "Monitoring health of multiple services in cluster.")

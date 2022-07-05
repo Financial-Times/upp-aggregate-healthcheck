@@ -183,19 +183,19 @@ func TestGetIndividualPodSeverityValidPodHealth_Severity2(t *testing.T) {
 
 func TestCheckPodHealthFailingChecks(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validFailingHealthCheckResponseBody))
-	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080)
+	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080, false)
 	assert.NotNil(t, err)
 }
 
 func TestCheckPodHealthWithInvalidUrl(t *testing.T) {
 	service := initializeMockService(nil)
-	err := service.checkPodHealth(pod{name: "test", ip: "%s"}, 8080)
+	err := service.checkPodHealth(pod{name: "test", ip: "%s"}, 8080, false)
 	assert.NotNil(t, err)
 }
 
 func TestCheckPodHealthPassingChecks(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validPassingHealthCheckResponseBody))
-	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080)
+	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080, false)
 	assert.Nil(t, err)
 }
 
