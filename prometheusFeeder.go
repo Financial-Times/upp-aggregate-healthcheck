@@ -35,7 +35,7 @@ func (p prometheusFeeder) recordMetrics(serviceStatus *prom.GaugeVec) {
 	for _, service := range p.controller.getMeasuredServices() {
 		select {
 		case checkResult := <-service.cachedHealthMetric.toReadFromCache:
-			name := strings.Replace(checkResult.Name, ".", "-", -1)
+			name := strings.ReplaceAll(checkResult.Name, ".", "-")
 			checkStatus := inverseBoolToFloat64(checkResult.Ok)
 			serviceStatus.
 				With(prom.Labels{"environment": p.environment, "service": name}).

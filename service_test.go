@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/Financial-Times/go-logger"
+	"github.com/Financial-Times/kafka-client-go/v3"
 	"github.com/stretchr/testify/assert"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
@@ -29,11 +30,38 @@ type mockTransport struct {
 }
 
 const (
-	validIP                             = "1.0.0.0"
-	validK8sServiceName                 = "validServiceName"
-	validK8sServiceNameWithAck          = "validK8sServiceNameWithAck"
-	validSeverity                       = uint8(1)
-	ackMsg                              = "ack-msg"
+	validIP                                           = "1.0.0.0"
+	validK8sServiceName                               = "validServiceName"
+	validK8sServiceNameWithAck                        = "validK8sServiceNameWithAck"
+	validSeverity                                     = uint8(1)
+	ackMsg                                            = "ack-msg"
+	validPassingHealthCheckResponseBodyWithFailingLag = `{
+  "schemaVersion": 1,
+  "name": "CMSNotifierApplication",
+  "description": "CMSNotifierApplication",
+  "checks": [
+    {
+      "checkOutput": "",
+      "panicGuide": "",
+      "lastUpdated": "",
+      "ok": false,
+      "severity": 2,
+      "businessImpact": "",
+      "technicalSummary": "` + kafka.LagTechnicalSummary + `",
+      "name": ""
+    },
+	{
+      "checkOutput": "",
+      "panicGuide": "",
+      "lastUpdated": "",
+      "ok": true,
+      "severity": 1,
+      "businessImpact": "",
+      "technicalSummary": "",
+      "name": ""
+    }
+  ]
+}`
 	validFailingHealthCheckResponseBody = `{
   "schemaVersion": 1,
   "name": "CMSNotifierApplication",
@@ -183,20 +211,32 @@ func TestGetIndividualPodSeverityValidPodHealth_Severity2(t *testing.T) {
 
 func TestCheckPodHealthFailingChecks(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validFailingHealthCheckResponseBody))
-	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080)
+	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080, false)
 	assert.NotNil(t, err)
 }
 
 func TestCheckPodHealthWithInvalidUrl(t *testing.T) {
 	service := initializeMockService(nil)
-	err := service.checkPodHealth(pod{name: "test", ip: "%s"}, 8080)
+	err := service.checkPodHealth(pod{name: "test", ip: "%s"}, 8080, false)
 	assert.NotNil(t, err)
 }
 
 func TestCheckPodHealthPassingChecks(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validPassingHealthCheckResponseBody))
-	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080)
+	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080, false)
 	assert.Nil(t, err)
+}
+
+func TestCheckPodHealthIgnoringLag(t *testing.T) {
+	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validPassingHealthCheckResponseBodyWithFailingLag))
+	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080, true)
+	assert.Nil(t, err)
+}
+
+func TestCheckPodHealthNotIgnoringLag(t *testing.T) {
+	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validPassingHealthCheckResponseBodyWithFailingLag))
+	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080, false)
+	assert.NotNil(t, err)
 }
 
 func TestGetCategories(t *testing.T) {

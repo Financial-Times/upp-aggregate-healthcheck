@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Financial-Times/go-logger"
 	"net/http"
 	"os"
 	"time"
+
+	log "github.com/Financial-Times/go-logger"
 
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"

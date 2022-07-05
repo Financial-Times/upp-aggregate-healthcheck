@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Financial-Times/go-logger"
 	"net/http"
 	"testing"
 	"time"
 
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
-	"github.com/stretchr/testify/assert"
+	"github.com/Financial-Times/go-logger"
+
 	"strconv"
 	"strings"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -177,11 +179,11 @@ func (m *MockService) getPodByName(_ context.Context, podName string) (pod, erro
 	}
 }
 
-func (m *MockService) checkServiceHealth(_ context.Context, service service, deployments map[string]deployment) (string, error) {
+func (m *MockService) checkServiceHealth(_ context.Context, service service, deployments map[string]deployment, _ bool) (string, error) {
 	return "", errors.New("Error reading healthcheck response: ")
 }
 
-func (m *MockService) checkPodHealth(pod, int32) error {
+func (m *MockService) checkPodHealth(pod, int32, bool) error {
 	return errors.New("Error reading healthcheck response: ")
 }
 
