@@ -230,7 +230,7 @@ func TestCheckPodHealthPassingChecks(t *testing.T) {
 func TestCheckPodHealthIgnoringLag(t *testing.T) {
 	service := initializeMockService(initializeMockHTTPClient(http.StatusOK, validPassingHealthCheckResponseBodyWithFailingLag))
 	err := service.checkPodHealth(pod{name: "test", ip: validIP}, 8080, true)
-	assert.Nil(t, err)
+	assert.NotNil(t, err)
 }
 
 func TestCheckPodHealthNotIgnoringLag(t *testing.T) {

@@ -105,7 +105,7 @@ func (c *healthCheckController) scheduleCheck(mService measuredService, refreshP
 	} else {
 		serviceToBeChecked := mService.service
 
-		checks := []fthealth.Check{newServiceHealthCheck(ctx, serviceToBeChecked, deployments, c.healthCheckService)}
+		checks := []fthealth.Check{newServiceHealthCheck(ctx, serviceToBeChecked, deployments, c.healthCheckService, true)}
 
 		checkResult := fthealth.RunCheck(fthealth.HealthCheck{
 			SystemCode:  serviceToBeChecked.name,

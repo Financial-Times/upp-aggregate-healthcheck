@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	log "github.com/Financial-Times/go-logger"
@@ -68,9 +67,9 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32, ignoreLa
 
 	for _, check := range health.Checks {
 		if !check.OK {
-			//checks if the error is lag and if it should be skipped
-			if ignoreLagWarning && strings.Contains(check.TechnicalSummary, kafka.LagTechnicalSummary) {
-				log.Debugf("Service %s is lagging", health.Name)
+			// checks if the error is lag and if it should be skipped
+			if ignoreLagWarning && check.TechnicalSummary == kafka.LagTechnicalSummary {
+				log.Debugf("Service %s is lagging behind when reading from Kafka", health.Name)
 				continue
 			}
 			return fmt.Errorf("failing check is: %s", check.Name)
@@ -157,7 +156,7 @@ func newPodHealthCheck(pod pod, service service, healthcheckService healthcheckS
 	}
 }
 
-func newServiceHealthCheck(ctx context.Context, service service, deployments map[string]deployment, healthcheckService healthcheckService) fthealth.Check {
+func newServiceHealthCheck(ctx context.Context, service service, deployments map[string]deployment, healthcheckService healthcheckService, ignoreLagWarning bool) fthealth.Check {
 	return fthealth.Check{
 		BusinessImpact:   "On its own this failure does not have a business impact but it represents a degradation of the cluster health.",
 		Name:             service.name,
@@ -165,7 +164,7 @@ func newServiceHealthCheck(ctx context.Context, service service, deployments map
 		Severity:         defaultSeverity,
 		TechnicalSummary: "The service is not healthy. Please check the panic guide.",
 		Checker: func() (string, error) {
-			return healthcheckService.checkServiceHealth(ctx, service, deployments, true)
+			return healthcheckService.checkServiceHealth(ctx, service, deployments, ignoreLagWarning)
 		},
 	}
 }

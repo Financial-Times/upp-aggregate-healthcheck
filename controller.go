@@ -133,7 +133,7 @@ func (c *healthCheckController) runServiceChecksByServiceNames(ctx context.Conte
 
 	checks := make([]fthealth.Check, 0, len(services))
 	for _, service := range services {
-		check := newServiceHealthCheck(ctx, service, deployments, c.healthCheckService)
+		check := newServiceHealthCheck(ctx, service, deployments, c.healthCheckService, false)
 		checks = append(checks, check)
 	}
 
