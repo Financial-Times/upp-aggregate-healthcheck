@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
@@ -29,6 +30,7 @@ type healthcheckService interface {
 	updateCategory(context.Context, string, bool) error
 	getDeployments(context.Context) (map[string]deployment, error)
 	getServiceByName(serviceName string) (service, error)
+	getServiceCodeByName(serviceName string) string
 	getServicesMapByNames([]string) map[string]service
 	isServicePresent(string) bool
 	getPodsForService(context.Context, string) ([]pod, error)
@@ -40,6 +42,11 @@ type healthcheckService interface {
 	addAck(context.Context, string, string) error
 	removeAck(context.Context, string) error
 	getHTTPClient() *http.Client
+}
+
+//used only for fetching the services' system code on startup
+type healthcheckEndpointResponse struct {
+	Code string `json:"systemCode"`
 }
 
 const (
@@ -116,7 +123,7 @@ func (hs *k8sHealthcheckService) watchServices() {
 			switch msg.Type {
 			case watch.Added, watch.Modified:
 				k8sService := msg.Object.(*k8score.Service)
-				s := populateService(k8sService, hs.acks)
+				s := hs.populateService(k8sService, hs.acks)
 
 				hs.services.Lock()
 				hs.services.m[s.name] = s
@@ -305,6 +312,15 @@ func (hs *k8sHealthcheckService) getServiceByName(serviceName string) (service, 
 
 	return service{}, fmt.Errorf("cannot find service with name %s", serviceName)
 }
+
+func (hs *k8sHealthcheckService) getServiceCodeByName(serviceName string) string {
+	service, err := hs.getServiceByName(serviceName)
+	if err != nil {
+		return ""
+	}
+	return service.sysCode
+}
+
 func (hs *k8sHealthcheckService) getServicesMapByNames(serviceNames []string) map[string]service {
 	//if the list of service names is empty, it means that we are in the default category so we take all the services that have healthcheck
 	if len(serviceNames) == 0 {
@@ -405,7 +421,7 @@ func populatePod(k8sPod k8score.Pod) pod {
 	}
 }
 
-func populateService(k8sService *k8score.Service, acks map[string]string) service {
+func (hs *k8sHealthcheckService) populateService(k8sService *k8score.Service, acks map[string]string) service {
 	//services are resilient by default.
 	isResilient := true
 	isDaemon := false
@@ -424,14 +440,48 @@ func populateService(k8sService *k8score.Service, acks map[string]string) servic
 			log.WithError(err).Warnf("Cannot parse isDaemon label value for service with name %s.", serviceName)
 		}
 	}
+	appPort := getAppPortForService(k8sService)
+
+	serviceCode, err := hs.getSystemCodeForService(serviceName, appPort)
+	if err != nil {
+		log.WithError(err).Warnf("Failed to fetch system code for service '%s'", serviceName)
+	}
+	log.Debugf("Fetched system code [%s] for service %s", serviceCode, serviceName)
 
 	return service{
 		name:        serviceName,
-		appPort:     getAppPortForService(k8sService),
+		sysCode:     serviceCode,
+		appPort:     appPort,
 		isDaemon:    isDaemon,
 		isResilient: isResilient,
 		ack:         acks[serviceName],
 	}
+}
+
+func (hs *k8sHealthcheckService) getSystemCodeForService(serviceName string, servicePort int32) (string, error) {
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s:%d/__health", serviceName, servicePort), nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := hs.httpClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("healthcheck returned non-200 status (%v)", resp.Status)
+	}
+	defer func() {
+		err := resp.Body.Close()
+		if err != nil {
+			log.WithError(err).Error("Failed to close close response body reader.")
+		}
+	}()
+	response := &healthcheckEndpointResponse{}
+	err = json.NewDecoder(resp.Body).Decode(response)
+	if err != nil {
+		return "", err
+	}
+	return response.Code, nil
 }
 
 func getAppPortForService(k8sService *k8score.Service) int32 {

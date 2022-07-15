@@ -39,6 +39,7 @@
     <thead>
     <tr>
       <th>Name</th>
+      <th>System Code</th>
       <th>Health status</th>
       <th>Output</th>
       <th>Last Updated</th>
@@ -51,6 +52,7 @@
     {{range .}}
     <tr>
       <td><a href="{{.MoreInfoPath}}">{{.Name}}</a></td>
+      <td><a href="{{.BizOpsPath}}">{{.SystemCode}}</a></td>
       <td>&nbsp;
         {{if eq .Status "ok"}}
         <span style='color: green;'>ok</span>
