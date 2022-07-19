@@ -441,7 +441,6 @@ func (hs *k8sHealthcheckService) populateService(k8sService *k8score.Service, ac
 		}
 	}
 	appPort := getAppPortForService(k8sService)
-
 	serviceCode, err := hs.getSystemCodeForService(serviceName, appPort)
 	if err != nil {
 		log.WithError(err).Warnf("Failed to fetch system code for service '%s'", serviceName)
@@ -491,7 +490,9 @@ func getAppPortForService(k8sService *k8score.Service) int32 {
 			return port.TargetPort.IntVal
 		}
 	}
-
+	if len(servicePorts) > 0 {
+		return servicePorts[0].Port
+	}
 	return defaultAppPort
 }
 
