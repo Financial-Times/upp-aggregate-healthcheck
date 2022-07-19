@@ -441,8 +441,9 @@ func (hs *k8sHealthcheckService) populateService(k8sService *k8score.Service, ac
 		}
 	}
 	appPort := getAppPortForService(k8sService)
+	appPort, hcPort := getPortsForService(k8sService)
 
-	serviceCode, err := hs.getSystemCodeForService(serviceName, appPort)
+	serviceCode, err := hs.getSystemCodeForService(serviceName, hcPort)
 	if err != nil {
 		log.WithError(err).Warnf("Failed to fetch system code for service '%s'", serviceName)
 	}
@@ -490,9 +491,26 @@ func getAppPortForService(k8sService *k8score.Service) int32 {
 		if port.Name == "app" {
 			return port.TargetPort.IntVal
 		}
+
 	}
 
 	return defaultAppPort
+}
+
+func getPortsForService(k8sService *k8score.Service) (int32, int32) {
+	healthcheckPort := defaultAppPort
+	appPort := defaultAppPort
+	servicePorts := k8sService.Spec.Ports
+	for _, port := range servicePorts {
+		if port.Name == "app" {
+			appPort = port.TargetPort.IntVal
+		}
+		if port.Name == "healthcheck" {
+			healthcheckPort = port.Port
+		}
+	}
+
+	return appPort, healthcheckPort
 }
 
 func getAcksConfigMap(ctx context.Context, k8sClient kubernetes.Interface) (k8score.ConfigMap, error) {
