@@ -440,9 +440,8 @@ func (hs *k8sHealthcheckService) populateService(k8sService *k8score.Service, ac
 			log.WithError(err).Warnf("Cannot parse isDaemon label value for service with name %s.", serviceName)
 		}
 	}
-	appPort := getAppPortForService(k8sService)
-
-	serviceCode, err := hs.getSystemCodeForService(serviceName, appPort)
+	appPort, hcPort := getPortsForService(k8sService)
+	serviceCode, err := hs.getSystemCodeForService(serviceName, hcPort)
 	if err != nil {
 		log.WithError(err).Warnf("Failed to fetch system code for service '%s'", serviceName)
 	}
@@ -484,15 +483,24 @@ func (hs *k8sHealthcheckService) getSystemCodeForService(serviceName string, ser
 	return response.Code, nil
 }
 
-func getAppPortForService(k8sService *k8score.Service) int32 {
+func getPortsForService(k8sService *k8score.Service) (int32, int32) {
+	healthcheckPort := defaultAppPort
+	appPort := defaultAppPort
+	healthPortSet := false
 	servicePorts := k8sService.Spec.Ports
 	for _, port := range servicePorts {
 		if port.Name == "app" {
-			return port.TargetPort.IntVal
+			appPort = port.TargetPort.IntVal
+		}
+		if port.Name == "healthcheck" {
+			healthcheckPort = port.Port
+			healthPortSet = true
+		}
+		if !healthPortSet {
+			healthcheckPort = port.Port
 		}
 	}
-
-	return defaultAppPort
+	return appPort, healthcheckPort
 }
 
 func getAcksConfigMap(ctx context.Context, k8sClient kubernetes.Interface) (k8score.ConfigMap, error) {
