@@ -19,11 +19,10 @@ import (
 )
 
 type k8sHealthcheckService struct {
-	k8sClient     kubernetes.Interface
-	httpClient    *http.Client
-	services      servicesMap
-	acks          map[string]string
-	customHCPorts map[string]int32
+	k8sClient  kubernetes.Interface
+	httpClient *http.Client
+	services   servicesMap
+	acks       map[string]string
 }
 
 type healthcheckService interface {
@@ -164,7 +163,7 @@ func getDefaultClient() *http.Client {
 	}
 }
 
-func initializeHealthCheckService(hcPorts map[string]int32) *k8sHealthcheckService {
+func initializeHealthCheckService() *k8sHealthcheckService {
 	httpClient := getDefaultClient()
 
 	// creates the in-cluster config
@@ -182,10 +181,9 @@ func initializeHealthCheckService(hcPorts map[string]int32) *k8sHealthcheckServi
 	services := make(map[string]service)
 
 	k8sService := &k8sHealthcheckService{
-		httpClient:    httpClient,
-		k8sClient:     k8sClient,
-		services:      servicesMap{m: services},
-		customHCPorts: hcPorts,
+		httpClient: httpClient,
+		k8sClient:  k8sClient,
+		services:   servicesMap{m: services},
 	}
 
 	go k8sService.watchAcks()
@@ -443,10 +441,6 @@ func (hs *k8sHealthcheckService) populateService(k8sService *k8score.Service, ac
 		}
 	}
 	appPort, hcPort := getPortsForService(k8sService)
-	if customPort, exists := hs.customHCPorts[k8sService.Name]; exists {
-		hcPort = customPort
-		log.WithField("healthcheck-port", customPort).Infof("Found custom healthcheck port for service %s", k8sService.Name)
-	}
 	serviceCode, err := hs.getSystemCodeForService(serviceName, hcPort)
 	if err != nil {
 		log.WithError(err).Warnf("Failed to fetch system code for service '%s'", serviceName)

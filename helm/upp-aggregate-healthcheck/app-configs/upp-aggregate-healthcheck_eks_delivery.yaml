@@ -9,7 +9,6 @@ service:
 
 env:
   PATH_PREFIX: "/__health"
-  CUSTOM_HEALTHCHECK_PORTS_PATH: "./custom-healthcheck-ports/delivery.json"
 
 categories:
   - kind: ConfigMap
