@@ -146,6 +146,32 @@ func (hs *k8sHealthcheckService) watchServices() {
 	}
 }
 
+func (hs *k8sHealthcheckService) updateServicesSystemCodes() {
+	time.Sleep(5 * time.Minute) //initial delay so the first service fetch task can catch-up
+	ticker := time.NewTicker(5 * time.Minute)
+	for {
+		select {
+		case <-ticker.C:
+			{
+				hs.services.Lock()
+				for _, service := range hs.services.m {
+					if service.sysCode == "" {
+						log.Infof("Retrying to fetch system code for service %s", service.name)
+						sysCode, err := hs.getSystemCodeForService(service.name, service.hcPort)
+						if err != nil {
+							log.WithError(err).Warnf("Failed to fetch system code for service %s", service.name)
+							continue
+						}
+						service.sysCode = sysCode
+						log.Info("Updated service code for service %s : %s", service.name, sysCode)
+					}
+				}
+				hs.services.Unlock()
+			}
+		}
+	}
+}
+
 func getDefaultClient() *http.Client {
 	return &http.Client{
 		Timeout: 12 * time.Second, // services should respond within 10s
@@ -190,6 +216,7 @@ func initializeHealthCheckService(hcPorts map[string]int32) *k8sHealthcheckServi
 
 	go k8sService.watchAcks()
 	go k8sService.watchServices()
+	go k8sService.updateServicesSystemCodes()
 
 	return k8sService
 }
@@ -315,27 +342,10 @@ func (hs *k8sHealthcheckService) getServiceByName(serviceName string) (service, 
 	return service{}, fmt.Errorf("cannot find service with name %s", serviceName)
 }
 
-func (hs *k8sHealthcheckService) updateServiceSystemCode(serviceName, serviceCode string) {
-	hs.services.Lock()
-	defer hs.services.Unlock()
-
-	if srvc, ok := hs.services.m[serviceName]; ok {
-		srvc.sysCode = serviceCode
-	}
-}
-
 func (hs *k8sHealthcheckService) getServiceCodeByName(serviceName string) string {
 	service, err := hs.getServiceByName(serviceName)
 	if err != nil {
 		return ""
-	}
-	if service.sysCode == "" {
-		sysCode, err := hs.getSystemCodeForService(serviceName, service.hcPort)
-		if err == nil {
-			hs.updateServiceSystemCode(serviceName, sysCode)
-			return sysCode
-		}
-		log.WithError(err).Warn("Failed to fetch system code for service %s", serviceName)
 	}
 	return service.sysCode
 }
