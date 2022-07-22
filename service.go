@@ -19,10 +19,11 @@ import (
 )
 
 type k8sHealthcheckService struct {
-	k8sClient  kubernetes.Interface
-	httpClient *http.Client
-	services   servicesMap
-	acks       map[string]string
+	k8sClient     kubernetes.Interface
+	httpClient    *http.Client
+	services      servicesMap
+	acks          map[string]string
+	customHCPorts map[string]int32
 }
 
 type healthcheckService interface {
@@ -163,7 +164,7 @@ func getDefaultClient() *http.Client {
 	}
 }
 
-func initializeHealthCheckService() *k8sHealthcheckService {
+func initializeHealthCheckService(hcPorts map[string]int32) *k8sHealthcheckService {
 	httpClient := getDefaultClient()
 
 	// creates the in-cluster config
@@ -181,9 +182,10 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 	services := make(map[string]service)
 
 	k8sService := &k8sHealthcheckService{
-		httpClient: httpClient,
-		k8sClient:  k8sClient,
-		services:   servicesMap{m: services},
+		httpClient:    httpClient,
+		k8sClient:     k8sClient,
+		services:      servicesMap{m: services},
+		customHCPorts: hcPorts,
 	}
 
 	go k8sService.watchAcks()
@@ -441,11 +443,15 @@ func (hs *k8sHealthcheckService) populateService(k8sService *k8score.Service, ac
 		}
 	}
 	appPort, hcPort := getPortsForService(k8sService)
+	if customPort, exists := hs.customHCPorts[k8sService.Name]; exists {
+		hcPort = customPort
+		log.WithField("healthcheck-port", customPort).Infof("Found custom healthcheck port for service %s", k8sService.Name)
+	}
 	serviceCode, err := hs.getSystemCodeForService(serviceName, hcPort)
 	if err != nil {
 		log.WithError(err).Warnf("Failed to fetch system code for service '%s'", serviceName)
 	}
-	log.Debugf("Fetched system code [%s] for service %s", serviceCode, serviceName)
+	log.Infof("Fetched system code [%s] for service %s", serviceCode, serviceName)
 
 	return service{
 		name:        serviceName,
@@ -486,17 +492,12 @@ func (hs *k8sHealthcheckService) getSystemCodeForService(serviceName string, ser
 func getPortsForService(k8sService *k8score.Service) (int32, int32) {
 	healthcheckPort := defaultAppPort
 	appPort := defaultAppPort
-	healthPortSet := false
 	servicePorts := k8sService.Spec.Ports
 	for _, port := range servicePorts {
 		if port.Name == "app" {
 			appPort = port.TargetPort.IntVal
 		}
 		if port.Name == "healthcheck" {
-			healthcheckPort = port.Port
-			healthPortSet = true
-		}
-		if !healthPortSet {
 			healthcheckPort = port.Port
 		}
 	}

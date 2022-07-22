@@ -47,6 +47,8 @@ spec:
               key: cluster.url
         - name: PATH_PREFIX
           value: {{ .Values.env.PATH_PREFIX }}
+        - name: CUSTOM_HEALTHCHECK_PORTS_PATH
+          value: {{ .Values.env.CUSTOM_HEALTHCHECK_PORTS_PATH }}
         ports:
         - containerPort: 8080
         livenessProbe:
@@ -104,6 +106,8 @@ spec:
               key: cluster.url
         - name: PATH_PREFIX
           value: {{ .Values.env.PATH_PREFIX }}
+        - name: CUSTOM_HEALTHCHECK_PORTS_PATH
+          value: {{ .Values.env.CUSTOM_HEALTHCHECK_PORTS_PATH }}
         ports:
         - containerPort: 8080
         livenessProbe:

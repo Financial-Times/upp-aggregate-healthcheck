@@ -48,8 +48,8 @@ type enrichedCheckResult struct {
 	SystemCode  string
 }
 
-func initializeController(environment string) *healthCheckController {
-	service := initializeHealthCheckService()
+func initializeController(environment string, hcPorts map[string]int32) *healthCheckController {
+	service := initializeHealthCheckService(hcPorts)
 	measuredServices := make(map[string]measuredService)
 	stickyCategoriesFailedServices := make(map[string]int)
 
