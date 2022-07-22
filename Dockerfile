@@ -27,5 +27,6 @@ COPY --from=0 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=0 /artifacts/* /
 COPY --from=0 /artifacts/resources /resources
 COPY --from=0 /artifacts/html-templates /html-templates
+COPY --from=0 /artifacts/custom-healthcheck-ports /custom-healthcheck-ports
 
 CMD [ "/upp-aggregate-healthcheck" ]
