@@ -315,10 +315,27 @@ func (hs *k8sHealthcheckService) getServiceByName(serviceName string) (service, 
 	return service{}, fmt.Errorf("cannot find service with name %s", serviceName)
 }
 
+func (hs *k8sHealthcheckService) updateServiceSystemCode(serviceName, serviceCode string) {
+	hs.services.Lock()
+	defer hs.services.Unlock()
+
+	if srvc, ok := hs.services.m[serviceName]; ok {
+		srvc.sysCode = serviceCode
+	}
+}
+
 func (hs *k8sHealthcheckService) getServiceCodeByName(serviceName string) string {
 	service, err := hs.getServiceByName(serviceName)
 	if err != nil {
 		return ""
+	}
+	if service.sysCode == "" {
+		sysCode, err := hs.getSystemCodeForService(serviceName, service.hcPort)
+		if err == nil {
+			hs.updateServiceSystemCode(serviceName, sysCode)
+			return sysCode
+		}
+		log.WithError(err).Warn("Failed to fetch system code for service %s", serviceName)
 	}
 	return service.sysCode
 }
@@ -457,6 +474,7 @@ func (hs *k8sHealthcheckService) populateService(k8sService *k8score.Service, ac
 		name:        serviceName,
 		sysCode:     serviceCode,
 		appPort:     appPort,
+		hcPort:      hcPort,
 		isDaemon:    isDaemon,
 		isResilient: isResilient,
 		ack:         acks[serviceName],
