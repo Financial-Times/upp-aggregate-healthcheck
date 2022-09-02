@@ -32,7 +32,6 @@ categories:
     data:
       category.name: content-publish
       category.services: >-
-        cms-notifier,
         upp-audio-validator,
         upp-article-validator,
         upp-internal-article-validator,
@@ -97,7 +96,6 @@ categories:
     data:
       category.name: lists-publish
       category.services: >- 
-        cms-notifier,
         upp-list-validator,
         list-ingester,
         public-lists-api,
@@ -179,7 +177,6 @@ categories:
     data:
       category.name: image-publish
       category.services: >-
-        cms-notifier,
         upp-image-validator,
         upp-image-set-validator,
         upp-graphic-validator,
