@@ -218,7 +218,6 @@ categories:
     data:
       category.name: annotations-publish
       category.services: >-
-        pac-annotations-mapper,
         upp-next-video-annotations-mapper,
         annotations-rw-neo4j,
         annotations-writer-ontotext,
