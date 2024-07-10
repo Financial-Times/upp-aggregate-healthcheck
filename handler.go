@@ -21,9 +21,11 @@ type httpHandler struct {
 //IndividualHealthcheckParams struct used to populate HTML template with individual checks
 type IndividualHealthcheckParams struct {
 	Name                   string
+	SystemCode             string
 	Status                 string
 	LastUpdated            string
 	MoreInfoPath           string
+	BizOpsPath             string
 	AddOrRemoveAckPath     string
 	AddOrRemoveAckPathName string
 	AckMessage             string
@@ -54,6 +56,7 @@ const (
 	addAckMsgTemplatePath   = "html-templates/add-ack-message-form-template.html"
 	healthcheckPath         = "/__health"
 	jsonContentType         = "application/json"
+	bizOpsPathPrefix        = "https://biz-ops.in.ft.com/System/"
 )
 
 func handleResponseWriterErr(err error) {
@@ -190,11 +193,11 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 
 	if r.Header.Get("Accept") == jsonContentType {
 		for i, serviceCheck := range healthResult.Checks {
-			serviceHealthcheckURL := getServiceHealthcheckURL(h.clusterURL, h.pathPrefix, serviceCheck.Name)
-			healthResult.Checks[i].TechnicalSummary = fmt.Sprintf("%s Service healthcheck: %s", serviceCheck.TechnicalSummary, serviceHealthcheckURL)
+			serviceHealthcheckURL := getServiceHealthcheckURL(h.clusterURL, h.pathPrefix, serviceCheck.CheckResult.Name)
+			healthResult.Checks[i].CheckResult.TechnicalSummary = fmt.Sprintf("%s Service healthcheck: %s", serviceCheck.CheckResult.TechnicalSummary, serviceHealthcheckURL)
 		}
 
-		buildHealthcheckJSONResponse(w, healthResult)
+		buildHealthcheckJSONResponse(w, healthResult.HealthResult)
 	} else {
 		env := h.controller.getEnvironment()
 		buildServicesCheckHTMLResponse(w, healthResult, env, getCategoriesString(validCategories), h.pathPrefix)
@@ -288,7 +291,7 @@ func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if !healthResults.Ok {
+	if !healthResults.HealthResult.Ok {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
 	}
@@ -360,7 +363,7 @@ func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult fthealth.H
 	}
 }
 
-func buildServicesCheckHTMLResponse(w http.ResponseWriter, healthResult fthealth.HealthResult, environment string, categories string, pathPrefix string) {
+func buildServicesCheckHTMLResponse(w http.ResponseWriter, healthResult enrichedHealthResult, environment string, categories string, pathPrefix string) {
 	w.Header().Add("Content-Type", "text/html")
 	htmlTemplate := parseHTMLTemplate(w, healthcheckTemplateName)
 	if htmlTemplate == nil {
@@ -409,15 +412,15 @@ func parseHTMLTemplate(w http.ResponseWriter, templateName string) *template.Tem
 	return htmlTemplate
 }
 
-func populateAggregateServiceChecks(healthResult fthealth.HealthResult, environment string, categories string, pathPrefix string) *AggregateHealthcheckParams {
-	indiviualServiceChecks, ackCount := populateIndividualServiceChecks(healthResult.Checks, pathPrefix)
+func populateAggregateServiceChecks(healthResult enrichedHealthResult, environment string, categories string, pathPrefix string) *AggregateHealthcheckParams {
+	individualServiceChecks, ackCount := populateIndividualServiceChecks(healthResult.Checks, pathPrefix)
 	aggregateChecks := &AggregateHealthcheckParams{
 		PageTitle:               buildPageTitle(environment, categories),
-		GeneralStatus:           getGeneralStatus(healthResult),
+		GeneralStatus:           getGeneralStatus(healthResult.HealthResult),
 		RefreshFromCachePath:    buildRefreshFromCachePath(categories, pathPrefix),
 		RefreshWithoutCachePath: buildRefreshWithoutCachePath(categories, pathPrefix),
 		AckCount:                ackCount,
-		IndividualHealthChecks:  indiviualServiceChecks,
+		IndividualHealthChecks:  individualServiceChecks,
 	}
 
 	return aggregateChecks
@@ -440,10 +443,11 @@ func buildRefreshWithoutCachePath(categories string, pathPrefix string) string {
 	return refreshWithoutCachePath
 }
 
-func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix string) ([]IndividualHealthcheckParams, int) {
-	indiviualServiceChecks := make([]IndividualHealthcheckParams, len(checks))
+func populateIndividualServiceChecks(checks []enrichedCheckResult, pathPrefix string) ([]IndividualHealthcheckParams, int) {
+	individualServiceChecks := make([]IndividualHealthcheckParams, len(checks))
 	ackCount := 0
-	for i, individualCheck := range checks {
+	for i, enrichedCheck := range checks {
+		individualCheck := enrichedCheck.CheckResult
 		if individualCheck.Ack != "" {
 			ackCount++
 		}
@@ -451,19 +455,21 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix s
 		addOrRemoveAckPath, addOrRemoveAckPathName := buildAddOrRemoveAckPath(individualCheck.Name, pathPrefix, individualCheck.Ack)
 		hc := IndividualHealthcheckParams{
 			Name:                   individualCheck.Name,
+			SystemCode:             enrichedCheck.SystemCode,
 			Status:                 getServiceStatusFromCheck(individualCheck),
 			LastUpdated:            individualCheck.LastUpdated.Format(timeLayout),
 			MoreInfoPath:           fmt.Sprintf("%s/__pods-health?service-name=%s", pathPrefix, individualCheck.Name),
+			BizOpsPath:             fmt.Sprintf("%s%s", bizOpsPathPrefix, enrichedCheck.SystemCode),
 			AddOrRemoveAckPath:     addOrRemoveAckPath,
 			AddOrRemoveAckPathName: addOrRemoveAckPathName,
 			AckMessage:             individualCheck.Ack,
 			Output:                 individualCheck.CheckOutput,
 		}
 
-		indiviualServiceChecks[i] = hc
+		individualServiceChecks[i] = hc
 	}
 
-	return indiviualServiceChecks, ackCount
+	return individualServiceChecks, ackCount
 }
 
 func buildAddOrRemoveAckPath(serviceName string, pathPrefix string, ackMessage string) (string, string) {

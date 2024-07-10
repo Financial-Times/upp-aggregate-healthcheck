@@ -17,8 +17,8 @@ RUN VERSION="version=$(git describe --tag --always 2> /dev/null)" \
     && LDFLAGS="-s -w -X '"${BUILDINFO_PACKAGE}$VERSION"' -X '"${BUILDINFO_PACKAGE}$DATETIME"' -X '"${BUILDINFO_PACKAGE}$REPOSITORY"' -X '"${BUILDINFO_PACKAGE}$REVISION"' -X '"${BUILDINFO_PACKAGE}$BUILDER"'" \
     && CGO_ENABLED=0 go build -mod=readonly -a -o /artifacts/${PROJECT} -ldflags="${LDFLAGS}" \
     && cp -R resources /artifacts/resources \
-    && cp -R html-templates /artifacts/html-templates
-
+    && cp -R html-templates /artifacts/html-templates \
+    && cp -R custom-healthcheck-ports /artifacts/custom-healthcheck-ports
 
 # Multi-stage build - copy only the certs and the binary into the image
 FROM scratch
@@ -27,5 +27,6 @@ COPY --from=0 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=0 /artifacts/* /
 COPY --from=0 /artifacts/resources /resources
 COPY --from=0 /artifacts/html-templates /html-templates
+COPY --from=0 /artifacts/custom-healthcheck-ports /custom-healthcheck-ports
 
 CMD [ "/upp-aggregate-healthcheck" ]
