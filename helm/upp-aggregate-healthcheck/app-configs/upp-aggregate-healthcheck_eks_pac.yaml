@@ -31,9 +31,6 @@ categories:
       category.services: >- 
         annotations-publisher,
         draft-annotations-api,
-        draft-content-api,
-        draft-content-public-read,
-        draft-content-suggestions,
         generic-rw-aurora
       category.refreshrate: "60"
       category.issticky: "false"

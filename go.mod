@@ -1,6 +1,6 @@
 module github.com/Financial-Times/upp-aggregate-healthcheck
 
-go 1.22.0
+go 1.23
 
 require (
 	github.com/Financial-Times/go-fthealth v0.6.2
