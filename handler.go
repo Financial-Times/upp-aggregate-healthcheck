@@ -18,7 +18,7 @@ type httpHandler struct {
 	clusterURL string
 }
 
-//IndividualHealthcheckParams struct used to populate HTML template with individual checks
+// IndividualHealthcheckParams struct used to populate HTML template with individual checks
 type IndividualHealthcheckParams struct {
 	Name                   string
 	Status                 string
@@ -30,7 +30,7 @@ type IndividualHealthcheckParams struct {
 	Output                 string
 }
 
-//AggregateHealthcheckParams struct used to populate HTML template with aggregate checks
+// AggregateHealthcheckParams struct used to populate HTML template with aggregate checks
 type AggregateHealthcheckParams struct {
 	PageTitle               string
 	GeneralStatus           string
@@ -40,7 +40,7 @@ type AggregateHealthcheckParams struct {
 	IndividualHealthChecks  []IndividualHealthcheckParams
 }
 
-//AddAckForm struct used to populate HTML template for add acknowledge form
+// AddAckForm struct used to populate HTML template for add acknowledge form
 type AddAckForm struct {
 	ServiceName string
 	AddAckPath  string
@@ -275,7 +275,7 @@ func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Infof("Handling gtg for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
+	log.Debugf("Handling gtg for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
 	if err != nil {
 		w.WriteHeader(http.StatusServiceUnavailable)
 		return
