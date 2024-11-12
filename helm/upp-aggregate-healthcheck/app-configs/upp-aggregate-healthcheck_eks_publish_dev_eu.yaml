@@ -27,7 +27,7 @@ categories:
     immutable: false
     data:
       category.name: publish
-      category.services: cms-notifier, native-ingester-cms, cms-metadata-notifier, native-ingester-metadata, nativerw
+      category.services: cms-notifier, native-ingester-cms, cms-metadata-notifier, native-ingester-metadata, nativerw, draft-annotations-publisher
       category.refreshrate: "60"
       category.issticky: "true"
   - kind: ConfigMap
