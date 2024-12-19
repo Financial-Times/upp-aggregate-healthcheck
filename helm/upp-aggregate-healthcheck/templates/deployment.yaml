@@ -14,6 +14,8 @@ spec:
       app: {{ .Values.service.name }}
   template:
     metadata:
+      annotations:
+        {{- toYaml .Values.metrics.annotations | nindent 8 }}
       labels:
         app: {{ .Values.service.name }}
         visualize: "true"
