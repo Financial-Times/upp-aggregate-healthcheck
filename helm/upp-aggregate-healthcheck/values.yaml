@@ -39,4 +39,6 @@ metrics:
   interval: 30s
   # the name of the prometheus instance, as defined in
   # content-k8s-prometheus\helm\content-k8s-prometheus\app-configs\monitoring-metrics_{env}.yaml
+  annotations:
+    prometheus.io/scrape: "true"
   prometheusInstance: monitoring-metrics
