@@ -81,7 +81,6 @@ categories:
         document-store-api,
         enriched-content-read-api,
         internal-content-api,
-        cm-content-tree-api,
         content-unroller,
         public-annotations-api,
         relations-api
@@ -120,7 +119,6 @@ categories:
         content-search-api-port,
         concept-search-api,
         internal-content-api,
-        cm-content-tree-api,
         enriched-content-read-api,
         content-public-read,
         document-store-api,
