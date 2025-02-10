@@ -67,11 +67,10 @@ FullyAutomated
 
 ## Failover Details
 
-The service is deployed in Publish, Delivery and PAC clusters with different configs. So you can follow these guides:
+The service is deployed in Publish and Delivery clusters with different configs. So you can follow these guides:
 
 For Publish: <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/publishing-cluster>
 For Delivery: <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/delivery-cluster>
-For PAC: <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/pac-cluster>
 
 ## Data Recovery Process Type
 
@@ -99,8 +98,6 @@ For more details about the failover process please see:
 <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/publishing-cluster>
 
 <https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/delivery-cluster>
-
-<https://github.com/Financial-Times/upp-docs/tree/master/failover-guides/pac-cluster>
 
 <!-- Placeholder - remove HTML comment markers to activate
 ## Heroku Pipeline Name
@@ -130,11 +127,6 @@ Service in UPP K8S delivery clusters:
 
 *   Delivery-Prod-EU health: <https://upp-prod-delivery-eu.upp.ft.com/__upp-aggregate-healthcheck/__health>
 *   Delivery-Prod-US health: <https://upp-prod-delivery-us.upp.ft.com/__upp-aggregate-healthcheck/__health>
-
-Service in UPP PAC clusters:
-
-*   PAC-EU health: <https://pac-prod-eu.upp.ft.com/__health>
-*   PAC-US health: <https://pac-prod-us.upp.ft.com/__health>
 
 ## First Line Troubleshooting
 
