@@ -46,6 +46,7 @@ categories:
         body-validation-service,
         content-ingester,
         document-store-api,
+        document-store-api-go,
         post-publication-combiner,
         content-rw-elasticsearch,
         upp-notifications-creator,
