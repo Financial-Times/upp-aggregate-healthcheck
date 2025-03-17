@@ -4,15 +4,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/Financial-Times/go-logger"
 	"net/http"
 	"testing"
 	"time"
 
-	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
-	"github.com/stretchr/testify/assert"
+	"github.com/Financial-Times/go-logger"
+
 	"strconv"
 	"strings"
+
+	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
+	"github.com/stretchr/testify/assert"
 )
 
 const (
@@ -52,6 +54,10 @@ type MockService struct {
 	getServiceByNameErr error
 	getDeploymentsErr   error
 }
+
+func (m *MockService) RLockServices() {}
+
+func (m *MockService) RUnlockServices() {}
 
 func (m *MockService) getCategories(_ context.Context) (map[string]category, error) {
 	categories := make(map[string]category)
