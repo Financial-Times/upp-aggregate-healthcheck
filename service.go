@@ -40,6 +40,8 @@ type healthcheckService interface {
 	addAck(context.Context, string, string) error
 	removeAck(context.Context, string) error
 	getHTTPClient() *http.Client
+	RLockServices()
+	RUnlockServices()
 }
 
 const (
@@ -52,6 +54,14 @@ const (
 	ackMessagesConfigMapLabelSelector = "healthcheck-acknowledgements-for=aggregate-healthcheck"
 	defaultAppPort                    = int32(8080)
 )
+
+func (hs *k8sHealthcheckService) RLockServices() {
+	hs.services.RLock()
+}
+
+func (hs *k8sHealthcheckService) RUnlockServices() {
+	hs.services.RUnlock()
+}
 
 func (hs *k8sHealthcheckService) updateAcksForServices(acksMap map[string]string) {
 	hs.services.Lock()
