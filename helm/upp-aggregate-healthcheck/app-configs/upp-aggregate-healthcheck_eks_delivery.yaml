@@ -124,6 +124,7 @@ categories:
         concept-search-api,
         internal-content-api,
         cm-content-tree-api,
+        cm-live-events-api,
         enriched-content-read-api,
         content-public-read,
         document-store-api,
