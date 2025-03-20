@@ -65,7 +65,7 @@ categories:
     immutable: false
     data:
       category.name: content-read
-      category.services: api-policy-component,content-public-read,document-store-api
+      category.services: api-policy-component,content-public-read,document-store-api,document-store-api-go
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
@@ -189,7 +189,8 @@ categories:
         upp-image-set-validator,
         upp-graphic-validator,
         content-ingester,
-        document-store-api
+        document-store-api,
+        document-store-api-go
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
