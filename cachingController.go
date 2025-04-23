@@ -33,6 +33,7 @@ func (c *healthCheckController) collectChecksFromCachesFor(ctx context.Context, 
 	serviceNames := getServiceNamesFromCategories(categories)
 	services := c.healthCheckService.getServicesMapByNames(serviceNames)
 	servicesThatAreNotInCache := make(map[string]service)
+	c.healthCheckService.RLockServices()
 	for _, service := range services {
 		if mService, ok := c.measuredServices[service.name]; ok {
 			checkResult := <-mService.cachedHealth.toReadFromCache
@@ -41,6 +42,7 @@ func (c *healthCheckController) collectChecksFromCachesFor(ctx context.Context, 
 			servicesThatAreNotInCache[service.name] = service
 		}
 	}
+	c.healthCheckService.RUnlockServices()
 
 	if len(servicesThatAreNotInCache) != 0 {
 		notCachedChecks, err := c.runServiceChecksByServiceNames(ctx, servicesThatAreNotInCache, categories)

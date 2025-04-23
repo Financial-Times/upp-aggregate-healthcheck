@@ -301,7 +301,7 @@ func isStringInSlice(a string, list []string) bool {
 	return false
 }
 
-//used for sorting checks
+// used for sorting checks
 type byNameComparator []fthealth.CheckResult
 
 func (s byNameComparator) Less(i, j int) bool {
