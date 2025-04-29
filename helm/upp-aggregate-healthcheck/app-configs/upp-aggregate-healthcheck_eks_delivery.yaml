@@ -255,3 +255,16 @@ categories:
       category.services: concept-search-api
       category.refreshrate: "60"
       category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.reading-monitors
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: reading-monitors
+      category.services: >-
+        cm-read-availability-monitor
+      category.refreshrate: "60"
+      category.issticky: "false"
