@@ -17,9 +17,9 @@ RUN VERSION="version=$(git describe --tag --always 2> /dev/null)" \
     && REPOSITORY="repository=$(git config --get remote.origin.url)" \
     && REVISION="revision=$(git rev-parse HEAD)" \
     && BUILDER="builder=$(go version)" \
-    && LDFLAGS="-s -w -X '"${BUILDINFO_PACKAGE}$VERSION"' -X '"${BUILDINFO_PACKAGE}$DATETIME"' -X '"${BUILDINFO_PACKAGE}$REPOSITORY"' -X '"${BUILDINFO_PACKAGE}$REVISION"' -X '"${BUILDINFO_PACKAGE}$BUILDER"'" \
-    && git config --global url."https://${GITHUB_USERNAME}:${GITHUB_TOKEN}@github.com".insteadOf "https://github.com" \
-    && CGO_ENABLED=0 go build -mod=readonly -a -o /artifacts/${PROJECT} -ldflags="${LDFLAGS}" \
+    && LDFLAGS="-X '"${BUILDINFO_PACKAGE}$VERSION"' -X '"${BUILDINFO_PACKAGE}$DATETIME"' -X '"${BUILDINFO_PACKAGE}$REPOSITORY"' -X '"${BUILDINFO_PACKAGE}$REVISION"' -X '"${BUILDINFO_PACKAGE}$BUILDER"'" \
+    && CGO_ENABLED=0 go install -ldflags "-s -w -extldflags '-static'" github.com/go-delve/delve/cmd/dlv@latest \
+    && CGO_ENABLED=0 go build -gcflags "all=-N -l" -mod=readonly -o /artifacts/${PROJECT} -ldflags="${LDFLAGS}" \
     && cp -R resources /artifacts/resources \
     && cp -R html-templates /artifacts/html-templates
 
@@ -28,8 +28,9 @@ RUN VERSION="version=$(git describe --tag --always 2> /dev/null)" \
 FROM scratch
 WORKDIR /
 COPY --from=0 /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=0 /go/bin/dlv /usr/local/bin/dlv
 COPY --from=0 /artifacts/* /
 COPY --from=0 /artifacts/resources /resources
 COPY --from=0 /artifacts/html-templates /html-templates
 
-CMD [ "/upp-aggregate-healthcheck" ]
+CMD ["dlv", "exec", "--continue", "--headless", "--listen=0.0.0.0:2345", "--api-version=2", "--accept-multiclient", "/upp-aggregate-healthcheck"]
