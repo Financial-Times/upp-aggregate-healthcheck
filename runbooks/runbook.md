@@ -12,7 +12,7 @@ upp-aggregate-healthcheck
 
 ## Primary URL
 
-https://upp-prod-publish-glb.upp.ft.com/__upp-aggregate-healthcheck/
+https://github.com/Financial-Times/upp-aggregate-healthcheck
 
 ## Service Tier
 
@@ -127,6 +127,13 @@ Service in UPP K8S delivery clusters:
 
 *   Delivery-Prod-EU health: <https://upp-prod-delivery-eu.upp.ft.com/__upp-aggregate-healthcheck/__health>
 *   Delivery-Prod-US health: <https://upp-prod-delivery-us.upp.ft.com/__upp-aggregate-healthcheck/__health>
+
+Direct Heimdall alerting is not applicable in this case. The service itself is used by Heimdall to visualise the tiles.
+
+- [EU Delivery cluster](https://heimdall.ftops.tech/system?code=upp-prod-delivery-eu#monitored-checks-list)
+- [US Delivery cluster](https://heimdall.ftops.tech/system?code=upp-prod-delivery-us#monitored-checks-list)
+
+The links above can be used for monitoring.
 
 ## First Line Troubleshooting
 
