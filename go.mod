@@ -1,6 +1,6 @@
 module github.com/Financial-Times/upp-aggregate-healthcheck
 
-go 1.23
+go 1.23.0
 
 require (
 	github.com/Financial-Times/go-fthealth v0.6.2
@@ -42,7 +42,7 @@ require (
 	github.com/prometheus/procfs v0.15.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
 	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/oauth2 v0.20.0 // indirect
+	golang.org/x/oauth2 v0.27.0 // indirect
 	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/term v0.20.0 // indirect
 	golang.org/x/text v0.15.0 // indirect
