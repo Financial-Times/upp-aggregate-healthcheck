@@ -5,8 +5,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
+	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
 	log "github.com/Financial-Times/go-logger"
@@ -29,9 +30,8 @@ func (hs *k8sHealthcheckService) checkServiceHealth(ctx context.Context, service
 	}
 
 	noOfUnavailablePods := 0
-	for _, pod := range pods {
-		err := hs.checkPodHealth(pod, service.appPort)
-		if err != nil {
+	for _, currentPod := range pods {
+		if err = hs.checkPodHealth(currentPod, service.appPort); err != nil {
 			noOfUnavailablePods++
 		}
 	}
@@ -100,16 +100,23 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 	if err != nil {
 		return healthcheckResponse{}, errors.New("Error constructing healthcheck request: " + err.Error())
 	}
-
 	req.Header.Set("Accept", "application/json")
-	resp, err := hs.httpClient.Do(req)
-	if err != nil {
+
+	return getHealthChecksForPodWithRetry(req, hs.httpClient, hs.maxCheckAttempts, hs.checkCooldown)
+}
+
+func getHealthChecksForPodWithRetry(req *http.Request, httpClient httpClient, remainingAttempts int, cooldown time.Duration) (healthcheckResponse, error) {
+	resp, err := httpClient.Do(req)
+	if err != nil && remainingAttempts == 0 {
 		return healthcheckResponse{}, errors.New("Error performing healthcheck request: " + err.Error())
+	} else if err != nil {
+		log.WithError(err).Errorf("Error performing healthcheck request, retrying request in %.0f seconds", cooldown.Seconds())
+		time.Sleep(cooldown)
+		return getHealthChecksForPodWithRetry(req, httpClient, remainingAttempts-1, cooldown)
 	}
 
 	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
+		if err = resp.Body.Close(); err != nil {
 			log.WithError(err).Errorf("Cannot close response body reader.")
 		}
 	}()
@@ -118,13 +125,13 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 		return healthcheckResponse{}, fmt.Errorf("healthcheck endpoint returned non-200 status (%v)", resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return healthcheckResponse{}, errors.New("Error reading healthcheck response: " + err.Error())
 	}
 
 	health := &healthcheckResponse{}
-	if err := json.Unmarshal(body, &health); err != nil {
+	if err = json.Unmarshal(body, &health); err != nil {
 		return healthcheckResponse{}, errors.New("Error parsing healthcheck response: " + err.Error())
 	}
 

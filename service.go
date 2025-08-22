@@ -17,11 +17,16 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+type httpClient interface {
+	Do(req *http.Request) (*http.Response, error)
+}
 type k8sHealthcheckService struct {
-	k8sClient  kubernetes.Interface
-	httpClient *http.Client
-	services   servicesMap
-	acks       map[string]string
+	k8sClient        kubernetes.Interface
+	httpClient       httpClient
+	services         servicesMap
+	acks             map[string]string
+	maxCheckAttempts int
+	checkCooldown    time.Duration
 }
 
 type healthcheckService interface {
@@ -39,7 +44,7 @@ type healthcheckService interface {
 	getHealthChecksForPod(pod, int32) (healthcheckResponse, error)
 	addAck(context.Context, string, string) error
 	removeAck(context.Context, string) error
-	getHTTPClient() *http.Client
+	getHTTPClient() httpClient
 	RLockServices()
 	RUnlockServices()
 }
@@ -166,8 +171,8 @@ func getDefaultClient() *http.Client {
 	}
 }
 
-func initializeHealthCheckService() *k8sHealthcheckService {
-	httpClient := getDefaultClient()
+func initializeHealthCheckService(maxCheckAttempts int, checkCooldown time.Duration) *k8sHealthcheckService {
+	client := getDefaultClient()
 
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
@@ -184,9 +189,11 @@ func initializeHealthCheckService() *k8sHealthcheckService {
 	services := make(map[string]service)
 
 	k8sService := &k8sHealthcheckService{
-		httpClient: httpClient,
-		k8sClient:  k8sClient,
-		services:   servicesMap{m: services},
+		httpClient:       client,
+		k8sClient:        k8sClient,
+		services:         servicesMap{m: services},
+		maxCheckAttempts: maxCheckAttempts,
+		checkCooldown:    checkCooldown,
 	}
 
 	go k8sService.watchAcks()
@@ -309,8 +316,8 @@ func (hs *k8sHealthcheckService) getServiceByName(serviceName string) (service, 
 	hs.services.RLock()
 	defer hs.services.RUnlock()
 
-	if service, ok := hs.services.m[serviceName]; ok {
-		return service, nil
+	if srv, ok := hs.services.m[serviceName]; ok {
+		return srv, nil
 	}
 
 	return service{}, fmt.Errorf("cannot find service with name %s", serviceName)
@@ -326,8 +333,8 @@ func (hs *k8sHealthcheckService) getServicesMapByNames(serviceNames []string) ma
 	services := make(map[string]service)
 	hs.services.RLock()
 	for _, serviceName := range serviceNames {
-		if service, ok := hs.services.m[serviceName]; ok {
-			services[serviceName] = service
+		if srv, ok := hs.services.m[serviceName]; ok {
+			services[serviceName] = srv
 		} else {
 			log.Errorf("Service with name [%s] not found.", serviceName)
 		}
@@ -367,7 +374,7 @@ func (hs *k8sHealthcheckService) getCategories(ctx context.Context) (map[string]
 	return categories, nil
 }
 
-func (hs *k8sHealthcheckService) getHTTPClient() *http.Client {
+func (hs *k8sHealthcheckService) getHTTPClient() httpClient {
 	return hs.httpClient
 }
 
@@ -395,7 +402,7 @@ func populateCategory(k8sCatData map[string]string) category {
 	}
 
 	refreshRatePeriod := time.Duration(refreshRateSeconds * int64(time.Second))
-	categories := strings.Replace(k8sCatData["category.services"], " ", "", -1)
+	categories := strings.ReplaceAll(k8sCatData["category.services"], " ", "")
 	return category{
 		name:             categoryName,
 		services:         strings.Split(categories, ","),
