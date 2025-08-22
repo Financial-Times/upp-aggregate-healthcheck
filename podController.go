@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"sort"
 	"sync"
@@ -19,6 +19,7 @@ func (c *healthCheckController) buildPodsHealthResult(ctx context.Context, servi
 	checkResults, err := c.runPodChecksFor(ctx, serviceName)
 
 	if err != nil {
+		// nolint:staticcheck
 		return fthealth.HealthResult{}, fmt.Errorf("Cannot perform pod checks for service %s, error was: %s", serviceName, err.Error())
 	}
 
@@ -46,12 +47,13 @@ func (c *healthCheckController) runPodChecksFor(ctx context.Context, serviceName
 
 	pods, err := c.healthCheckService.getPodsForService(ctx, serviceName)
 	if err != nil {
+		// nolint:staticcheck
 		return []fthealth.CheckResult{}, fmt.Errorf("Cannot get pods for service %s, error was: %s", serviceName, err.Error())
 	}
 
 	checks := make([]fthealth.Check, len(pods))
-	for i, pod := range pods {
-		check := newPodHealthCheck(pod, serviceToBeChecked, c.healthCheckService)
+	for i, currentPod := range pods {
+		check := newPodHealthCheck(currentPod, serviceToBeChecked, c.healthCheckService)
 		checks[i] = check
 	}
 
@@ -89,13 +91,13 @@ func (c *healthCheckController) getIndividualPodHealth(ctx context.Context, podN
 		return nil, "", errors.New("Error retrieving pod: " + err.Error())
 	}
 
-	service, err := c.healthCheckService.getServiceByName(podToBeChecked.serviceName)
+	srv, err := c.healthCheckService.getServiceByName(podToBeChecked.serviceName)
 
 	appPort := defaultAppPort
 	if err != nil {
-		log.Warnf("Cannot get service with name %s. Using default app port [%d]", podToBeChecked.serviceName, defaultAppPort)
+		log.Warnf("Cannot get srv with name %s. Using default app port [%d]", podToBeChecked.serviceName, defaultAppPort)
 	} else {
-		appPort = service.appPort
+		appPort = srv.appPort
 	}
 
 	req, err := http.NewRequest("GET", fmt.Sprintf("http://%s:%d/__health", podToBeChecked.ip, appPort), nil)
@@ -109,13 +111,13 @@ func (c *healthCheckController) getIndividualPodHealth(ctx context.Context, podN
 	}
 
 	if resp.StatusCode != 200 {
+		// nolint:staticcheck
 		return nil, "", fmt.Errorf("Healthcheck endpoint returned non-200 status (%v)", resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
+		if err = resp.Body.Close(); err != nil {
 			log.WithError(err).Error("Cannot close response body reader.")
 		}
 	}()
