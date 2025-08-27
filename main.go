@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Financial-Times/go-logger"
 	"net/http"
 	"os"
 	"time"
+
+	log "github.com/Financial-Times/go-logger"
 
 	"github.com/gorilla/mux"
 	"github.com/jawher/mow.cli"
@@ -57,12 +58,19 @@ func main() {
 		EnvVar: "LOG_LEVEL",
 	})
 
+	healthcheckTimeoutSeconds := app.Int(cli.IntOpt{
+		Name:   "healthcheck-timeout-seconds",
+		Value:  20,
+		Desc:   "Number of seconds to wait before a healthcheck request times out",
+		EnvVar: "TIMEOUT_SECONDS",
+	})
+
 	log.InitLogger(*appName, *logLevel)
 
 	app.Action = func() {
 		log.Infof("Starting app with params: [environment: %s], [pathPrefix: %s]", *environment, *pathPrefix)
 
-		controller := initializeController(*environment)
+		controller := initializeController(*environment, *healthcheckTimeoutSeconds)
 		handler := &httpHandler{
 			controller: controller,
 			pathPrefix: *pathPrefix,

@@ -148,9 +148,9 @@ func (hs *k8sHealthcheckService) watchServices() {
 	}
 }
 
-func getDefaultClient() *http.Client {
+func getDefaultClient(timeoutSeconds int) *http.Client {
 	return &http.Client{
-		Timeout: 12 * time.Second, // services should respond within 10s
+		Timeout: time.Duration(timeoutSeconds) * time.Second, // services should respond within 10s
 		Transport: &http.Transport{
 			DialContext: (&net.Dialer{
 				Timeout:   12 * time.Second,
@@ -166,8 +166,8 @@ func getDefaultClient() *http.Client {
 	}
 }
 
-func initializeHealthCheckService() *k8sHealthcheckService {
-	httpClient := getDefaultClient()
+func initializeHealthCheckService(timeoutSeconds int) *k8sHealthcheckService {
+	httpClient := getDefaultClient(timeoutSeconds)
 
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()

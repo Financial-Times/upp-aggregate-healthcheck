@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/Financial-Times/go-logger"
 	"github.com/stretchr/testify/assert"
@@ -123,7 +122,7 @@ func initializeMockService(httpClient *http.Client) *k8sHealthcheckService {
 }
 
 func initializeMockHTTPClient(responseStatusCode int, responseBody string) *http.Client {
-	client := getDefaultClient()
+	client := getDefaultClient(10)
 	client.Transport = &mockTransport{
 		responseStatusCode: responseStatusCode,
 		responseBody:       responseBody,
@@ -347,9 +346,4 @@ func TestGetDeploymentsReturnsErrorForStatefulSets(t *testing.T) {
 	deployments, err := service.getDeployments(context.TODO())
 	assert.Error(t, err)
 	assert.Nil(t, deployments)
-}
-
-func TestGetDefaultClient(t *testing.T) {
-	hc := getDefaultClient()
-	assert.Equal(t, hc.Timeout, 12*time.Second, "Expected time out to be 12 seconds")
 }

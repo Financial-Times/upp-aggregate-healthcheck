@@ -37,8 +37,8 @@ type controller interface {
 	getMeasuredServices() map[string]measuredService
 }
 
-func initializeController(environment string) *healthCheckController {
-	service := initializeHealthCheckService()
+func initializeController(environment string, timeoutSeconds int) *healthCheckController {
+	service := initializeHealthCheckService(timeoutSeconds)
 	measuredServices := make(map[string]measuredService)
 	stickyCategoriesFailedServices := make(map[string]int)
 
