@@ -309,11 +309,11 @@ func (hs *k8sHealthcheckService) getServiceByName(serviceName string) (service, 
 	hs.services.RLock()
 	defer hs.services.RUnlock()
 
-	if service, ok := hs.services.m[serviceName]; ok {
-		return service, nil
+	if srv, ok := hs.services.m[serviceName]; ok {
+		return srv, nil
 	}
 
-	return service{}, fmt.Errorf("cannot find service with name %s", serviceName)
+	return service{}, fmt.Errorf("cannot find srv with name %s", serviceName)
 }
 func (hs *k8sHealthcheckService) getServicesMapByNames(serviceNames []string) map[string]service {
 	//if the list of service names is empty, it means that we are in the default category so we take all the services that have healthcheck
@@ -326,8 +326,8 @@ func (hs *k8sHealthcheckService) getServicesMapByNames(serviceNames []string) ma
 	services := make(map[string]service)
 	hs.services.RLock()
 	for _, serviceName := range serviceNames {
-		if service, ok := hs.services.m[serviceName]; ok {
-			services[serviceName] = service
+		if srv, ok := hs.services.m[serviceName]; ok {
+			services[serviceName] = srv
 		} else {
 			log.Errorf("Service with name [%s] not found.", serviceName)
 		}
@@ -395,7 +395,7 @@ func populateCategory(k8sCatData map[string]string) category {
 	}
 
 	refreshRatePeriod := time.Duration(refreshRateSeconds * int64(time.Second))
-	categories := strings.Replace(k8sCatData["category.services"], " ", "", -1)
+	categories := strings.ReplaceAll(k8sCatData["category.services"], " ", "")
 	return category{
 		name:             categoryName,
 		services:         strings.Split(categories, ","),

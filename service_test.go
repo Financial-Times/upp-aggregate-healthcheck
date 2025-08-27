@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -77,6 +77,7 @@ const (
     }
   ]
 }`
+	// nolint:gosec
 	validPassingHealthCheckResponseBody = `{
   "schemaVersion": 1,
   "name": "CMSNotifierApplication",
@@ -139,7 +140,7 @@ func (t *mockTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	response.Header.Set("Content-Type", "application/json")
-	response.Body = ioutil.NopCloser(strings.NewReader(t.responseBody))
+	response.Body = io.NopCloser(strings.NewReader(t.responseBody))
 
 	return response, nil
 }
@@ -337,7 +338,7 @@ func TestGetDeploymentsReturnsErrorForStatefulSets(t *testing.T) {
 	service := initializeMockService(nil)
 	mock := &fake.Clientset{}
 	service.k8sClient = mock
-	mock.AddReactor("list", "deployments", func(action core.Action) (bool, runtime.Object, error) {
+	mock.AddReactor("list", "deployments", func(_ core.Action) (bool, runtime.Object, error) {
 		return true, &appsv1.DeploymentList{}, nil
 	})
 	mock.AddReactor("list", "statefulsets", func(action core.Action) (bool, runtime.Object, error) {

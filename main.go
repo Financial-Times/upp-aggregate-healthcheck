@@ -9,7 +9,7 @@ import (
 	log "github.com/Financial-Times/go-logger"
 
 	"github.com/gorilla/mux"
-	"github.com/jawher/mow.cli"
+	cli "github.com/jawher/mow.cli"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 

@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
@@ -108,8 +108,7 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 	}
 
 	defer func() {
-		err := resp.Body.Close()
-		if err != nil {
+		if err = resp.Body.Close(); err != nil {
 			log.WithError(err).Errorf("Cannot close response body reader.")
 		}
 	}()
@@ -118,7 +117,7 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 		return healthcheckResponse{}, fmt.Errorf("healthcheck endpoint returned non-200 status (%v)", resp.StatusCode)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return healthcheckResponse{}, errors.New("Error reading healthcheck response: " + err.Error())
 	}
