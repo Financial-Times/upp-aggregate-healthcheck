@@ -1,8 +1,10 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	log "github.com/Financial-Times/go-logger"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"time"
@@ -43,6 +45,13 @@ func main() {
 		EnvVar: "PATH_PREFIX",
 	})
 
+	customHealthcheckPortsPath := app.String(cli.StringOpt{
+		Name:   "customHealthcheckPorts",
+		Value:  "",
+		Desc:   "Path for custom healthcheck ports file",
+		EnvVar: "CUSTOM_HEALTHCHECK_PORTS_PATH",
+	})
+
 	clusterURL := app.String(cli.StringOpt{
 		Name:   "cluster-url",
 		Value:  "",
@@ -60,9 +69,19 @@ func main() {
 	log.InitLogger(*appName, *logLevel)
 
 	app.Action = func() {
-		log.Infof("Starting app with params: [environment: %s], [pathPrefix: %s]", *environment, *pathPrefix)
+		log.Infof("Starting app with params: [environment: %s], [pathPrefix: %s], [customHealthcheckPorts: %s]", *environment, *pathPrefix, *customHealthcheckPortsPath)
 
-		controller := initializeController(*environment)
+		customPorts := make(map[string]int32)
+		if *customHealthcheckPortsPath != "" {
+			var err error
+			customPorts, err = loadCustomHealthcheckPortsMap(*customHealthcheckPortsPath)
+			if err != nil {
+				log.WithError(err).Error("Failed to load custom healthcheck ports map")
+			} else {
+				log.WithField("custom-healthcheck-ports", customPorts).Info("Loaded custom healthcheck ports from configuration")
+			}
+		}
+		controller := initializeController(*environment, customPorts)
 		handler := &httpHandler{
 			controller: controller,
 			pathPrefix: *pathPrefix,
@@ -109,4 +128,22 @@ func listen(httpHandler *httpHandler, pathPrefix string, port int) {
 	if err != nil {
 		panic(fmt.Sprintf("Cannot set up HTTP listener. Error was: %v", err))
 	}
+}
+
+func loadCustomHealthcheckPortsMap(filePath string) (map[string]int32, error) {
+	jsonFile, err := os.Open(filePath)
+	if err != nil {
+		return nil, err
+	}
+	defer jsonFile.Close()
+	byteValue, err := ioutil.ReadAll(jsonFile)
+	if err != nil {
+		return nil, err
+	}
+	var result map[string]int32
+	err = json.Unmarshal(byteValue, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

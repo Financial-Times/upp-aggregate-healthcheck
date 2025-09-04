@@ -102,9 +102,17 @@ func (m *MockService) getServiceByName(serviceName string) (service, error) {
 	}
 	return service{
 		name:        "test-service-name",
+		sysCode:     "system-code",
 		ack:         "test ack",
 		isResilient: strings.HasPrefix(serviceName, "resilient"),
 	}, m.getServiceByNameErr
+}
+
+func (m *MockService) getServiceCodeByName(serviceName string) string {
+	if serviceName == nonExistingServiceName {
+		return ""
+	}
+	return "system-code"
 }
 
 func (m *MockService) getServicesMapByNames(serviceNames []string) map[string]service {
@@ -113,11 +121,13 @@ func (m *MockService) getServicesMapByNames(serviceNames []string) map[string]se
 	}
 	services := make(map[string]service)
 	services["test-service-name"] = service{
-		name: "test-service-name",
-		ack:  "test ack",
+		name:    "test-service-name",
+		sysCode: "system-code",
+		ack:     "test ack",
 	}
 	services["test-service-name-2"] = service{
-		name: "test-service-name-2",
+		name:    "test-service-name-2",
+		sysCode: "system-code-2",
 	}
 	return services
 }
@@ -511,7 +521,7 @@ func TestRunServiceChecksForStickyCategoryUpdateError(t *testing.T) {
 	hc, categories, _ := controller.buildServicesHealthResult(context.TODO(), []string{"test", "publishing", nonExistingCategoryName}, true)
 
 	assert.NotNil(t, hc)
-	assert.False(t, hc.Ok)
+	assert.False(t, hc.HealthResult.Ok)
 	assert.False(t, categories["test"].isEnabled)
 }
 
