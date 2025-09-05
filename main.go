@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
-	log "github.com/Financial-Times/go-logger"
 	"net/http"
 	"os"
 	"time"
 
+	log "github.com/Financial-Times/go-logger"
+
 	"github.com/gorilla/mux"
-	"github.com/jawher/mow.cli"
+	cli "github.com/jawher/mow.cli"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -57,12 +58,27 @@ func main() {
 		EnvVar: "LOG_LEVEL",
 	})
 
+	maxHealthcheckAttempts := app.Int(cli.IntOpt{
+		Name:   "max-healthcheck-attempts",
+		Value:  2,
+		Desc:   "Maximum number of times to retry a health check",
+		EnvVar: "MAX_HEALTHCHECK_ATTEMPTS",
+	})
+
+	healthcheckCooldown := app.Int(cli.IntOpt{
+		Name:   "healthcheck-cooldown",
+		Value:  5,
+		Desc:   "Seconds to wait before retrying healthcheck",
+		EnvVar: "HEALTHCHECK_COOLDOWN",
+	})
+
 	log.InitLogger(*appName, *logLevel)
 
 	app.Action = func() {
 		log.Infof("Starting app with params: [environment: %s], [pathPrefix: %s]", *environment, *pathPrefix)
 
-		controller := initializeController(*environment)
+		healthcheckCooldownDuration := time.Duration(*healthcheckCooldown) * time.Second
+		controller := initializeController(*environment, *maxHealthcheckAttempts, healthcheckCooldownDuration)
 		handler := &httpHandler{
 			controller: controller,
 			pathPrefix: *pathPrefix,

@@ -106,6 +106,10 @@ spec:
             configMapKeyRef:
               name: global-config
               key: cluster.url
+        - name: MAX_HEALTHCHECK_ATTEMPTS
+          value: "2"
+        - name: HEALTHCHECK_COOLDOWN
+          value: "5"
         - name: PATH_PREFIX
           value: {{ .Values.env.PATH_PREFIX }}
         ports:
