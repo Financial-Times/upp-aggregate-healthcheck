@@ -196,10 +196,10 @@ func (c *healthCheckController) disableStickyFailingCategories(ctx context.Conte
 			for _, healthCheck := range healthChecks {
 				if healthCheck.Name == serviceName && !healthCheck.Ok {
 					c.stickyCategoriesFailedServices[serviceName]++
-					log.Infof("Sticky category [%s] is unhealthy -- check %v/%v.", category.name, c.stickyCategoriesFailedServices[serviceName], category.failureThreshold)
+					log.Infof("Sticky category [%s]: service [%s] -- check %v/%v.", category.name, serviceName, c.stickyCategoriesFailedServices[serviceName], category.failureThreshold)
 
 					if c.isCategoryThresholdExceeded(serviceName, category.failureThreshold) {
-						log.Infof("Sticky category [%s] is unhealthy, disabling it.", category.name)
+						log.Infof("Sticky category [%s] is unhealthy, disabling it. Threshold exceeded for: [%s]", category.name, serviceName)
 						category.isEnabled = false
 						categories[catIndex] = category
 
