@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
 	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
@@ -106,19 +105,12 @@ func (hs *k8sHealthcheckService) getHealthChecksForPod(pod pod, appPort int32) (
 	return getHealthChecksForPodWithRetry(req, hs.httpClient, hs.maxCheckAttempts, hs.checkCooldown)
 }
 
-func redactHealthCheckError(err error) string {
-	if err == nil {
-		return ""
-	}
-	return strings.ReplaceAll(err.Error(), "/__health", "__health")
-}
-
 func getHealthChecksForPodWithRetry(req *http.Request, httpClient httpClient, remainingAttempts int, cooldown time.Duration) (healthcheckResponse, error) {
 	resp, err := httpClient.Do(req)
 	if err != nil && remainingAttempts == 0 {
-		return healthcheckResponse{}, errors.New("Error performing healthcheck request: " + redactHealthCheckError(err))
+		return healthcheckResponse{}, errors.New("Error performing healthcheck request: " + err.Error())
 	} else if err != nil {
-		log.Errorf("Error performing healthcheck request, retrying request in %.0f seconds. %s", cooldown.Seconds(), redactHealthCheckError(err))
+		log.WithError(err).Errorf("Error performing healthcheck request, retrying request in %.0f seconds", cooldown.Seconds())
 		time.Sleep(cooldown)
 		return getHealthChecksForPodWithRetry(req, httpClient, remainingAttempts-1, cooldown)
 	}
