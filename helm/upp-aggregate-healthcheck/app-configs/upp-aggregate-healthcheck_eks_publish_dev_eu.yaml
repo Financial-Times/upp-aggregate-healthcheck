@@ -40,6 +40,7 @@ categories:
     data:
       category.name: publishing-monitors
       category.services: >-
+        annotations-monitor,
         publish-availability-monitor,
         cm-synthetic-audio-publication-monitor,
         cm-synthetic-article-publication-monitor,
