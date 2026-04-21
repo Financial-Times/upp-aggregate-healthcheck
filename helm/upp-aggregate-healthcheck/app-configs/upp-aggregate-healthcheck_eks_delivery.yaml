@@ -64,7 +64,7 @@ categories:
     immutable: false
     data:
       category.name: content-read
-      category.services: api-policy-component,content-public-read,document-store-api-go
+      category.services: api-policy-component,content-public-read,cm-content-public-read-go,document-store-api-go
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
@@ -125,6 +125,7 @@ categories:
         cm-live-events-api,
         enriched-content-read-api,
         content-public-read,
+        cm-content-public-read-go,
         document-store-api-go,
         content-unroller,
         notifications-rw,
