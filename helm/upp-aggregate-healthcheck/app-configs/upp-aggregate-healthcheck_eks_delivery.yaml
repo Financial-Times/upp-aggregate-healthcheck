@@ -228,8 +228,8 @@ categories:
         annotations-writer-ontotext,
         public-annotations-api,
         annotation-notifications-ingester,
-        notifications-rw,
-        notifications-push
+        annotation-notifications-rw,
+        annotation-notifications-push
       category.refreshrate: "60"
       category.issticky: "false"
   - kind: ConfigMap
