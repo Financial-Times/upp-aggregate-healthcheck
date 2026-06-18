@@ -177,13 +177,13 @@ func initializeHealthCheckService(maxCheckAttempts int, checkCooldown time.Durat
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
-		panic(err.Error())
+		panic(err)
 	}
 
 	// creates the clientset
 	k8sClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
-		panic(fmt.Sprintf("Failed to create k8s client: %v", err.Error()))
+		panic(fmt.Errorf("failed to create k8s client: %w", err))
 	}
 
 	services := make(map[string]service)
@@ -207,14 +207,14 @@ func (hs *k8sHealthcheckService) updateCategory(ctx context.Context, categoryNam
 	k8sCategory, err := hs.k8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).Get(ctx, categoryConfigMapName, k8smeta.GetOptions{})
 
 	if err != nil {
-		return fmt.Errorf("cannot retrieve configMap for category with name %s: %s", categoryName, err.Error())
+		return fmt.Errorf("cannot retrieve configMap for category with name %s: %w", categoryName, err)
 	}
 
 	k8sCategory.Data["category.enabled"] = strconv.FormatBool(isEnabled)
 	_, err = hs.k8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).Update(ctx, k8sCategory, k8smeta.UpdateOptions{})
 
 	if err != nil {
-		return fmt.Errorf("cannot update configMap for category with name %s: %s", categoryName, err.Error())
+		return fmt.Errorf("cannot update configMap for category with name %s: %w", categoryName, err)
 	}
 
 	return nil
@@ -225,7 +225,7 @@ func (hs *k8sHealthcheckService) removeAck(ctx context.Context, serviceName stri
 	k8sAcksConfigMap, err := getAcksConfigMap(ctx, hs.k8sClient)
 
 	if err != nil {
-		return fmt.Errorf("failed to retrieve the current list of acks: %s", err.Error())
+		return fmt.Errorf("failed to retrieve the current list of acks: %w", err)
 	}
 
 	delete(k8sAcksConfigMap.Data, serviceName)
@@ -251,7 +251,7 @@ func (hs *k8sHealthcheckService) addAck(ctx context.Context, serviceName, ackMes
 	k8sAcksConfigMap, err := getAcksConfigMap(ctx, hs.k8sClient)
 
 	if err != nil {
-		return fmt.Errorf("failed to retrieve the current list of acks: %s", err.Error())
+		return fmt.Errorf("failed to retrieve the current list of acks: %w", err)
 	}
 
 	if k8sAcksConfigMap.Data == nil {
@@ -263,7 +263,7 @@ func (hs *k8sHealthcheckService) addAck(ctx context.Context, serviceName, ackMes
 	_, err = hs.k8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).Update(ctx, &k8sAcksConfigMap, k8smeta.UpdateOptions{})
 
 	if err != nil {
-		return fmt.Errorf("failed to update the acks config map for service %s and ack message [%s]: %v", serviceName, ackMessage, err)
+		return fmt.Errorf("failed to update the acks config map for service %s and ack message [%s]: %w", serviceName, ackMessage, err)
 	}
 
 	return nil
@@ -272,7 +272,7 @@ func (hs *k8sHealthcheckService) addAck(ctx context.Context, serviceName, ackMes
 func (hs *k8sHealthcheckService) getDeployments(ctx context.Context) (deployments map[string]deployment, err error) {
 	deploymentList, err := hs.k8sClient.AppsV1().Deployments(k8score.NamespaceDefault).List(ctx, k8smeta.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve deployments: %v", err.Error())
+		return nil, fmt.Errorf("failed to retrieve deployments: %w", err)
 	}
 
 	deployments = make(map[string]deployment)
@@ -284,7 +284,7 @@ func (hs *k8sHealthcheckService) getDeployments(ctx context.Context) (deployment
 
 	dl, err := hs.k8sClient.AppsV1().StatefulSets(k8score.NamespaceDefault).List(ctx, k8smeta.ListOptions{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to retrieve StatefulSet: %v", err.Error())
+		return nil, fmt.Errorf("failed to retrieve StatefulSet: %w", err)
 	}
 
 	for _, d := range dl.Items {
@@ -298,7 +298,7 @@ func (hs *k8sHealthcheckService) getDeployments(ctx context.Context) (deployment
 func (hs *k8sHealthcheckService) getPodByName(ctx context.Context, podName string) (pod, error) {
 	k8sPod, err := hs.k8sClient.CoreV1().Pods(k8score.NamespaceDefault).Get(ctx, podName, k8smeta.GetOptions{})
 	if err != nil {
-		return pod{}, fmt.Errorf("failed to get the pod with name %s from k8s cluster: %v", podName, err.Error())
+		return pod{}, fmt.Errorf("failed to get the pod with name %s from k8s cluster: %w", podName, err)
 	}
 
 	p := populatePod(*k8sPod)
@@ -347,7 +347,7 @@ func (hs *k8sHealthcheckService) getServicesMapByNames(serviceNames []string) ma
 func (hs *k8sHealthcheckService) getPodsForService(ctx context.Context, serviceName string) ([]pod, error) {
 	k8sPods, err := hs.k8sClient.CoreV1().Pods(k8score.NamespaceDefault).List(ctx, k8smeta.ListOptions{LabelSelector: fmt.Sprintf("app=%s", serviceName)})
 	if err != nil {
-		return []pod{}, fmt.Errorf("failed to get the list of pods from k8s cluster: %v", err.Error())
+		return []pod{}, fmt.Errorf("failed to get the list of pods from k8s cluster: %w", err)
 	}
 
 	pods := make([]pod, len(k8sPods.Items))
@@ -366,7 +366,7 @@ func (hs *k8sHealthcheckService) getCategories(ctx context.Context) (map[string]
 	elapsed := time.Since(start)
 	if err != nil {
 		log.Debugf("Getting categories configMaps from kubernetes took %s and failed with context error [%v]", elapsed, ctx.Err())
-		return nil, fmt.Errorf("failed to get the categories from kubernetes: %v", err.Error())
+		return nil, fmt.Errorf("failed to get the categories from kubernetes: %w", err)
 	}
 	log.Debugf("Getting categories configMaps from kubernetes took %s and returned %d configMaps", elapsed, len(k8sCategories.Items))
 
@@ -470,7 +470,7 @@ func getAcksConfigMap(ctx context.Context, k8sClient kubernetes.Interface) (k8sc
 	k8sAckConfigMap, err := k8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).Get(ctx, ackMessagesConfigMapName, k8smeta.GetOptions{})
 
 	if err != nil {
-		return k8score.ConfigMap{}, fmt.Errorf("cannot find configMap with name %s: %s", ackMessagesConfigMapName, err.Error())
+		return k8score.ConfigMap{}, fmt.Errorf("cannot find configMap with name %s: %w", ackMessagesConfigMapName, err)
 	}
 
 	return *k8sAckConfigMap, nil
