@@ -361,10 +361,14 @@ func (hs *k8sHealthcheckService) getPodsForService(ctx context.Context, serviceN
 
 func (hs *k8sHealthcheckService) getCategories(ctx context.Context) (map[string]category, error) {
 	categories := make(map[string]category)
+	start := time.Now()
 	k8sCategories, err := hs.k8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).List(ctx, k8smeta.ListOptions{LabelSelector: "healthcheck-categories-for=aggregate-healthcheck"})
+	elapsed := time.Since(start)
 	if err != nil {
+		log.Debugf("Getting categories configMaps from kubernetes took %s and failed with context error [%v]", elapsed, ctx.Err())
 		return nil, fmt.Errorf("failed to get the categories from kubernetes: %v", err.Error())
 	}
+	log.Debugf("Getting categories configMaps from kubernetes took %s and returned %d configMaps", elapsed, len(k8sCategories.Items))
 
 	for _, k8sCategory := range k8sCategories.Items {
 		c := populateCategory(k8sCategory.Data)

@@ -183,6 +183,15 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 	log.Infof("Checking services health for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
 
 	if err != nil {
+		log.Debugf(
+			"Received services health check request: request_id=%q user_agent=%q x_forwarded_for=%q remote_addr=%q raw_query=%q useCache=%t",
+			r.Header.Get("X-Request-Id"),
+			r.UserAgent(),
+			r.Header.Get("X-Forwarded-For"),
+			r.RemoteAddr,
+			r.URL.RawQuery,
+			useCache,
+		)
 		log.WithError(err).Error("Cannot build services health result")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
