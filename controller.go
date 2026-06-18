@@ -89,6 +89,14 @@ func (c *healthCheckController) addAck(ctx context.Context, serviceName, ackMess
 func (c *healthCheckController) buildServicesHealthResult(ctx context.Context, providedCategories []string, useCache bool) (fthealth.HealthResult, map[string]category, error) {
 	var checkResults []fthealth.CheckResult
 	desc := "Health of the whole cluster of the moment served without cache."
+
+	if ctx.Err() != nil {
+		log.Debugf(
+			"[buildServicesHealthResult] context error: %s",
+			ctx.Err(),
+		)
+	}
+
 	availableCategories, err := c.healthCheckService.getCategories(ctx)
 	if err != nil {
 		return fthealth.HealthResult{}, nil, fmt.Errorf("cannot build health check result for services: %v", err.Error())

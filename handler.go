@@ -159,8 +159,8 @@ func (h *httpHandler) handleAddAckForm(w http.ResponseWriter, r *http.Request) {
 	if err := htmlTemplate.Execute(w, addAckForm); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.WithError(err).Error("Cannot apply params to html template")
-		_, err := w.Write([]byte("Couldn't render template file for html response"))
-		handleResponseWriterErr(err)
+		_, writeErr := w.Write([]byte("Couldn't render template file for html response"))
+		handleResponseWriterErr(writeErr)
 		return
 	}
 }
@@ -174,8 +174,8 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 		w.WriteHeader(http.StatusBadRequest)
 
 		if r.Header.Get("Accept") != "application/json" {
-			_, err := w.Write([]byte("Provided categories are not valid."))
-			handleResponseWriterErr(err)
+			_, writeErr := w.Write([]byte("Provided categories are not valid."))
+			handleResponseWriterErr(writeErr)
 		}
 		return
 	}
@@ -183,6 +183,15 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 	log.Infof("Checking services health for categories %s, useCache: %t", getCategoriesString(validCategories), useCache)
 
 	if err != nil {
+		log.Debugf(
+			"Received services health check request: request_id=%s user_agent=%s x_forwarded_for=%s remote_addr=%s raw_query=%s useCache=%t",
+			r.Header.Get("X-Request-Id"),
+			r.UserAgent(),
+			r.Header.Get("X-Forwarded-For"),
+			r.RemoteAddr,
+			r.URL.RawQuery,
+			useCache,
+		)
 		log.WithError(err).Error("Cannot build services health result")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
@@ -208,8 +217,8 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 		w.WriteHeader(http.StatusBadRequest)
 
 		if r.Header.Get("Accept") != jsonContentType {
-			_, err := w.Write([]byte("Couldn't get service name from url."))
-			handleResponseWriterErr(err)
+			_, writeErr := w.Write([]byte("Couldn't get service name from url."))
+			handleResponseWriterErr(writeErr)
 		}
 		return
 	}
@@ -220,8 +229,8 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.WithError(err).Errorf("Cannot perform checks for service with name %s", serviceName)
-		_, err := w.Write([]byte(fmt.Sprintf("Cannot perform checks for service with name %s", serviceName)))
-		handleResponseWriterErr(err)
+		_, writeErr := fmt.Fprintf(w, "Cannot perform checks for service with name %s", serviceName)
+		handleResponseWriterErr(writeErr)
 		return
 	}
 
@@ -243,8 +252,8 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 
 	if podName == "" {
 		w.WriteHeader(http.StatusBadRequest)
-		_, err := w.Write([]byte("Cannot parse pod name from url."))
-		handleResponseWriterErr(err)
+		_, writeErr := w.Write([]byte("Cannot parse pod name from url."))
+		handleResponseWriterErr(writeErr)
 		return
 	}
 
@@ -255,8 +264,8 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 		w.WriteHeader(http.StatusInternalServerError)
 
 		log.WithError(err).Errorf("Cannot get individual healthcheck for pod %s", podName)
-		_, err := w.Write([]byte(fmt.Sprintf("Cannot get individual healthcheck for pod %s", podName)))
-		handleResponseWriterErr(err)
+		_, writeErr := fmt.Fprintf(w, "Cannot get individual healthcheck for pod %s", podName)
+		handleResponseWriterErr(writeErr)
 		return
 	}
 
@@ -317,7 +326,6 @@ func useCache(theURL *url.URL) bool {
 }
 
 func buildHealthcheckJSONResponse(w http.ResponseWriter, healthResult fthealth.HealthResult) {
-
 	type CheckResultWithHeimdalAck struct {
 		fthealth.CheckResult
 		HeimdalAck string `json:"_acknowledged,omitempty"`
