@@ -184,7 +184,7 @@ func (h *httpHandler) handleServicesHealthCheck(w http.ResponseWriter, r *http.R
 
 	if err != nil {
 		log.Debugf(
-			"Received services health check request: request_id=%q user_agent=%q x_forwarded_for=%q remote_addr=%q raw_query=%q useCache=%t",
+			"Received services health check request: request_id=%s user_agent=%s x_forwarded_for=%s remote_addr=%s raw_query=%s useCache=%t",
 			r.Header.Get("X-Request-Id"),
 			r.UserAgent(),
 			r.Header.Get("X-Forwarded-For"),
