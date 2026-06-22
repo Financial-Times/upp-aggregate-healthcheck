@@ -38,6 +38,12 @@ type servicesMap struct {
 	m map[string]service
 }
 
+type categoriesMap struct {
+	sync.RWMutex
+	m           map[string]category
+	initialized bool
+}
+
 type measuredService struct {
 	service            service
 	cachedHealth       *cachedHealth
