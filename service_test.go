@@ -15,6 +15,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	k8smeta "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	k8swatch "k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/kubernetes/fake"
 	core "k8s.io/client-go/testing"
 )
@@ -205,10 +206,123 @@ func TestGetCategories(t *testing.T) {
 	assert.Nil(t, err)
 }
 
+func TestRefreshCategoriesCachesKubernetesConfigMaps(t *testing.T) {
+	service := initializeMockService(nil)
+	_, err := service.k8sClient.CoreV1().ConfigMaps(apiv1.NamespaceDefault).Create(
+		context.TODO(),
+		buildCategoryConfigMap("category.test", "test", "service-a, service-b"),
+		k8smeta.CreateOptions{},
+	)
+	assert.Nil(t, err)
+
+	_, err = service.refreshCategories(context.TODO())
+	assert.Nil(t, err)
+
+	categories, err := service.getCategories(context.TODO())
+	assert.Nil(t, err)
+	assert.Equal(t, 1, len(categories))
+	assert.Equal(t, []string{"service-a", "service-b"}, categories["test"].services)
+}
+
+func TestGetCategoriesUsesCache(t *testing.T) {
+	service := initializeMockService(nil)
+	service.replaceCategories(map[string]category{
+		"default": {
+			name:     "default",
+			services: []string{"service-a"},
+		},
+	})
+
+	mock := &fake.Clientset{}
+	mock.AddReactor("list", "configmaps", func(action core.Action) (bool, runtime.Object, error) {
+		return true, nil, apierrors.NewInternalError(assert.AnError)
+	})
+	service.k8sClient = mock
+
+	categories, err := service.getCategories(context.TODO())
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"service-a"}, categories["default"].services)
+}
+
+func TestGetCategoriesReturnsCopyOfCache(t *testing.T) {
+	service := initializeMockService(nil)
+	service.replaceCategories(map[string]category{
+		"default": {
+			name:     "default",
+			services: []string{"service-a"},
+		},
+	})
+
+	categories, err := service.getCategories(context.TODO())
+	assert.Nil(t, err)
+	categories["default"] = category{name: "mutated", services: []string{"mutated-service"}}
+
+	categories, err = service.getCategories(context.TODO())
+	assert.Nil(t, err)
+	assert.Equal(t, "default", categories["default"].name)
+	assert.Equal(t, []string{"service-a"}, categories["default"].services)
+}
+
+func TestHandleCategoryWatchEventUpdatesCache(t *testing.T) {
+	service := initializeMockService(nil)
+	service.replaceCategories(map[string]category{})
+
+	categoryConfigMap := buildCategoryConfigMap("category.test", "test", "service-a")
+	service.handleCategoryWatchEvent(k8swatch.Event{Type: k8swatch.Added, Object: categoryConfigMap})
+
+	categories, err := service.getCategories(context.TODO())
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"service-a"}, categories["test"].services)
+
+	categoryConfigMap.Data["category.services"] = "service-b"
+	service.handleCategoryWatchEvent(k8swatch.Event{Type: k8swatch.Modified, Object: categoryConfigMap})
+
+	categories, err = service.getCategories(context.TODO())
+	assert.Nil(t, err)
+	assert.Equal(t, []string{"service-b"}, categories["test"].services)
+}
+
+func TestHandleCategoryWatchEventDeletesFromCache(t *testing.T) {
+	service := initializeMockService(nil)
+	service.replaceCategories(map[string]category{
+		"test": {
+			name:     "test",
+			services: []string{"service-a"},
+		},
+	})
+
+	service.handleCategoryWatchEvent(k8swatch.Event{
+		Type:   k8swatch.Deleted,
+		Object: buildCategoryConfigMap("category.test", "test", "service-a"),
+	})
+
+	categories, err := service.getCategories(context.TODO())
+	assert.Nil(t, err)
+	_, found := categories["test"]
+	assert.False(t, found)
+}
+
 func TestUpdateCategoryInvalidConfigMap(t *testing.T) {
 	service := initializeMockService(nil)
 	err := service.updateCategory(context.TODO(), "validCategoryName", true)
 	assert.NotNil(t, err)
+}
+
+func TestUpdateCategoryUpdatesCache(t *testing.T) {
+	service := initializeMockService(nil)
+	_, err := service.k8sClient.CoreV1().ConfigMaps(apiv1.NamespaceDefault).Create(
+		context.TODO(),
+		buildCategoryConfigMap("category.test", "test", "service-a"),
+		k8smeta.CreateOptions{},
+	)
+	assert.Nil(t, err)
+
+	err = service.updateCategory(context.TODO(), "test", false)
+	assert.Nil(t, err)
+
+	categories, err := service.getCategories(context.TODO())
+	assert.Nil(t, err)
+	assert.False(t, categories["test"].isEnabled)
 }
 
 func TestAddAckConfigMapNotFound(t *testing.T) {
@@ -352,4 +466,21 @@ func TestGetDeploymentsReturnsErrorForStatefulSets(t *testing.T) {
 func TestGetDefaultClient(t *testing.T) {
 	hc := getDefaultClient()
 	assert.Equal(t, hc.Timeout, 12*time.Second, "Expected time out to be 12 seconds")
+}
+
+func buildCategoryConfigMap(configMapName string, categoryName string, services string) *apiv1.ConfigMap {
+	return &apiv1.ConfigMap{
+		ObjectMeta: k8smeta.ObjectMeta{
+			Name:      configMapName,
+			Namespace: apiv1.NamespaceDefault,
+			Labels: map[string]string{
+				"healthcheck-categories-for": "aggregate-healthcheck",
+			},
+		},
+		Data: map[string]string{
+			"category.name":        categoryName,
+			"category.services":    services,
+			"category.refreshrate": "60",
+		},
+	}
 }
