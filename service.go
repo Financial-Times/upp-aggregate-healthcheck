@@ -180,6 +180,10 @@ func initializeHealthCheckService(maxCheckAttempts int, checkCooldown time.Durat
 		panic(err)
 	}
 
+	// trying to increase the QPS and Burst values to avoid throttling issues when there are many services to check
+	config.QPS = 25
+	config.Burst = 50
+
 	// creates the clientset
 	k8sClient, err := kubernetes.NewForConfig(config)
 	if err != nil {
