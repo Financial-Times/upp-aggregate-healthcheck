@@ -176,8 +176,8 @@ func getDefaultClient() *http.Client {
 
 func initializeHealthCheckService(maxCheckAttempts int, checkCooldown time.Duration) *k8sHealthcheckService {
 	client := getDefaultClient()
-	k8sClient := initializeK8sClient()
-	categoriesK8sClient := initializeK8sClient()
+	k8sClient := initializeK8sClient(false)
+	categoriesK8sClient := initializeK8sClient(true)
 
 	services := make(map[string]service)
 
@@ -196,7 +196,7 @@ func initializeHealthCheckService(maxCheckAttempts int, checkCooldown time.Durat
 	return k8sService
 }
 
-func initializeK8sClient() kubernetes.Interface {
+func initializeK8sClient(withRateLimitConfig bool) kubernetes.Interface {
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
@@ -204,8 +204,10 @@ func initializeK8sClient() kubernetes.Interface {
 	}
 
 	// trying to increase the QPS and Burst values to avoid throttling issues when there are many services to check
-	config.QPS = k8sClientQPS
-	config.Burst = k8sClientBurst
+	if withRateLimitConfig {
+		config.QPS = k8sClientQPS
+		config.Burst = k8sClientBurst
+	}
 
 	// creates the clientset
 	k8sClient, err := kubernetes.NewForConfig(config)
