@@ -116,10 +116,12 @@ func initializeMockServiceWithK8sServices() *k8sHealthcheckService {
 
 func initializeMockService(httpClient *http.Client) *k8sHealthcheckService {
 	mockK8sClient := fake.NewSimpleClientset()
+	mockCategoriesK8sClient := fake.NewSimpleClientset()
 
 	return &k8sHealthcheckService{
-		k8sClient:  mockK8sClient,
-		httpClient: httpClient,
+		k8sClient:           mockK8sClient,
+		categoriesK8sClient: mockCategoriesK8sClient,
+		httpClient:          httpClient,
 	}
 }
 
@@ -208,7 +210,7 @@ func TestGetCategories(t *testing.T) {
 
 func TestRefreshCategoriesCachesKubernetesConfigMaps(t *testing.T) {
 	service := initializeMockService(nil)
-	_, err := service.k8sClient.CoreV1().ConfigMaps(apiv1.NamespaceDefault).Create(
+	_, err := service.categoriesK8sClient.CoreV1().ConfigMaps(apiv1.NamespaceDefault).Create(
 		context.TODO(),
 		buildCategoryConfigMap("category.test", "test", "service-a, service-b"),
 		k8smeta.CreateOptions{},
@@ -466,6 +468,34 @@ func TestGetDeploymentsReturnsErrorForStatefulSets(t *testing.T) {
 func TestGetDefaultClient(t *testing.T) {
 	hc := getDefaultClient()
 	assert.Equal(t, hc.Timeout, 12*time.Second, "Expected time out to be 12 seconds")
+}
+
+func TestGetCategoriesUsesDedicatedK8sClient(t *testing.T) {
+	service := initializeMockService(nil)
+	_, err := service.categoriesK8sClient.CoreV1().ConfigMaps(apiv1.NamespaceDefault).Create(
+		context.TODO(),
+		&apiv1.ConfigMap{
+			ObjectMeta: k8smeta.ObjectMeta{
+				Name:      "category.publishing",
+				Namespace: apiv1.NamespaceDefault,
+				Labels: map[string]string{
+					"healthcheck-categories-for": "aggregate-healthcheck",
+				},
+			},
+			Data: map[string]string{
+				"category.name":     "publishing",
+				"category.services": validK8sServiceName,
+			},
+		},
+		k8smeta.CreateOptions{},
+	)
+	assert.Nil(t, err)
+
+	categories, err := service.getCategories(context.TODO())
+
+	assert.Nil(t, err)
+	assert.Contains(t, categories, "publishing")
+	assert.Equal(t, []string{validK8sServiceName}, categories["publishing"].services)
 }
 
 func buildCategoryConfigMap(configMapName string, categoryName string, services string) *apiv1.ConfigMap {
