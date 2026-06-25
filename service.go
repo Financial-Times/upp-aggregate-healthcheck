@@ -176,7 +176,7 @@ func getDefaultClient() *http.Client {
 
 func initializeHealthCheckService(maxCheckAttempts int, checkCooldown time.Duration) *k8sHealthcheckService {
 	client := getDefaultClient()
-	k8sClient := initializeK8sClient(false)
+	k8sClient := initializeK8sClient(true)
 	categoriesK8sClient := initializeK8sClient(true)
 
 	services := make(map[string]service)
