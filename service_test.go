@@ -115,10 +115,12 @@ func initializeMockServiceWithK8sServices() *k8sHealthcheckService {
 
 func initializeMockService(httpClient *http.Client) *k8sHealthcheckService {
 	mockK8sClient := fake.NewSimpleClientset()
+	mockCategoriesK8sClient := fake.NewSimpleClientset()
 
 	return &k8sHealthcheckService{
-		k8sClient:  mockK8sClient,
-		httpClient: httpClient,
+		k8sClient:           mockK8sClient,
+		categoriesK8sClient: mockCategoriesK8sClient,
+		httpClient:          httpClient,
 	}
 }
 
@@ -203,6 +205,34 @@ func TestGetCategories(t *testing.T) {
 	service := initializeMockService(nil)
 	_, err := service.getCategories(context.TODO())
 	assert.Nil(t, err)
+}
+
+func TestGetCategoriesUsesDedicatedK8sClient(t *testing.T) {
+	service := initializeMockService(nil)
+	_, err := service.categoriesK8sClient.CoreV1().ConfigMaps(apiv1.NamespaceDefault).Create(
+		context.TODO(),
+		&apiv1.ConfigMap{
+			ObjectMeta: k8smeta.ObjectMeta{
+				Name:      "category.publishing",
+				Namespace: apiv1.NamespaceDefault,
+				Labels: map[string]string{
+					"healthcheck-categories-for": "aggregate-healthcheck",
+				},
+			},
+			Data: map[string]string{
+				"category.name":     "publishing",
+				"category.services": validK8sServiceName,
+			},
+		},
+		k8smeta.CreateOptions{},
+	)
+	assert.Nil(t, err)
+
+	categories, err := service.getCategories(context.TODO())
+
+	assert.Nil(t, err)
+	assert.Contains(t, categories, "publishing")
+	assert.Equal(t, []string{validK8sServiceName}, categories["publishing"].services)
 }
 
 func TestUpdateCategoryInvalidConfigMap(t *testing.T) {

@@ -21,12 +21,13 @@ type httpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 type k8sHealthcheckService struct {
-	k8sClient        kubernetes.Interface
-	httpClient       httpClient
-	services         servicesMap
-	acks             map[string]string
-	maxCheckAttempts int
-	checkCooldown    time.Duration
+	k8sClient           kubernetes.Interface
+	categoriesK8sClient kubernetes.Interface
+	httpClient          httpClient
+	services            servicesMap
+	acks                map[string]string
+	maxCheckAttempts    int
+	checkCooldown       time.Duration
 }
 
 type healthcheckService interface {
@@ -58,6 +59,8 @@ const (
 	ackMessagesConfigMapName          = "healthcheck.ack.messages"
 	ackMessagesConfigMapLabelSelector = "healthcheck-acknowledgements-for=aggregate-healthcheck"
 	defaultAppPort                    = int32(8080)
+	k8sClientQPS                      = 25
+	k8sClientBurst                    = 50
 )
 
 func (hs *k8sHealthcheckService) RLockServices() {
@@ -173,11 +176,37 @@ func getDefaultClient() *http.Client {
 
 func initializeHealthCheckService(maxCheckAttempts int, checkCooldown time.Duration) *k8sHealthcheckService {
 	client := getDefaultClient()
+	k8sClient := initializeK8sClient(true)
+	categoriesK8sClient := initializeK8sClient(true)
 
+	services := make(map[string]service)
+
+	k8sService := &k8sHealthcheckService{
+		httpClient:          client,
+		k8sClient:           k8sClient,
+		categoriesK8sClient: categoriesK8sClient,
+		services:            servicesMap{m: services},
+		maxCheckAttempts:    maxCheckAttempts,
+		checkCooldown:       checkCooldown,
+	}
+
+	go k8sService.watchAcks()
+	go k8sService.watchServices()
+
+	return k8sService
+}
+
+func initializeK8sClient(withRateLimitConfig bool) kubernetes.Interface {
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err)
+	}
+
+	// trying to increase the QPS and Burst values to avoid throttling issues when there are many services to check
+	if withRateLimitConfig {
+		config.QPS = k8sClientQPS
+		config.Burst = k8sClientBurst
 	}
 
 	// creates the clientset
@@ -186,20 +215,7 @@ func initializeHealthCheckService(maxCheckAttempts int, checkCooldown time.Durat
 		panic(fmt.Errorf("failed to create k8s client: %w", err))
 	}
 
-	services := make(map[string]service)
-
-	k8sService := &k8sHealthcheckService{
-		httpClient:       client,
-		k8sClient:        k8sClient,
-		services:         servicesMap{m: services},
-		maxCheckAttempts: maxCheckAttempts,
-		checkCooldown:    checkCooldown,
-	}
-
-	go k8sService.watchAcks()
-	go k8sService.watchServices()
-
-	return k8sService
+	return k8sClient
 }
 
 func (hs *k8sHealthcheckService) updateCategory(ctx context.Context, categoryName string, isEnabled bool) error {
@@ -362,7 +378,7 @@ func (hs *k8sHealthcheckService) getPodsForService(ctx context.Context, serviceN
 func (hs *k8sHealthcheckService) getCategories(ctx context.Context) (map[string]category, error) {
 	categories := make(map[string]category)
 	start := time.Now()
-	k8sCategories, err := hs.k8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).List(ctx, k8smeta.ListOptions{LabelSelector: "healthcheck-categories-for=aggregate-healthcheck"})
+	k8sCategories, err := hs.categoriesK8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).List(ctx, k8smeta.ListOptions{LabelSelector: "healthcheck-categories-for=aggregate-healthcheck"})
 	elapsed := time.Since(start)
 	if err != nil {
 		log.Debugf("Getting categories configMaps from kubernetes took %s and failed with context error [%v]", elapsed, ctx.Err())
