@@ -21,12 +21,14 @@ type httpClient interface {
 	Do(req *http.Request) (*http.Response, error)
 }
 type k8sHealthcheckService struct {
-	k8sClient        kubernetes.Interface
-	httpClient       httpClient
-	services         servicesMap
-	acks             map[string]string
-	maxCheckAttempts int
-	checkCooldown    time.Duration
+	k8sClient           kubernetes.Interface
+	categoriesK8sClient kubernetes.Interface
+	httpClient          httpClient
+	services            servicesMap
+	categories          categoriesMap
+	acks                map[string]string
+	maxCheckAttempts    int
+	checkCooldown       time.Duration
 }
 
 type healthcheckService interface {
@@ -57,7 +59,10 @@ const (
 	defaultResiliency                 = true
 	ackMessagesConfigMapName          = "healthcheck.ack.messages"
 	ackMessagesConfigMapLabelSelector = "healthcheck-acknowledgements-for=aggregate-healthcheck"
+	categoryConfigMapLabelSelector    = "healthcheck-categories-for=aggregate-healthcheck"
 	defaultAppPort                    = int32(8080)
+	k8sClientQPS                      = 25
+	k8sClientBurst                    = 50
 )
 
 func (hs *k8sHealthcheckService) RLockServices() {
@@ -111,6 +116,92 @@ func (hs *k8sHealthcheckService) watchAcks() {
 		}
 
 		log.Info("Acks configMap watching terminated. Reconnecting...")
+	}
+}
+
+func (hs *k8sHealthcheckService) watchCategories(ctx context.Context) {
+	for {
+		watcher, ok := hs.waitForCategoryWatcher(ctx)
+		if !ok {
+			return
+		}
+
+		if !hs.processCategoryWatchEvents(ctx, watcher) {
+			return
+		}
+		log.Info("Categories configMaps watching terminated. Reconnecting...")
+	}
+}
+
+func (hs *k8sHealthcheckService) waitForCategoryWatcher(ctx context.Context) (watch.Interface, bool) {
+	for {
+		resourceVersion, err := hs.refreshCategories(ctx)
+		if err != nil {
+			if !retryCategoryWatch(ctx, err, "Error while listing categories configMaps with label selector %s", categoryConfigMapLabelSelector) {
+				return nil, false
+			}
+
+			continue
+		}
+
+		watcher, err := hs.startCategoryConfigMapWatch(ctx, resourceVersion)
+		if err != nil {
+			if !retryCategoryWatch(ctx, err, "Error while starting to watch categories configMaps with label selector %s", categoryConfigMapLabelSelector) {
+				return nil, false
+			}
+
+			continue
+		}
+
+		log.Info("Started watching categories configMaps")
+		return watcher, true
+	}
+}
+
+func (hs *k8sHealthcheckService) startCategoryConfigMapWatch(ctx context.Context, resourceVersion string) (watch.Interface, error) {
+	return hs.categoriesK8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).Watch(ctx, k8smeta.ListOptions{
+		LabelSelector:   categoryConfigMapLabelSelector,
+		ResourceVersion: resourceVersion,
+	})
+}
+
+func retryCategoryWatch(ctx context.Context, err error, format string, args ...interface{}) bool {
+	if ctx.Err() != nil {
+		return false
+	}
+
+	log.WithError(err).Errorf(format, args...)
+	return waitBeforeRetry(ctx)
+}
+
+func (hs *k8sHealthcheckService) processCategoryWatchEvents(ctx context.Context, watcher watch.Interface) bool {
+	defer watcher.Stop()
+
+	resultChannel := watcher.ResultChan()
+	for {
+		select {
+		case <-ctx.Done():
+			return false
+		case msg, ok := <-resultChannel:
+			if !ok {
+				return true
+			}
+			hs.handleCategoryWatchEvent(msg)
+		}
+	}
+}
+
+func waitBeforeRetry(ctx context.Context) bool {
+	retryDelay := defaultRetryTimeoutAfterError * time.Second
+	log.Infof("Reconnecting after %s...", retryDelay)
+	timer := time.NewTimer(retryDelay)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
 	}
 }
 
@@ -173,11 +264,40 @@ func getDefaultClient() *http.Client {
 
 func initializeHealthCheckService(maxCheckAttempts int, checkCooldown time.Duration) *k8sHealthcheckService {
 	client := getDefaultClient()
+	k8sClient := initializeK8sClient(true)
+	categoriesK8sClient := initializeK8sClient(true)
 
+	services := make(map[string]service)
+	categories := make(map[string]category)
+
+	k8sService := &k8sHealthcheckService{
+		httpClient:          client,
+		k8sClient:           k8sClient,
+		categoriesK8sClient: categoriesK8sClient,
+		services:            servicesMap{m: services},
+		categories:          categoriesMap{m: categories},
+		maxCheckAttempts:    maxCheckAttempts,
+		checkCooldown:       checkCooldown,
+	}
+
+	go k8sService.watchAcks()
+	go k8sService.watchCategories(context.Background())
+	go k8sService.watchServices()
+
+	return k8sService
+}
+
+func initializeK8sClient(withRateLimitConfig bool) kubernetes.Interface {
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
 	if err != nil {
 		panic(err)
+	}
+
+	// trying to increase the QPS and Burst values to avoid throttling issues when there are many services to check
+	if withRateLimitConfig {
+		config.QPS = k8sClientQPS
+		config.Burst = k8sClientBurst
 	}
 
 	// creates the clientset
@@ -186,20 +306,7 @@ func initializeHealthCheckService(maxCheckAttempts int, checkCooldown time.Durat
 		panic(fmt.Errorf("failed to create k8s client: %w", err))
 	}
 
-	services := make(map[string]service)
-
-	k8sService := &k8sHealthcheckService{
-		httpClient:       client,
-		k8sClient:        k8sClient,
-		services:         servicesMap{m: services},
-		maxCheckAttempts: maxCheckAttempts,
-		checkCooldown:    checkCooldown,
-	}
-
-	go k8sService.watchAcks()
-	go k8sService.watchServices()
-
-	return k8sService
+	return k8sClient
 }
 
 func (hs *k8sHealthcheckService) updateCategory(ctx context.Context, categoryName string, isEnabled bool) error {
@@ -211,12 +318,13 @@ func (hs *k8sHealthcheckService) updateCategory(ctx context.Context, categoryNam
 	}
 
 	k8sCategory.Data["category.enabled"] = strconv.FormatBool(isEnabled)
-	_, err = hs.k8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).Update(ctx, k8sCategory, k8smeta.UpdateOptions{})
+	updatedCategory, err := hs.k8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).Update(ctx, k8sCategory, k8smeta.UpdateOptions{})
 
 	if err != nil {
 		return fmt.Errorf("cannot update configMap for category with name %s: %w", categoryName, err)
 	}
 
+	hs.upsertCategory(updatedCategory)
 	return nil
 }
 
@@ -360,22 +468,128 @@ func (hs *k8sHealthcheckService) getPodsForService(ctx context.Context, serviceN
 }
 
 func (hs *k8sHealthcheckService) getCategories(ctx context.Context) (map[string]category, error) {
-	categories := make(map[string]category)
 	start := time.Now()
-	k8sCategories, err := hs.k8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).List(ctx, k8smeta.ListOptions{LabelSelector: "healthcheck-categories-for=aggregate-healthcheck"})
+	categories, initialized := hs.getCachedCategories()
+	elapsed := time.Since(start)
+
+	if initialized {
+		log.Debugf("Getting categories from cache took %s and returned %d categories", elapsed, len(categories))
+		return categories, nil
+	}
+
+	log.Warn("Categories cache is not initialized. Reading categories from kubernetes.")
+	if _, err := hs.refreshCategories(ctx); err != nil {
+		return nil, err
+	}
+
+	categories, _ = hs.getCachedCategories()
+	return categories, nil
+}
+
+func (hs *k8sHealthcheckService) refreshCategories(ctx context.Context) (string, error) {
+	start := time.Now()
+	k8sCategories, err := hs.categoriesK8sClient.CoreV1().ConfigMaps(k8score.NamespaceDefault).List(ctx, k8smeta.ListOptions{LabelSelector: categoryConfigMapLabelSelector})
 	elapsed := time.Since(start)
 	if err != nil {
 		log.Debugf("Getting categories configMaps from kubernetes took %s and failed with context error [%v]", elapsed, ctx.Err())
-		return nil, fmt.Errorf("failed to get the categories from kubernetes: %w", err)
+		return "", fmt.Errorf("failed to get the categories from kubernetes: %w", err)
 	}
 	log.Debugf("Getting categories configMaps from kubernetes took %s and returned %d configMaps", elapsed, len(k8sCategories.Items))
 
+	categories := make(map[string]category)
 	for _, k8sCategory := range k8sCategories.Items {
 		c := populateCategory(k8sCategory.Data)
 		categories[c.name] = c
 	}
 
-	return categories, nil
+	hs.replaceCategories(categories)
+	return k8sCategories.ResourceVersion, nil
+}
+
+func (hs *k8sHealthcheckService) getCachedCategories() (map[string]category, bool) {
+	hs.categories.RLock()
+	defer hs.categories.RUnlock()
+
+	if !hs.categories.initialized {
+		return nil, false
+	}
+
+	return copyCategories(hs.categories.m), true
+}
+
+func (hs *k8sHealthcheckService) replaceCategories(categories map[string]category) {
+	hs.categories.Lock()
+	hs.categories.m = categories
+	hs.categories.initialized = true
+	hs.categories.Unlock()
+}
+
+func (hs *k8sHealthcheckService) handleCategoryWatchEvent(msg watch.Event) {
+	if msg.Type == watch.Error {
+		log.Error("Error received on watch categories configMaps.")
+		return
+	}
+
+	k8sConfigMap, ok := msg.Object.(*k8score.ConfigMap)
+	if !ok {
+		log.Error("Unexpected object received on watch categories configMaps.")
+		return
+	}
+
+	switch msg.Type {
+	case watch.Added, watch.Modified:
+		hs.upsertCategory(k8sConfigMap)
+	case watch.Deleted:
+		hs.deleteCategory(k8sConfigMap)
+	default:
+		log.Error("Error received on watch categories configMaps. Channel may be full")
+	}
+}
+
+func (hs *k8sHealthcheckService) upsertCategory(k8sCategory *k8score.ConfigMap) {
+	c := populateCategory(k8sCategory.Data)
+
+	hs.categories.Lock()
+	if hs.categories.m == nil {
+		hs.categories.m = make(map[string]category)
+	}
+	hs.categories.m[c.name] = c
+	hs.categories.initialized = true
+	hs.categories.Unlock()
+
+	log.Infof("Category configMap has been added or updated: %s", c.name)
+}
+
+func (hs *k8sHealthcheckService) deleteCategory(k8sCategory *k8score.ConfigMap) {
+	c := populateCategory(k8sCategory.Data)
+	categoryName := c.name
+	if categoryName == "" {
+		categoryName = strings.TrimPrefix(k8sCategory.Name, "category.")
+	}
+
+	hs.categories.Lock()
+	delete(hs.categories.m, categoryName)
+	hs.categories.initialized = true
+	hs.categories.Unlock()
+
+	log.Infof("Category configMap has been removed: %s", categoryName)
+}
+
+func copyCategories(categories map[string]category) map[string]category {
+	copiedCategories := make(map[string]category, len(categories))
+	for name, c := range categories {
+		copiedCategories[name] = copyCategory(c)
+	}
+
+	return copiedCategories
+}
+
+func copyCategory(c category) category {
+	if c.services != nil {
+		c.services = append([]string(nil), c.services...)
+	}
+
+	return c
 }
 
 func (hs *k8sHealthcheckService) getHTTPClient() httpClient {
