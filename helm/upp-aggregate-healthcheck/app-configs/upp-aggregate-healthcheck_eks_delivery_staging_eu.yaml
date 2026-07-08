@@ -1,0 +1,254 @@
+# Values used for the deployed application.
+replicaCount: 1
+
+secondstack:
+  enabled: "true"
+
+service:
+  name: upp-aggregate-healthcheck
+
+env:
+  PATH_PREFIX: "/__health"
+
+categories:
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.default
+      labels:
+         healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: default
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.content-publish
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: content-publish
+      category.services: >-
+        upp-audio-validator,
+        upp-article-validator,
+        upp-internal-article-validator,
+        upp-content-placeholder-validator,
+        upp-internal-content-placeholder-validator,
+        upp-live-blog-post-validator,
+        upp-internal-live-blog-post-validator,
+        upp-live-blog-package-validator,
+        upp-internal-live-blog-package-validator,
+        upp-live-event-validator,
+        upp-next-video-mapper,
+        body-validation-service,
+        body-tree-validation-service,
+        content-ingester,
+        document-store-api-go,
+        post-publication-combiner,
+        content-rw-elasticsearch,
+        upp-notifications-creator,
+        notifications-ingester,
+        notifications-rw,
+        notifications-push
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.content-read
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: content-read
+      category.services: api-policy-component,content-public-read,cm-content-public-read-go,document-store-api-go
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.internalcontent-read
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: internalcontent-read
+      category.services: >- 
+        api-policy-component,
+        content-public-read,
+        document-store-api-go,
+        enriched-content-read-api,
+        internal-content-api,
+        cm-content-tree-api,
+        content-unroller,
+        public-annotations-api,
+        relations-api
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.lists-publish
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: lists-publish
+      category.services: >- 
+        upp-list-validator,
+        list-ingester,
+        public-lists-api,
+        upp-notifications-creator,
+        list-notifications-ingester,
+        list-notifications-push,
+        list-notifications-rw
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.read
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: read
+      category.services: >- 
+        api-policy-component,
+        content-search-api-port,
+        concept-search-api,
+        cm-live-events-api,
+        content-public-read,
+        cm-content-public-read-go,
+        document-store-api-go,
+        content-unroller,
+        notifications-rw,
+        list-notifications-rw,
+        public-pages-api,
+        page-notifications-rw,
+        public-brands-api,
+        public-concordances-api,
+        public-content-by-concept-api,
+        public-organisations-api,
+        public-people-api,
+        public-things-api
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.concordances-read
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: concordances-read
+      category.services: api-policy-component,public-concordances-api,internal-concordances
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.enrichedcontent-read
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: enrichedcontent-read
+      category.services: >- 
+        api-policy-component,
+        content-public-read,
+        document-store-api-go,
+        enriched-content-read-api,
+        content-unroller,
+        public-annotations-api,
+        relations-api
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.image-publish
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: image-publish
+      category.services: >-
+        upp-image-validator,
+        upp-image-set-validator,
+        upp-graphic-validator,
+        content-ingester,
+        document-store-api-go
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.lists-read
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: lists-read
+      category.services: api-policy-component,public-lists-api,list-notifications-rw
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.system
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: system
+      category.services: system-healthcheck
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.annotations-publish
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: annotations-publish
+      category.services: >-
+        upp-next-video-annotations-mapper,
+        annotations-rw-neo4j,
+        annotations-writer-ontotext,
+        public-annotations-api,
+        annotation-notifications-ingester,
+        notifications-rw,
+        notifications-push
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.annotations-read
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: annotations-read
+      category.services: api-policy-component,public-annotations-api
+      category.refreshrate: "60"
+      category.issticky: "false"
+  - kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: category.concept-search
+      labels:
+        healthcheck-categories-for: aggregate-healthcheck
+    immutable: false
+    data:
+      category.name: concept-search
+      category.services: concept-search-api
+      category.refreshrate: "60"
+      category.issticky: "false"
