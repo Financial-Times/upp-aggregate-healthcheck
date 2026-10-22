@@ -44,7 +44,7 @@ categories:
         upp-live-event-validator,
         upp-next-video-mapper,
         body-validation-service,
-        body-tree-validation-service,
+        tree-validation-service,
         content-ingester,
         document-store-api-go,
         post-publication-combiner,
