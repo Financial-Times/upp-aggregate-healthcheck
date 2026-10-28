@@ -28,6 +28,7 @@ type IndividualHealthcheckParams struct {
 	AddOrRemoveAckPathName string
 	AckMessage             string
 	Output                 string
+	Reason                 string
 }
 
 // AggregateHealthcheckParams struct used to populate HTML template with aggregate checks
@@ -457,6 +458,10 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix s
 		}
 
 		addOrRemoveAckPath, addOrRemoveAckPathName := buildAddOrRemoveAckPath(individualCheck.Name, pathPrefix, individualCheck.Ack)
+		output, reason := splitServiceCheckOutput(individualCheck.CheckOutput)
+		if reason == "" && !individualCheck.Ok {
+			reason = individualCheck.CheckOutput
+		}
 		hc := IndividualHealthcheckParams{
 			Name:                   individualCheck.Name,
 			Status:                 getServiceStatusFromCheck(individualCheck),
@@ -465,13 +470,27 @@ func populateIndividualServiceChecks(checks []fthealth.CheckResult, pathPrefix s
 			AddOrRemoveAckPath:     addOrRemoveAckPath,
 			AddOrRemoveAckPathName: addOrRemoveAckPathName,
 			AckMessage:             individualCheck.Ack,
-			Output:                 individualCheck.CheckOutput,
+			Output:                 output,
+			Reason:                 reason,
 		}
 
 		indiviualServiceChecks[i] = hc
 	}
 
 	return indiviualServiceChecks, ackCount
+}
+
+func splitServiceCheckOutput(output string) (string, string) {
+	const reasonSeparator = "; reason: "
+	if output == "" {
+		return "", ""
+	}
+
+	if separatorIndex := strings.Index(output, reasonSeparator); separatorIndex >= 0 {
+		return output[:separatorIndex], output[separatorIndex+len(reasonSeparator):]
+	}
+
+	return output, ""
 }
 
 func buildAddOrRemoveAckPath(serviceName string, pathPrefix string, ackMessage string) (string, string) {
@@ -497,6 +516,9 @@ func populateIndividualPodChecks(checks []fthealth.CheckResult, pathPrefix strin
 			MoreInfoPath: getIndividualPodHealthcheckURL("", pathPrefix, podName),
 			AckMessage:   check.Ack,
 			Output:       check.CheckOutput,
+		}
+		if !check.Ok {
+			hc.Reason = check.CheckOutput
 		}
 
 		indiviualServiceChecks[i] = hc

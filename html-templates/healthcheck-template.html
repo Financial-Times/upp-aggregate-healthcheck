@@ -41,6 +41,7 @@
       <th>Name</th>
       <th>Health status</th>
       <th>Output</th>
+      <th>Reason</th>
       <th>Last Updated</th>
       <th>Ack msg</th>
       <th>Action</th>
@@ -81,6 +82,7 @@
         {{end}}
         {{end}}
       </td>
+      <td>{{.Reason}}</td>
       <td>&nbsp;{{.LastUpdated}}</td>
       <td>&nbsp;<span style='color: blue;'><em>{{.AckMessage}}</em></span></td>
       {{if ne .AddOrRemoveAckPath ""}}

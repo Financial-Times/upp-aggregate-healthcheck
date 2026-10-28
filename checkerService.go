@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	fthealth "github.com/Financial-Times/go-fthealth/v1_1"
@@ -30,9 +31,11 @@ func (hs *k8sHealthcheckService) checkServiceHealth(ctx context.Context, service
 	}
 
 	noOfUnavailablePods := 0
+	var podFailureReasons []string
 	for _, currentPod := range pods {
 		if err = hs.checkPodHealth(currentPod, service.appPort); err != nil {
 			noOfUnavailablePods++
+			podFailureReasons = append(podFailureReasons, fmt.Sprintf("%s: %s", currentPod.name, err.Error()))
 		}
 	}
 
@@ -40,18 +43,18 @@ func (hs *k8sHealthcheckService) checkServiceHealth(ctx context.Context, service
 	outputMsg := fmt.Sprintf("%v/%v pods available", totalNoOfPods-noOfUnavailablePods, totalNoOfPods)
 
 	if noOfUnavailablePods != 0 {
-		return "", errors.New(outputMsg)
+		return "", fmt.Errorf("%s; reason: %s", outputMsg, strings.Join(podFailureReasons, "; "))
 	}
 	if service.isDaemon {
 		if totalNoOfPods == 0 {
-			return "", errors.New(outputMsg)
+			return "", fmt.Errorf("%s; reason: no pods are running", outputMsg)
 		}
 	} else {
 		if _, exists := deployments[service.name]; !exists {
 			return "", fmt.Errorf("cannot find deployment for service with name %s", service.name)
 		}
 		if totalNoOfPods == 0 && deployments[service.name].desiredReplicas != 0 {
-			return "", errors.New(outputMsg)
+			return "", fmt.Errorf("%s; reason: no pods are running", outputMsg)
 		}
 	}
 
@@ -62,7 +65,7 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
 	health, err := hs.getHealthChecksForPod(pod, appPort)
 	if err != nil {
 		log.WithError(err).Errorf("Cannot perform healthcheck for pod with name %s", pod.name)
-		return errors.New("cannot perform healthcheck for pod")
+		return fmt.Errorf("cannot perform healthcheck for pod: %w", err)
 	}
 
 	for _, check := range health.Checks {
