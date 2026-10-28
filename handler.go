@@ -228,9 +228,11 @@ func (h *httpHandler) handlePodsHealthCheck(w http.ResponseWriter, r *http.Reque
 
 	log.Infof("Checking pods health for service [%s]", serviceName)
 	if err != nil {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(http.StatusInternalServerError)
 		log.WithError(err).Errorf("Cannot perform checks for service with name %s", serviceName)
-		_, writeErr := fmt.Fprintf(w, "Cannot perform checks for service with name %s", serviceName)
+		_, writeErr := fmt.Fprintf(w, "Cannot perform checks for service with name %s", template.HTMLEscapeString(serviceName))
 		handleResponseWriterErr(writeErr)
 		return
 	}
@@ -262,17 +264,26 @@ func (h *httpHandler) handleIndividualPodHealthCheck(w http.ResponseWriter, r *h
 	podHealth, contentTypeHeader, err := h.controller.getIndividualPodHealth(r.Context(), podName)
 
 	if err != nil {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.WriteHeader(http.StatusInternalServerError)
 
 		log.WithError(err).Errorf("Cannot get individual healthcheck for pod %s", podName)
-		_, writeErr := fmt.Fprintf(w, "Cannot get individual healthcheck for pod %s", podName)
+		_, writeErr := fmt.Fprintf(w, "Cannot get individual healthcheck for pod %s", template.HTMLEscapeString(podName))
 		handleResponseWriterErr(writeErr)
 		return
 	}
 
-	w.Header().Add("Content-Type", contentTypeHeader)
-	_, err = w.Write(podHealth)
-	handleResponseWriterErr(err)
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	if strings.Contains(strings.ToLower(contentTypeHeader), "application/json") && json.Valid(podHealth) {
+		w.Header().Set("Content-Type", "application/json")
+		writeErr := json.NewEncoder(w).Encode(json.RawMessage(podHealth))
+		handleResponseWriterErr(writeErr)
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	template.HTMLEscape(w, podHealth)
 }
 
 func (h *httpHandler) handleGoodToGo(w http.ResponseWriter, r *http.Request) {

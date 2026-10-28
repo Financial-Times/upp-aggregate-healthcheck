@@ -20,6 +20,7 @@ type healthcheckResponse struct {
 		Name     string
 		OK       bool
 		Severity uint8
+		Output   string `json:"checkOutput"`
 	}
 }
 
@@ -70,6 +71,9 @@ func (hs *k8sHealthcheckService) checkPodHealth(pod pod, appPort int32) error {
 
 	for _, check := range health.Checks {
 		if !check.OK {
+			if check.Output != "" {
+				return fmt.Errorf("failing check is: %s (%s)", check.Name, check.Output)
+			}
 			return fmt.Errorf("failing check is: %s", check.Name)
 		}
 	}
